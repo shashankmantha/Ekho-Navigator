@@ -103,10 +103,6 @@ This focused scope ensures we deliver a polished, functional app within our time
 - **Christopher Vlavianos** - Engineer
 - **Marcos Ramirez** - Engineer
 
-## License
-
-This project is developed as part of an academic course. All rights reserved by the development team.
-
 ---
 
 **For students, by students**
