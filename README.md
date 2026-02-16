@@ -104,5 +104,3 @@ This focused scope ensures we deliver a polished, functional app within our time
 - **Marcos Ramirez** - Engineer
 
 ---
-
-**For students, by students**
