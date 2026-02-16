@@ -21,7 +21,7 @@ Students currently face:
 
 ## Our Solution
 
-A mobile-first app that provides:
+A mobile-focused app that provides:
 - **Unified dashboard** - See your day at a glance: next class, upcoming events
 - **Interactive campus map** - Find buildings, study spaces, and points of interest
 - **Event discovery** - Browse campus events with calendar integration
