@@ -82,13 +82,13 @@ A mobile-first app that provides:
 
 ## Scope & Limitations
 
-**What we're building:**
+**What we are building:**
 - Event discovery and browsing
 - Study room finder with links to booking systems
 - Social coordination features for students
 - Unified calendar for campus activities
 
-**What we're NOT building:**
+**What we are NOT building:**
 - Grade tracking
 - Course registration systems
 - Cross-platform support (iOS, web)
