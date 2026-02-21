@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The Gold Standard Splash Screen Theme -->
+
+    <style name="Theme.EkhoNavigator" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
