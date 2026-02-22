@@ -1,5 +1,6 @@
 package com.ekhonavigator.core.network
 
+import android.text.Html
 import android.util.Log
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.network.model.NetworkCalendarEvent
@@ -9,7 +10,6 @@ import net.fortuna.ical4j.data.CalendarBuilder
 import net.fortuna.ical4j.model.Component
 import net.fortuna.ical4j.model.Property
 import net.fortuna.ical4j.model.component.VEvent
-import net.fortuna.ical4j.model.property.Categories
 import net.fortuna.ical4j.model.property.Description
 import net.fortuna.ical4j.model.property.DtEnd
 import net.fortuna.ical4j.model.property.DtStart
@@ -104,25 +104,45 @@ class ICalFeedDataSource @Inject constructor(
     }
 
     /**
+     * Decodes HTML entities (e.g. `&#39;` → `'`, `&amp;` → `&`) from plain-text
+     * fields. The 25Live Publisher feed embeds HTML entities in SUMMARY, LOCATION, etc.
+     * Uses Android's built-in Html parser which handles all standard HTML entities.
+     */
+    private fun decodeHtmlEntities(text: String): String =
+        Html.fromHtml(text, Html.FROM_HTML_MODE_COMPACT).toString().trim()
+
+    /**
      * iCal4j 4.x returns Optional<T> from property accessors.
      */
     private fun parseEvent(event: VEvent): NetworkCalendarEvent? {
         val uid = event.getProperty<Uid>(Property.UID).orElse(null)?.value ?: return null
         val summary = event.getProperty<Summary>(Property.SUMMARY).orElse(null)?.value.orEmpty()
+            .let { decodeHtmlEntities(it) }
         val description = event.getProperty<Description>(Property.DESCRIPTION).orElse(null)?.value.orEmpty()
         val location = event.getProperty<Location>(Property.LOCATION).orElse(null)?.value.orEmpty()
+            .let { decodeHtmlEntities(it) }
 
         val dtStart = event.getProperty<DtStart<*>>(Property.DTSTART).orElse(null)?.date
             ?.let { temporalToInstant(it) } ?: return null
         val dtEnd = event.getProperty<DtEnd<*>>(Property.DTEND).orElse(null)?.date
             ?.let { temporalToInstant(it) } ?: dtStart
 
-        val categories = event.getProperties<Categories>(Property.CATEGORIES)
-            .flatMap { prop ->
-                prop.value.split(",").map { categoryName ->
-                    EventCategory.fromICalCategory(categoryName)
-                }
-            }
+        // The standard CATEGORIES property just says "CSUCI Events Calendar 25Live"
+        // for every event (useless). The real categories live in Trumba custom fields:
+        //   X-TRUMBA-CUSTOMFIELD;NAME="Categories";ID=23227;TYPE=Enumeration:Staff
+        // Multi-category events use escaped commas in the raw .ics (\,) which iCal4j
+        // unescapes to regular commas, e.g. "Student Organizations, University Life, Alumni"
+        val categories = event.getProperties<net.fortuna.ical4j.model.property.XProperty>(
+            "X-TRUMBA-CUSTOMFIELD",
+        ).filter { prop ->
+            prop.getParameter<net.fortuna.ical4j.model.Parameter>("NAME")
+                ?.orElse(null)?.value == "Categories"
+        }.flatMap { prop ->
+            // Values may contain HTML entities (e.g. "Academics &amp; Research")
+            // so decode before matching against our enum.
+            prop.value.split(",").map { decodeHtmlEntities(it) }
+                .map { EventCategory.fromTrumbaCategory(it) }
+        }.distinct()
             .ifEmpty { listOf(EventCategory.GENERAL) }
 
         val url = event.getProperty<Url>(Property.URL).orElse(null)?.value.orEmpty()
