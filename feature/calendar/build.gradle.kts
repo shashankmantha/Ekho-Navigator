@@ -39,6 +39,7 @@ dependencies {
     api(projects.feature.event)
     implementation(projects.core.model)
     implementation(projects.core.data)
+    implementation(projects.core.designsystem)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.tooling.preview)
@@ -47,6 +48,8 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.kizitonwose.calendar.compose)
 
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.core.ktx)
