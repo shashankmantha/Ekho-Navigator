@@ -13,6 +13,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import javax.inject.Inject
 
 /**
@@ -57,13 +60,19 @@ class EventsViewModel @Inject constructor(
         _searchQuery,
         _selectedCategory,
     ) { allEvents, query, category ->
+        // Start of today in California time — hide events that have already ended
+        val now = LocalDate.now(ZoneId.of("America/Los_Angeles"))
+            .atStartOfDay(ZoneId.of("America/Los_Angeles"))
+            .toInstant()
+
         allEvents.filter { event ->
+            val notPast = event.endTime >= now
             val matchesQuery = query.isBlank() ||
                 event.title.contains(query, ignoreCase = true) ||
                 event.description.contains(query, ignoreCase = true) ||
                 event.location.contains(query, ignoreCase = true)
             val matchesCategory = category == null || category in event.categories
-            matchesQuery && matchesCategory
+            notPast && matchesQuery && matchesCategory
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
