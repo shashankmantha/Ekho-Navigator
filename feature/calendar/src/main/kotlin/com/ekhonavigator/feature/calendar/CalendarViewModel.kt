@@ -95,6 +95,6 @@ class CalendarViewModel @Inject constructor(
     companion object {
         // TODO: Move to a shared configuration provider
         private const val FEED_URL =
-            "https://25livepub.collegenet.com/calendars/CSUCI_EVENTS.ics"
+            "https://25livepub.collegenet.com/calendars/csuci-calendar-of-events.ics"
     }
 }
