@@ -1,6 +1,9 @@
 package com.ekhonavigator.feature.event
 
 import android.content.Intent
+import android.text.Html
+import android.text.method.LinkMovementMethod
+import android.widget.TextView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,7 +39,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
@@ -258,13 +263,43 @@ private fun EventDetailContent(
                 fontWeight = FontWeight.SemiBold,
             )
 
-            Text(
-                text = event.description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            HtmlDescription(
+                html = event.description,
+                modifier = Modifier.fillMaxWidth(),
             )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
     }
+}
+
+/**
+ * Renders an HTML string using Android's [TextView] + [Html.fromHtml].
+ * This handles `<p>`, `<br>`, `<b>`, `<a href>` tags and HTML entities
+ * that the 25Live Publisher feed embeds in event descriptions.
+ * Links are clickable via [LinkMovementMethod].
+ */
+@Composable
+private fun HtmlDescription(
+    html: String,
+    modifier: Modifier = Modifier,
+) {
+    val textColor = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
+    val linkColor = MaterialTheme.colorScheme.primary.toArgb()
+    val textSizeSp = MaterialTheme.typography.bodyMedium.fontSize.value
+
+    AndroidView(
+        modifier = modifier,
+        factory = { ctx ->
+            TextView(ctx).apply {
+                movementMethod = LinkMovementMethod.getInstance()
+                setTextColor(textColor)
+                setLinkTextColor(linkColor)
+                textSize = textSizeSp
+            }
+        },
+        update = { textView ->
+            textView.text = Html.fromHtml(html, Html.FROM_HTML_MODE_COMPACT)
+        },
+    )
 }
