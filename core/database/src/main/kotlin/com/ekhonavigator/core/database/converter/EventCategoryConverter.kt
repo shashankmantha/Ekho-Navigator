@@ -5,6 +5,8 @@ import com.ekhonavigator.core.model.EventCategory
 
 /**
  * Converts List<[EventCategory]> to/from a comma-separated string for Room storage.
+ * Uses a safe lookup so stale enum names (from a previous app version) don't crash —
+ * they fall back to GENERAL instead.
  */
 internal class EventCategoryConverter {
 
@@ -15,5 +17,11 @@ internal class EventCategoryConverter {
     @TypeConverter
     fun toCategories(value: String): List<EventCategory> =
         if (value.isBlank()) emptyList()
-        else value.split(",").map { EventCategory.valueOf(it) }
+        else value.split(",").map { name ->
+            try {
+                EventCategory.valueOf(name)
+            } catch (_: IllegalArgumentException) {
+                EventCategory.GENERAL
+            }
+        }
 }
