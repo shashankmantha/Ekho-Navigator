@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -38,6 +39,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventCategory
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
@@ -92,16 +94,49 @@ fun EventsScreen(
                 )
             }
         } else {
+            // Group events by date for section headers
+            val zone = remember { ZoneId.systemDefault() }
+            val eventsByDate = remember(events) {
+                events.groupBy { it.startTime.atZone(zone).toLocalDate() }
+                    .toSortedMap()
+            }
+
+            val headerFormatter = remember {
+                DateTimeFormatter.ofPattern("EEEE, MMMM d")
+            }
+            val today = remember { LocalDate.now() }
+            val tomorrow = remember { today.plusDays(1) }
+
+            @OptIn(ExperimentalFoundationApi::class)
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(vertical = 4.dp),
             ) {
-                items(events, key = { it.id }) { event ->
-                    EventCard(
-                        event = event,
-                        onClick = { onEventClick(event.id) },
-                        onBookmarkClick = { viewModel.toggleBookmark(event.id) },
-                    )
+                eventsByDate.forEach { (date, dayEvents) ->
+                    stickyHeader(key = date.toString()) {
+                        val label = when (date) {
+                            today -> "Today"
+                            tomorrow -> "Tomorrow"
+                            else -> date.format(headerFormatter)
+                        }
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.surface)
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                        )
+                    }
+
+                    items(dayEvents, key = { it.id }) { event ->
+                        EventCard(
+                            event = event,
+                            onClick = { onEventClick(event.id) },
+                            onBookmarkClick = { viewModel.toggleBookmark(event.id) },
+                        )
+                    }
                 }
             }
         }
@@ -193,7 +228,6 @@ private fun EventCard(
     onBookmarkClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val dateFormatter = remember { DateTimeFormatter.ofPattern("EEE, MMM d") }
     val timeFormatter = remember { DateTimeFormatter.ofPattern("h:mm a") }
     val zone = remember { ZoneId.systemDefault() }
 
@@ -226,12 +260,10 @@ private fun EventCard(
                     overflow = TextOverflow.Ellipsis,
                 )
 
-                val startZoned = event.startTime.atZone(zone)
-                val date = startZoned.format(dateFormatter)
-                val startTime = startZoned.format(timeFormatter)
+                val startTime = event.startTime.atZone(zone).format(timeFormatter)
                 val endTime = event.endTime.atZone(zone).format(timeFormatter)
                 Text(
-                    text = "$date \u00B7 $startTime \u2013 $endTime",
+                    text = "$startTime \u2013 $endTime",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
