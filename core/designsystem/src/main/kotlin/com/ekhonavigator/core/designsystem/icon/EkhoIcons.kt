@@ -32,6 +32,8 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.ShortText
 import androidx.compose.material.icons.rounded.Upcoming
+import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.ViewDay
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.outlined.Air
@@ -64,6 +66,8 @@ object EkhoIcons {
     val ShortText = Icons.AutoMirrored.Rounded.ShortText
     val Upcoming = Icons.Rounded.Upcoming
     val UpcomingBorder = Icons.Outlined.Upcoming
+    val Schedule = Icons.Rounded.Schedule
+    val Share = Icons.Rounded.Share
     val ViewDay = Icons.Rounded.ViewDay
 
     // Directional — for calendar month navigation, carousels, etc.
