@@ -138,11 +138,7 @@ fun EkhoNavigatorApp() {
                     }
                     is EventNavKey -> {
                         NavEntry(key) {
-                            EventScreen(
-                                showBackButton = false, // Back button handled by App Scaffold
-                                onBackClick = { navigator.goBack() },
-                                onEventClick = navigator::navigateToEvent,
-                            )
+                            EventScreen(eventId = key.id)
                         }
                     }
                     else -> {

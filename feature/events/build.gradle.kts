@@ -39,6 +39,7 @@ dependencies {
     api(projects.feature.event)
     implementation(projects.core.model)
     implementation(projects.core.data)
+    implementation(projects.core.designsystem)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.tooling.preview)
