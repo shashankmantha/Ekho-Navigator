@@ -27,6 +27,7 @@ out/
 
 *.class
 *.log
+/.kotlin/sessions
 
 ############################################
 # OS Generated Files
