@@ -22,11 +22,6 @@ fun EntryProviderScope<NavKey>.eventEntry(navigator: Navigator) {
     entry<EventNavKey>(
         metadata = ListDetailSceneStrategy.detailPane(),
     ) { key ->
-        val id = key.id
-        EventScreen(
-            showBackButton = true,
-            onBackClick = { navigator.goBack() },
-            onEventClick = navigator::navigateToEvent,
-        )
+        EventScreen(eventId = key.id)
     }
 }
