@@ -15,5 +15,7 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
+      - uses: gradle/actions/setup-gradle@v3
+
       - name: Run unit tests
-        run: ./gradlew testDebugUnitTest
+        run: chmod +x ./gradlew && ./gradlew testDebugUnitTest
