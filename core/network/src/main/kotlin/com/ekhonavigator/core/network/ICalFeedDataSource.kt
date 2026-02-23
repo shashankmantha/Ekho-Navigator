@@ -1,7 +1,6 @@
 package com.ekhonavigator.core.network
 
 import android.text.Html
-import android.util.Log
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.network.model.NetworkCalendarEvent
 import kotlinx.coroutines.Dispatchers
@@ -30,8 +29,6 @@ import java.time.temporal.Temporal
 import javax.inject.Inject
 import javax.inject.Singleton
 
-private const val TAG = "ICalFeedDataSource"
-
 /**
  * Fetches and parses .ics (iCalendar) feeds from 25Live Publisher.
  *
@@ -51,21 +48,14 @@ class ICalFeedDataSource @Inject constructor(
      */
     suspend fun fetchEvents(feedUrl: String): List<NetworkCalendarEvent> =
         withContext(Dispatchers.IO) {
-            Log.d(TAG, "Fetching feed from: $feedUrl")
             val request = Request.Builder().url(feedUrl).build()
             val response = okHttpClient.newCall(request).execute()
 
             if (!response.isSuccessful) {
-                Log.e(TAG, "Fetch failed: HTTP ${response.code}")
                 throw ICalFetchException("HTTP ${response.code}: ${response.message}")
             }
 
-            val body = response.body.string()
-            Log.d(TAG, "Fetched ${body.length} characters of iCal data")
-
-            val events = parseICalFeed(body)
-            Log.d(TAG, "Parsed ${events.size} events from feed")
-            events
+            parseICalFeed(response.body.string())
         }
 
     /**
@@ -88,17 +78,12 @@ class ICalFeedDataSource @Inject constructor(
 
             calendar.getComponents<VEvent>(Component.VEVENT).mapNotNull { event ->
                 try {
-                    parseEvent(event).also { parsed ->
-                        if (parsed == null) Log.w(TAG, "parseEvent returned null for event")
-                    }
-                } catch (e: Exception) {
-                    val eventUid = event.getProperty<Uid>(Property.UID).orElse(null)?.value
-                    Log.w(TAG, "Failed to parse event uid=$eventUid: ${e.message}")
+                    parseEvent(event)
+                } catch (_: Exception) {
                     null // Skip malformed events rather than failing the whole sync
                 }
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to parse iCal feed content", e)
+        } catch (_: Exception) {
             emptyList()
         }
     }
