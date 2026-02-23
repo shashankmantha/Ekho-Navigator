@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace = "com.ekhonavigator.core.model"
+    namespace = "com.ekhonavigator.core.testing"
     compileSdk = 36
 
     defaultConfig {
@@ -17,5 +17,11 @@ android {
 }
 
 dependencies {
-    testImplementation(libs.junit)
+    api(projects.core.model)
+    api(projects.core.data)
+
+    api(libs.junit)
+    api(kotlin("test"))
+    api(libs.kotlinx.coroutines.test)
+    api(libs.turbine)
 }
