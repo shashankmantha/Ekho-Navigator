@@ -80,14 +80,36 @@ A mobile-first app that provides:
 
 ## Tech Stack
 
-**Platform:**
-- Native Android application
-- Modern mobile-first architecture
+| Layer | Technology |
+|---|---|
+| **Language** | Kotlin |
+| **UI** | Jetpack Compose, Material 3 |
+| **Navigation** | Navigation3 |
+| **Architecture** | MVVM, unidirectional data flow, offline-first |
+| **Networking** | OkHttp, iCal4j |
+| **Local storage** | Room (SQLite) |
+| **Background sync** | WorkManager |
+| **DI** | Hilt |
+| **Build** | Gradle (AGP 9), KSP |
+| **Testing** | JUnit, Turbine, kotlin.test |
+| **CI** | GitHub Actions |
 
-**Backend & Services:**
-- User authentication and data storage
-- Cloud-based messaging
-- Integration with campus data sources
+Architecture is modeled after Google's [Now in Android](https://github.com/android/nowinandroid) reference app — see [Architecture Guide](docs/ArchitectureGuide.md) for details.
+
+## Getting Started
+
+```bash
+git clone https://github.com/your-org/Ekho-Navigator.git
+cd Ekho-Navigator
+./gradlew assembleDebug
+```
+
+Open in Android Studio and run the `app` configuration on an emulator or device (API 29+).
+
+To run tests:
+```bash
+./gradlew testDebugUnitTest
+```
 
 ## Scope & Limitations
 
