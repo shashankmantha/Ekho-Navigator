@@ -1,6 +1,7 @@
 ## Team
 
 - **Christopher Vlavianos** - Engineer
+- **Cristian Meza - Engineer
 
 # Ekho Navigator
 
