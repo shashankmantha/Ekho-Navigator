@@ -1,6 +1,7 @@
 ## Team
 
 - **Christopher Vlavianos** - Engineer
+- **Marcos Ramirez** - Engineer
 
 # Ekho Navigator
 
