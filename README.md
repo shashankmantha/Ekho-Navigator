@@ -3,7 +3,7 @@
 - **Christopher Vlavianos** - Engineer
 - **Cristian Meza** - Engineer
 - **Marcos Ramirez** - Engineer
-
+- **Shashank Mantha** 
 # Ekho Navigator
 
 A lightweight, mobile-first Android app that brings campus life together in one place. Built for students who are tired of juggling multiple campus websites and apps just to find a study room or check when their next class starts.
