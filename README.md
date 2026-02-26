@@ -1,6 +1,9 @@
 ## Team
 
 - **Christopher Vlavianos** - Engineer
+- **Cristian Meza** - Engineer
+- **Marcos Ramirez** - Engineer
+- **Shashank Mantha** - Enginner
 - **Robert Silva** - Engineer
 
 # Ekho Navigator
