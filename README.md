@@ -1,6 +1,7 @@
 ## Team
 
 - **Christopher Vlavianos** - Engineer
+- **Robert Silva** - Engineer
 
 # Ekho Navigator
 
