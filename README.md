@@ -2,6 +2,9 @@
 
 A lightweight, mobile-first Android app that brings campus life together in one place. Built for students who are tired of juggling multiple campus websites and apps just to find a study room or check when their next class starts.
 
+## Team
+- **Marcos Ramirez** - Engineer
+
 ## Overview
 
 Ekho Navigator consolidates the essential parts of campus life (events, navigation, scheduling, and coordination) into a single, intuitive mobile experience. Instead of replacing official university systems, we complement them by making campus resources more discoverable and easier to use.
@@ -101,6 +104,6 @@ This focused scope ensures we deliver a polished, functional app within our time
 - **Shashank Mantha** - Engineer
 - **Cristian Meza** - Engineer
 - **Christopher Vlavianos** - Engineer
-- **Marcos Ramirez** - Engineer
+
 
 ---
