@@ -14,8 +14,10 @@ This is a feature that the current ci app sorely lacks
 @TODO Replace with actual screen
 */
 @Composable
-fun HomeScreen(onEventClick: (String) -> Unit,
-                   modifier: Modifier = Modifier) {
+fun HomeScreen(
+    onEventClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
     DummyHomeContent(
         onEventClick = onEventClick,
         modifier = modifier,
