@@ -199,11 +199,13 @@ class CalendarEventDaoTest {
 
     @Test
     fun deleteEventsNotIn() = runTest {
-        dao.upsertEvents(listOf(
-            testEntity(uid = "keep-1"),
-            testEntity(uid = "keep-2"),
-            testEntity(uid = "remove"),
-        ))
+        dao.upsertEvents(
+            listOf(
+                testEntity(uid = "keep-1"),
+                testEntity(uid = "keep-2"),
+                testEntity(uid = "remove"),
+            )
+        )
 
         // Delete events NOT in the active list
         dao.deleteEventsNotIn(listOf("keep-1", "keep-2"))

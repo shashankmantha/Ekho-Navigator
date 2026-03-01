@@ -68,9 +68,9 @@ class EventsViewModel @Inject constructor(
         allEvents.filter { event ->
             val notPast = event.startTime >= now
             val matchesQuery = query.isBlank() ||
-                event.title.contains(query, ignoreCase = true) ||
-                event.description.contains(query, ignoreCase = true) ||
-                event.location.contains(query, ignoreCase = true)
+                    event.title.contains(query, ignoreCase = true) ||
+                    event.description.contains(query, ignoreCase = true) ||
+                    event.location.contains(query, ignoreCase = true)
             val matchesCategory = category == null || category in event.categories
             notPast && matchesQuery && matchesCategory
         }

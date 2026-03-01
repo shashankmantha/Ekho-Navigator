@@ -17,8 +17,10 @@ will integrate some kind of event click callback here
 @TODO Replace with actual screen
 */
 @Composable
-fun SocialScreen(onEventClick: (String) -> Unit,
-                   modifier: Modifier = Modifier) {
+fun SocialScreen(
+    onEventClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
     Box(
         modifier = modifier
             .fillMaxSize(),

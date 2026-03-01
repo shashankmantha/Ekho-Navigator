@@ -103,7 +103,8 @@ class ICalFeedDataSource @Inject constructor(
         val uid = event.getProperty<Uid>(Property.UID).orElse(null)?.value ?: return null
         val summary = event.getProperty<Summary>(Property.SUMMARY).orElse(null)?.value.orEmpty()
             .let { decodeHtmlEntities(it) }
-        val description = event.getProperty<Description>(Property.DESCRIPTION).orElse(null)?.value.orEmpty()
+        val description =
+            event.getProperty<Description>(Property.DESCRIPTION).orElse(null)?.value.orEmpty()
         val location = event.getProperty<Location>(Property.LOCATION).orElse(null)?.value.orEmpty()
             .let { decodeHtmlEntities(it) }
 
@@ -145,6 +146,7 @@ class ICalFeedDataSource @Inject constructor(
             status = status,
         )
     }
+
     /**
      * iCal4j can return different Temporal types depending on how the .ics
      * encodes dates:
