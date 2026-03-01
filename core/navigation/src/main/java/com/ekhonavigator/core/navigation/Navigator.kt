@@ -49,6 +49,7 @@ class Navigator(val state: NavigationState) {
                 // stack.
                 state.topLevelStack.removeLastOrNull()
             }
+
             else -> state.currentSubStack.removeLastOrNull()
         }
     }

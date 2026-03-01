@@ -201,7 +201,11 @@ private fun EventDetailContent(
                     fontWeight = FontWeight.Medium,
                 )
                 Text(
-                    text = "${startZoned.format(timeFormatter)} \u2013 ${endZoned.format(timeFormatter)}",
+                    text = "${startZoned.format(timeFormatter)} \u2013 ${
+                        endZoned.format(
+                            timeFormatter
+                        )
+                    }",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

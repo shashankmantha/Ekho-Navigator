@@ -18,8 +18,10 @@ particular locations
 @TODO Replace with actual screen
 */
 @Composable
-fun MapScreen(onEventClick: (String) -> Unit,
-                   modifier: Modifier = Modifier) {
+fun MapScreen(
+    onEventClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
     Box(
         modifier = modifier
             .fillMaxSize(),

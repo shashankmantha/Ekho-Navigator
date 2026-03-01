@@ -55,7 +55,7 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.activity.compose)
-    
+
     // Runtime library for JSON serialization
     implementation(libs.kotlinx.serialization.json)
 
