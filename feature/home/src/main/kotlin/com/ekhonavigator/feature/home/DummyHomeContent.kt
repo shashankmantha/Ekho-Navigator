@@ -71,7 +71,9 @@ internal fun DummyHomeContent(
         SectionLabel("TODAY'S SCHEDULE", Modifier.padding(horizontal = 16.dp))
         Spacer(Modifier.height(4.dp))
         Surface(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
             shape = RoundedCornerShape(12.dp),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 1.dp,
@@ -234,7 +236,9 @@ private fun NextClassCard(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 1.dp,
@@ -244,27 +248,53 @@ private fun NextClassCard(
                 Modifier
                     .width(4.dp)
                     .height(80.dp)
-                    .background(categoryColor(item.category), RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)),
+                    .background(
+                        categoryColor(item.category),
+                        RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)
+                    ),
             )
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text(item.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    Text(
+                        item.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                     Spacer(Modifier.height(3.dp))
-                    Text(item.time, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        item.time,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Spacer(Modifier.height(2.dp))
-                    Text(item.location, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.7f))
+                    Text(
+                        item.location,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.7f)
+                    )
                 }
                 Spacer(Modifier.width(12.dp))
                 Box(
                     Modifier
-                        .background(categoryColor(item.category).copy(0.1f), RoundedCornerShape(8.dp))
+                        .background(
+                            categoryColor(item.category).copy(0.1f),
+                            RoundedCornerShape(8.dp)
+                        )
                         .padding(horizontal = 10.dp, vertical = 5.dp),
                 ) {
-                    Text("in ${minutesUntil}m", color = categoryColor(item.category), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "in ${minutesUntil}m",
+                        color = categoryColor(item.category),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
         }
@@ -274,34 +304,57 @@ private fun NextClassCard(
 @Composable
 private fun ScheduleRow(item: ScheduleItem, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 14.dp, horizontal = 4.dp),
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 14.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.Top,
     ) {
         Box(
-            Modifier.width(4.dp).height(44.dp).background(categoryColor(item.category), RoundedCornerShape(2.dp)),
+            Modifier
+                .width(4.dp)
+                .height(44.dp)
+                .background(categoryColor(item.category), RoundedCornerShape(2.dp)),
         )
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(item.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+            Text(
+                item.title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
             Spacer(Modifier.height(2.dp))
             Text(
                 buildString {
                     append(item.time)
-                    if (item.location.isNotEmpty()) { append("  •  "); append(item.location) }
+                    if (item.location.isNotEmpty()) {
+                        append("  •  "); append(item.location)
+                    }
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (item.subtitle.isNotEmpty()) {
                 Spacer(Modifier.height(1.dp))
-                Text(item.subtitle, style = MaterialTheme.typography.bodySmall, fontStyle = FontStyle.Italic, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.7f))
+                Text(
+                    item.subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontStyle = FontStyle.Italic,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.7f)
+                )
             }
         }
         if (item.tag != null) {
             Spacer(Modifier.width(8.dp))
             Text(
                 item.tag,
-                Modifier.background(categoryColor(item.category).copy(0.08f), RoundedCornerShape(6.dp)).padding(horizontal = 8.dp, vertical = 3.dp),
+                Modifier
+                    .background(
+                        categoryColor(item.category).copy(0.08f),
+                        RoundedCornerShape(6.dp)
+                    )
+                    .padding(horizontal = 8.dp, vertical = 3.dp),
                 color = categoryColor(item.category),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
@@ -316,13 +369,22 @@ private fun FriendsRow(modifier: Modifier = Modifier) {
         DummyData.friends.forEach { friend ->
             Box(contentAlignment = Alignment.BottomEnd) {
                 Box(
-                    Modifier.size(44.dp).background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
+                    Modifier
+                        .size(44.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(friend.initials, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+                    Text(
+                        friend.initials,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
                 if (friend.online) {
-                    Box(Modifier.size(10.dp).background(Color(0xFF2E7D32), CircleShape))
+                    Box(Modifier
+                        .size(10.dp)
+                        .background(Color(0xFF2E7D32), CircleShape))
                 }
             }
         }

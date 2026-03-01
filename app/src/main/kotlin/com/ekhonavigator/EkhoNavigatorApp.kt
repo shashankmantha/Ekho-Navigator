@@ -59,7 +59,7 @@ fun EkhoNavigatorApp() {
         topLevelKeys = TOP_LEVEL_NAV_ITEMS.keys
     )
     val navigator = Navigator(navigationState)
-    
+
     val currentKey = navigationState.currentKey
     val topLevelDestination = TOP_LEVEL_NAV_ITEMS[currentKey]
     val isTopLevelDestination = topLevelDestination != null
@@ -105,15 +105,15 @@ fun EkhoNavigatorApp() {
         NavDisplay(
             modifier = Modifier.padding(paddingValues),
             transitionSpec = {
-                slideInHorizontally(initialOffsetX = { it }) + fadeIn() togetherWith 
+                slideInHorizontally(initialOffsetX = { it }) + fadeIn() togetherWith
                         slideOutHorizontally(targetOffsetX = { -it / 2 }) + fadeOut()
             },
             popTransitionSpec = {
-                slideInHorizontally(initialOffsetX = { -it / 2 }) + fadeIn() togetherWith 
+                slideInHorizontally(initialOffsetX = { -it / 2 }) + fadeIn() togetherWith
                         slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
             },
             predictivePopTransitionSpec = {
-                slideInHorizontally(initialOffsetX = { -it / 2 }) + fadeIn() togetherWith 
+                slideInHorizontally(initialOffsetX = { -it / 2 }) + fadeIn() togetherWith
                         slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
             },
             entries = navigationState.toEntries { key ->
@@ -123,21 +123,25 @@ fun EkhoNavigatorApp() {
                             HomeScreen(onEventClick = navigator::navigateToEvent)
                         }
                     }
+
                     is CalendarNavKey -> {
                         NavEntry(key) {
                             CalendarScreen(onEventClick = navigator::navigateToEvent)
                         }
                     }
+
                     is EventsNavKey -> {
                         NavEntry(key) {
                             EventsScreen(onEventClick = navigator::navigateToEvent)
                         }
                     }
+
                     is MapNavKey -> {
                         NavEntry(key) {
                             MapScreen(onEventClick = navigator::navigateToEvent)
                         }
                     }
+
                     is SocialNavKey -> {
                         NavEntry(key) {
                             SocialScreen(onEventClick = navigator::navigateToEvent)
@@ -153,6 +157,7 @@ fun EkhoNavigatorApp() {
                             EventScreen(eventId = key.id)
                         }
                     }
+
                     else -> {
                         NavEntry(key) {
                             PlaceholderScreen(key.toString())
