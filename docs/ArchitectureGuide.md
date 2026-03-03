@@ -1,194 +1,177 @@
 # Architecture Guide
 
-Ekho Navigator follows the [official Android architecture guidance](https://developer.android.com/jetpack/guide) and draws direct inspiration from Google's [Now in Android](https://github.com/android/nowinandroid) (NIA) reference app. This document explains the layers, data flow, and key decisions behind our architecture.
+Ekho Navigator follows the [official Android architecture guidance](https://developer.android.com/jetpack/guide) and draws direct inspiration from Google's [Now in Android](https://github.com/android/nowinandroid) (NIA) reference app.
 
-> **Why NIA?** Now in Android is published by Google's Android team under the official [`android/`](https://github.com/android) GitHub organization. From their README:
->
-> *"[Now in Android] follows Android design and development best practices and is intended to be a useful reference for developers."*
->
-> It demonstrates the same patterns recommended in their official docs — unidirectional data flow, offline-first repositories, reactive streams, and multi-module structure. Its docs are written as "learning journeys" specifically for other developers to study and apply. We did exactly that: studied NIA's [Architecture Learning Journey](https://github.com/android/nowinandroid/blob/main/docs/ArchitectureLearningJourney.md) and [Modularization Learning Journey](https://github.com/android/nowinandroid/blob/main/docs/ModularizationLearningJourney.md), then adopted the patterns that fit our project's scope.
+> **Why NIA?** It's published by Google's Android team as a reference for "Android design and development best practices." We studied NIA's [Architecture Learning Journey](https://github.com/android/nowinandroid/blob/main/docs/ArchitectureLearningJourney.md) and [Modularization Learning Journey](https://github.com/android/nowinandroid/blob/main/docs/ModularizationLearningJourney.md), then adopted the patterns that fit our scope.
 
 
-## Architecture Overview
-
-The app has three layers, matching the [official guidance](https://developer.android.com/jetpack/guide):
+## Dependency Graph
 
 ```
-┌─────────────────────────────────────┐
-│            UI Layer                 │  Compose screens + ViewModels
-├─────────────────────────────────────┤
-│           Data Layer                │  Repositories, DAOs, data sources
-├─────────────────────────────────────┤
-│         Network / Storage           │  OkHttp, Room, WorkManager
-└─────────────────────────────────────┘
+core:model          ← foundation, depends on NOTHING
+  ↑
+  ├── core:database ← depends on core:model
+  ├── core:network  ← depends on core:model
+  │
+  └── core:data     ← depends on core:model, core:database, core:network
+        ↑
+        └── feature:calendar, feature:event, etc.
+
+core:navigation     ← island, depends on Compose only
+core:designsystem   ← island, depends on Compose only
+core:testing        ← depends on core:model, core:data (test-only)
 ```
 
-**Key principles:**
-- Higher layers react to changes in lower layers
-- Events flow down (user taps → ViewModel → repository)
-- Data flows up (database → repository → ViewModel → UI)
-- All data is exposed as [Kotlin Flows](https://developer.android.com/kotlin/flow), never snapshots
+**Dependency rules** (same as NIA):
+- `app` depends on all `feature` modules + required `core` modules
+- `feature` modules depend on `core` modules, never on each other
+- `core` modules can depend on other `core` modules, never on `feature` or `app`
+- `core:model` depends on nothing — pure Kotlin
+
+
+## Core Modules
+
+### `core:model` — The Vocabulary
+**Depends on:** nothing · **Depended on by:** everything
+
+Pure Kotlin data classes and enums. No Android imports, no frameworks. Defines what a "calendar event" *is* across the whole app. `CalendarEvent`, `EventCategory` — these are the domain language every other module speaks. If you ever see `import android.*` in here, something's wrong.
+
+**Main file:** `CalendarEvent.kt` — the domain data class every layer consumes.
+
+### `core:database` — The Local Store
+**Depends on:** `core:model` · **Depended on by:** `core:data` only
+
+Room (SQLite ORM) layer. Owns the database, DAO, entity class, and type converters. Its job: persist `CalendarEventEntity` rows and emit reactive `Flow`s when they change. It has no idea where the data came from — network, user input, doesn't matter.
+
+**Main file:** `CalendarEventDao.kt` — declares reactive SQL queries. Room generates the implementation at compile time.
+
+### `core:network` — The Remote Parser
+**Depends on:** `core:model` · **Depended on by:** `core:data` only
+
+OkHttp + iCal4j layer. Its job: given a URL, fetch raw bytes and return typed Kotlin objects (`NetworkCalendarEvent`). It has no idea where the data goes — database, UI, doesn't matter. All parsing complexity (VTIMEZONE workarounds, HTML entity decoding, Temporal type conversion) is contained here.
+
+**Main file:** `ICalFeedDataSource.kt` — fetches + parses the ICS feed into network DTOs.
+
+### `core:data` — The Orchestrator
+**Depends on:** `core:model`, `core:database`, `core:network` · **Depended on by:** features, `core:testing`
+
+The **only** module that sees both `core:database` and `core:network`. Owns the repository interface (the contract upstream code depends on), the sync logic, the mappers (network→entity translation), and WorkManager scheduling. This is where **policy** lives: sync every 2 hours, preserve bookmarks during sync, delete stale events.
+
+**Main file:** `DefaultCalendarRepository.kt` — orchestrates network→database sync and exposes domain Flows.
+
+```
+          ┌──────────────┐
+          │  core:data   │  ← the only module that sees both
+          │  (repository)│
+          └──┬───────┬───┘
+             │       │
+     uses    │       │   uses
+             ▼       ▼
+   ┌──────────┐   ┌──────────┐
+   │core:     │   │core:     │
+   │database  │   │network   │
+   │(Room/SQL)│   │(HTTP/ICS)│
+   └──────────┘   └──────────┘
+         │              │
+         │  both translate to/from
+         ▼              ▼
+      ┌────────────────────┐
+      │    core:model      │
+      └────────────────────┘
+```
+
+`core:database` and `core:network` are **peers** — same level, both depend on `core:model`, neither knows about the other.
+
+### `core:navigation` — The Router
+**Depends on:** Compose, Navigation3 · **Depended on by:** app, features
+
+Manages tab-based back stacks. Adapted from AOSP's Navigation3 sample. No business logic — you could swap the calendar for a weather app and this module wouldn't change.
+
+### `core:designsystem` — The Look
+**Depends on:** Compose Material3 · **Depended on by:** features
+
+Theme (colors, typography), reusable composables (top bar, navigation bar, async images), and icon definitions. Uses `api()` dependencies so feature modules get Compose/Material3 transitively.
+
+### `core:testing` — The Toolbox
+**Depends on:** `core:model`, `core:data` · **Depended on by:** feature test source sets
+
+Not shipped in the APK. Provides `TestCalendarRepository` (fake with `MutableSharedFlow`), `testCalendarEvent()` (factory with defaults), and `MainDispatcherRule` (swaps `Dispatchers.Main` for JVM tests). Uses `api()` so test modules inherit JUnit, Turbine, and coroutines-test.
+
+See the [Testing Guide](Testing.md) for how tests use this module.
 
 
 ## Data Flow: Campus Events
 
-This is the complete pipeline from an iCal feed URL to pixels on screen.
+The complete pipeline from an iCal feed URL to pixels on screen:
 
 ```
-EkhoNavigatorApplication.onCreate()        ← App starts
-        │
-        ▼
-SyncInitializer                            ← Enqueues WorkManager jobs
-        │
-        ▼
-CalendarSyncWorker                         ← Runs on background thread
-        │
-        ▼
-DefaultCalendarRepository.sync()           ← Orchestrates the sync
-        │
-        ▼
-ICalFeedDataSource.fetchEvents()           ← OkHttp fetch + iCal4j parse
-        │
-        ▼
-NetworkCalendarEvent                       ← Network model (raw data)
-        │
-        ▼
-Mappers.toEntity()                         ← Converts to DB model, preserves bookmarks
-        │
-        ▼
-CalendarEventDao.upsertEvents()            ← Room writes to SQLite
-        │
-        ▼
-Room Flow emissions                        ← Automatic — any active query re-emits
-        │
-        ▼
-CalendarRepository.observe*()              ← Maps entities to domain models
-        │
-        ▼
-ViewModel (combine / flatMapLatest)        ← Transforms to UI state
-        │
-        ▼
-Composable (collectAsStateWithLifecycle)   ← Renders on screen
-```
-
-### How this compares to NIA
-
-NIA follows the same pipeline for news resources:
-
-| Step | NIA | Ekho |
-|---|---|---|
-| Trigger | `Sync.initialize` on app start | `SyncInitializer` on app start |
-| Background work | `SyncWorker` via WorkManager | `CalendarSyncWorker` via WorkManager |
-| Network fetch | `RetrofitNiaNetwork` (Retrofit + JSON) | `ICalFeedDataSource` (OkHttp + iCal4j) |
-| Mapping | `NetworkNewsResource` → entity | `NetworkCalendarEvent` → entity |
-| Local storage | Room (source of truth) | Room (source of truth) |
-| Reactive reads | DAO returns `Flow<List<Entity>>` | DAO returns `Flow<List<Entity>>` |
-| UI consumption | `stateIn` + `collectAsStateWithLifecycle` | `stateIn` + `collectAsStateWithLifecycle` |
-
-The only real difference is the network layer: NIA talks to a REST API via Retrofit, while we parse an iCal (.ics) feed with iCal4j. Everything downstream is structurally identical.
-
-
-## Data Layer
-
-The data layer is offline-first: once data is fetched from the network, it's written to Room immediately. The UI never reads from the network directly — Room is the single source of truth.
-
-### Repositories
-
-Repositories are the **only public API** for accessing app data. They:
-- Expose `Flow`-based read methods (reactive, not snapshot-based)
-- Provide `suspend` functions for writes
-- Orchestrate sync between network and local storage
-
-```
-CalendarRepository (interface)
-    │
-    └── DefaultCalendarRepository (implementation)
-            │
-            ├── ICalFeedDataSource    ← network reads
-            └── CalendarEventDao      ← local reads/writes
+App.onCreate()
+  → SyncInitializer enqueues WorkManager jobs
+    → CalendarSyncWorker runs on background thread
+      → DefaultCalendarRepository.sync()
+        → ICalFeedDataSource.fetchEvents()     ← OkHttp + iCal4j
+        → NetworkCalendarEvent                 ← network DTO
+        → Mappers.toEntity()                   ← preserves bookmarks
+        → CalendarEventDao.upsertEvents()      ← Room writes to SQLite
+  → Room Flow re-emits automatically
+    → CalendarRepository.observe*()            ← maps entities → domain models
+      → ViewModel (flatMapLatest / combine)    ← transforms to UI state
+        → Composable (collectAsStateWithLifecycle) ← renders
 ```
 
 ### Model Separation
 
-Data passes through three distinct model types as it moves through layers. This isolates each layer from changes in the others.
+Data passes through three distinct types as it moves through layers:
 
-| Model | Lives in | Purpose |
+| Model | Module | Purpose |
 |---|---|---|
-| `NetworkCalendarEvent` | `core:network` | Raw shape of network response |
-| `CalendarEventEntity` | `core:database` | Room table schema |
-| `CalendarEvent` | `core:model` | Clean domain model consumed by UI |
+| `NetworkCalendarEvent` | `core:network` | Raw iCal shape — uses iCal vocabulary (`summary`, `dtStart`) |
+| `CalendarEventEntity` | `core:database` | Room table schema — has DB concerns (`@PrimaryKey`, `isBookmarked`) |
+| `CalendarEvent` | `core:model` | Clean domain model — uses app vocabulary (`title`, `startTime`) |
 
-Mappers sit in `core:data` and handle conversion: `NetworkCalendarEvent` → `CalendarEventEntity` → `CalendarEvent`.
+Mappers in `core:data` handle conversion between them.
 
-### Data Sync
+### Sync Strategy
 
-Sync is handled by WorkManager with two schedules:
-- **Periodic:** Every 2 hours (keeps data fresh in background)
-- **Immediate:** On app launch and manual pull-to-refresh
+WorkManager runs on two schedules:
+- **Periodic:** Every 2 hours (background freshness)
+- **Immediate:** On app launch + pull-to-refresh
 
 The sync process:
 1. Fetch events from the iCal feed
-2. Read existing bookmarks from the DB (so they survive the upsert)
-3. Map network models to entities
+2. Look up existing bookmarks (so they survive the upsert)
+3. Map network → entity
 4. Upsert all events
-5. Delete stale events no longer in the feed (but preserve bookmarked ones)
-
-This matches NIA's `OfflineFirstNewsRepository.syncWith` pattern — network data is reconciled with local storage, and the UI reacts automatically through Room's Flow emissions.
+5. Delete stale events no longer in feed (preserve bookmarked ones)
 
 
-## UI Layer
+## Key Patterns
 
-The UI layer has two components:
-- **ViewModels** transform repository Flows into UI state
-- **Composables** render that state and send user actions back to the ViewModel
+**Offline-first.** Room is the single source of truth. The UI never reads from the network directly.
 
-### Reactive State
+**`Flow` for reads, `suspend` for writes.** Every read operation returns a reactive `Flow`. Every write operation is a `suspend` function. This split is consistent from DAO to ViewModel.
 
-ViewModels use Flow operators to build reactive pipelines:
+**Interface-driven boundaries.** ViewModels depend on `CalendarRepository` (interface), not `DefaultCalendarRepository`. Tests swap in `TestCalendarRepository`. Same interface, different wiring.
 
-```kotlin
-// CalendarViewModel — re-queries events whenever the selected date changes
-val eventsForSelectedDate = selectedDate.flatMapLatest { date ->
-    repository.observeEventsByDateRange(date.startOfDay, date.endOfDay)
-}
-
-// EventsViewModel — combines three streams for filtering
-val events = combine(allEvents, searchQuery, selectedCategory) { events, query, category ->
-    events.filter { matchesQuery(it, query) && matchesCategory(it, category) }
-}
-```
-
-This is the same pattern NIA uses: cold Flows from repositories, transformed with `combine`/`flatMapLatest`/`map`, converted to hot `StateFlow`s via `stateIn`.
-
-### State Collection
-
-Composables collect state with lifecycle awareness:
-
-```kotlin
-val events by viewModel.events.collectAsStateWithLifecycle()
-```
-
-This ensures the Flow is only active when the UI is visible — no wasted work when the app is in the background.
+**Module boundaries enforce access.** `internal` classes in database/network can't leak. Feature modules can't import Room or OkHttp directly — there's no Gradle dependency path.
 
 
-## Where We Diverge from NIA (and Why)
+## Where We Diverge from NIA
 
-| NIA has... | We don't (yet) | Reasoning |
+| NIA has... | We don't (yet) | Trigger to add |
 |---|---|---|
-| `core:common` | — | Contains injectable dispatchers and a `Result` wrapper. We don't have enough cross-module utilities to justify a dedicated module yet. |
-| `core:datastore` | — | NIA stores user prefs (theme, bookmarks as ID sets) in Proto DataStore. Our bookmarks live directly on the event entity in Room, which is simpler for our current scope. DataStore becomes valuable when we add app-wide preferences (theme, notification settings, onboarding state). |
-| `core:domain` (use cases) | — | NIA uses these to combine data from multiple repositories (e.g., merging news with user data). We have one repository. When custom events or social features add more repositories, use cases will be the right abstraction. |
-| `core:ui` | — | Shared composables that depend on domain models (e.g., `NewsResourceCard`). Our shared UI lives in `core:designsystem` for now. As features grow, splitting model-aware composables into `core:ui` would make sense. |
+| `core:domain` (use cases) | — | When a second data source (e.g. Firestore user events) needs combining with campus events |
+| `core:datastore` | — | When we add app-wide preferences (theme, notifications, onboarding) |
+| `core:common` | — | When injectable dispatchers or cross-module utilities are needed in 3+ modules |
+| `core:ui` | — | When model-aware shared composables outgrow `core:designsystem` |
+| `feature:*/api` + `impl` split | — | When feature-to-feature navigation creates unwanted coupling at scale |
 
-These aren't gaps — they're intentional scope decisions. NIA's own [Modularization Learning Journey](https://github.com/android/nowinandroid/blob/main/docs/ModularizationLearningJourney.md) recommends adding granularity as the codebase grows, not upfront:
-
-> *"If your data layer is small, it's fine to keep it in a single module. But once the number of repositories and data sources starts to grow, it might be worth considering splitting them into separate modules."*
+These are intentional scope decisions, not gaps. NIA's own modularization docs recommend adding granularity as the codebase grows, not upfront.
 
 
 ## Further Reading
 
-- [Module Guide](ModuleGuide.md) — detailed breakdown of every module and its responsibilities
+- [Module Guide](ModuleGuide.md) — expansion patterns for adding new features and data sources
 - [Testing Guide](Testing.md) — how to run tests, where they live, how to write new ones
 - [Official Android Architecture Guide](https://developer.android.com/jetpack/guide)
 - [NIA Architecture Learning Journey](https://github.com/android/nowinandroid/blob/main/docs/ArchitectureLearningJourney.md)
-- [NIA Modularization Learning Journey](https://github.com/android/nowinandroid/blob/main/docs/ModularizationLearningJourney.md)
