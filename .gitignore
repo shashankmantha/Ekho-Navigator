@@ -1,9 +1,32 @@
-*.iml
-.gradle
-.idea/
+# Android / Gradle
+.gradle/
+**/build/
 local.properties
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# Kotlin / Java
+*.class
+.kotlin/
+
+# OS junk
 .DS_Store
-build/
+Thumbs.db
+
+# Logs
+*.log
+
+# Secrets / Keystores
+*.jks
+*.keystore
+*.p12
+
+# Other
 /captures
 .externalNativeBuild
 .cxx
