@@ -38,6 +38,9 @@ import com.ekhonavigator.feature.calendar.CalendarScreen
 import com.ekhonavigator.feature.calendar.navigation.CalendarNavKey
 import com.ekhonavigator.feature.map.MapScreen
 import com.ekhonavigator.feature.map.navigation.MapNavKey
+import com.ekhonavigator.feature.account.navigation.navigateToAccount
+import com.ekhonavigator.feature.account.AccountScreen
+import com.ekhonavigator.feature.account.navigation.AccountNavKey
 import com.ekhonavigator.feature.social.SocialScreen
 import com.ekhonavigator.feature.social.navigation.SocialNavKey
 import com.ekhonavigator.feature.events.EventsScreen
@@ -78,12 +81,16 @@ fun EkhoNavigatorApp() {
                 titleRes = titleRes,
                 scrollBehavior = scrollBehavior,
                 navigationIcon = if (isTopLevelDestination) null else EkhoIcons.ArrowBack,
+                actionIcon = EkhoIcons.AccountCircle,
                 navigationIconContentDescription = if (isTopLevelDestination) null else "Back",
                 onNavigationClick = {
                     if (!isTopLevelDestination) {
                         navigator.goBack()
                     }
                 },
+                onActionClick = {
+                    navigator.navigateToAccount()
+                }
             )
         },
         bottomBar = {
@@ -134,6 +141,11 @@ fun EkhoNavigatorApp() {
                     is SocialNavKey -> {
                         NavEntry(key) {
                             SocialScreen(onEventClick = navigator::navigateToEvent)
+                        }
+                    }
+                    is AccountNavKey -> {
+                        NavEntry(key) {
+                            AccountScreen()
                         }
                     }
                     is EventNavKey -> {

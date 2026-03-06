@@ -13,6 +13,7 @@ import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Upcoming
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.BookmarkBorder
 import androidx.compose.material.icons.rounded.Bookmarks

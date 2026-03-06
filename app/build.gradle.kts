@@ -41,6 +41,7 @@ android {
 dependencies {
     implementation(projects.core.designsystem)
     implementation(projects.core.navigation)
+    implementation(projects.feature.account)
     implementation(projects.feature.home)
     implementation(projects.feature.calendar)
     implementation(projects.feature.events)
