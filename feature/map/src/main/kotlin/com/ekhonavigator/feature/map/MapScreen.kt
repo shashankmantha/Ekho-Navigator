@@ -51,16 +51,6 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
 
 
-/*
-This will be the main map view with nearby buildings or directions to classes
-We could also implement the onEventClick to show clickable links to events at
-particular locations
-
-@TODO Create repository for this feature in core
-@TODO Create ViewModel for this screen in this folder
-@TODO Replace with actual screen
-*/
-
 // Categories
 enum class PlaceCategory(val label: String) {
     ALL("All"),
@@ -83,6 +73,7 @@ data class UserMarker(
     val position: LatLng,
     val comment: String = ""
 )
+
 @SuppressLint("MissingPermission")
 @Composable
 fun MapScreen(
