@@ -45,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.LocationServices
@@ -57,6 +58,7 @@ import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerInfoWindowContent
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
 import kotlinx.coroutines.launch
@@ -267,20 +269,37 @@ fun MapScreen(
 
             droppedMarkers.forEach { droppedMarker ->
                 key("user-marker-${droppedMarker.id}") {
-                    Marker(
+                    MarkerInfoWindowContent(
                         state = rememberMarkerState(position = droppedMarker.position),
-                        title = droppedMarker.comment.ifBlank { "Dropped Marker" },
-                        snippet = "Tap bubble for options (edit/remove)",
                         icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE),
-                        // tap marker = show bubble
-                        // tap/long-press bubble = open dialog
                         onInfoWindowClick = {
                             selectedDroppedMarkerForOptions = droppedMarker
                         },
                         onInfoWindowLongClick = {
                             selectedDroppedMarkerForOptions = droppedMarker
                         }
-                    )
+                    ) {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = droppedMarker.comment.ifBlank { "Dropped Marker" },
+                                    textAlign = TextAlign.Center,
+                                    style = MaterialTheme.typography.labelLarge
+                                )
+                                Text(
+                                    text = "Tap bubble for options (edit/remove)",
+                                    textAlign = TextAlign.Center,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
