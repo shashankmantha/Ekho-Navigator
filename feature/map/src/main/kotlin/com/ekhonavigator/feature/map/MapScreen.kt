@@ -270,11 +270,15 @@ fun MapScreen(
                     Marker(
                         state = rememberMarkerState(position = droppedMarker.position),
                         title = droppedMarker.comment.ifBlank { "Dropped Marker" },
-                        snippet = "Tap for options (edit/remove)",
+                        snippet = "Tap bubble for options (edit/remove)",
                         icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE),
-                        onClick = {
+                        // tap marker = show bubble
+                        // tap/long-press bubble = open dialog
+                        onInfoWindowClick = {
                             selectedDroppedMarkerForOptions = droppedMarker
-                            true
+                        },
+                        onInfoWindowLongClick = {
+                            selectedDroppedMarkerForOptions = droppedMarker
                         }
                     )
                 }
