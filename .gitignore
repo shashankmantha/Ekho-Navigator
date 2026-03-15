@@ -1,32 +1,51 @@
+############################################
 # Android / Gradle
+############################################
+
 .gradle/
 **/build/
-local.properties
+!gradle/wrapper/gradle-wrapper.jar
 
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+
+############################################
 # Android Studio / IntelliJ
+############################################
+
 .idea/
 *.iml
 *.ipr
 *.iws
 out/
 
+############################################
 # Kotlin / Java
-*.class
-.kotlin/
+############################################
 
-# OS junk
+*.class
+*.log
+
+############################################
+# OS Generated Files
+############################################
+
 .DS_Store
 Thumbs.db
 
-# Logs
-*.log
+############################################
+# Firebase / Secrets / Keystores
+############################################
 
-# Secrets / Keystores
+google-services.json
 *.jks
 *.keystore
 *.p12
 
-# Other
-/captures
-.externalNativeBuild
-.cxx
+############################################
+# Misc
+############################################
+
+navigation.json
