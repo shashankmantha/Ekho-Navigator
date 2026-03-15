@@ -44,8 +44,8 @@ android {
 dependencies {
     // fire base dependencies
     implementation(platform("com.google.firebase:firebase-bom:34.4.0"))
-    implementation("com.google.firebase:firebase-auth-ktx")
-    implementation("com.google.firebase:firebase-firestore-ktx")
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-firestore")
 
     implementation(projects.core.designsystem)
     implementation(projects.core.navigation)
