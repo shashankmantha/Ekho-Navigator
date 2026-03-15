@@ -257,7 +257,11 @@ fun MapScreen(
                     Marker(
                         state = rememberMarkerState(position = place.position),
                         title = place.name,
-                        snippet = "${place.category.label} • ${place.details}"
+                        snippet = "${place.category.label} • ${place.details}",
+                        onClick = {
+                            onEventClick(place.name)
+                            false
+                        }
                     )
                 }
             }
