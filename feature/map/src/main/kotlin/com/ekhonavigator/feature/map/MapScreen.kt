@@ -283,7 +283,8 @@ fun MapScreen(
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                         ) {
-                            Column(modifier = Modifier.padding(8.dp),
+                            Column(
+                                modifier = Modifier.padding(8.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Text(
@@ -303,7 +304,6 @@ fun MapScreen(
                 }
             }
         }
-
         // --- Custom Center Button ---
         if (hasLocationPermission) {
             MapLocationControls(
