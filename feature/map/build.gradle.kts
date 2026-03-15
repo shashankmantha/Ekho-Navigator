@@ -52,7 +52,8 @@ dependencies {
     implementation(libs.google.maps.compose)
     implementation(libs.play.services.maps)
     implementation(libs.play.services.location)
-    
+    implementation(libs.androidx.compose.material.icons.extended)
+
     // Runtime library for JSON serialization
     implementation(libs.kotlinx.serialization.json)
 

@@ -2,8 +2,8 @@ package com.ekhonavigator.feature.map
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.pm.PackageManager
-import android.location.Location
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
@@ -17,22 +17,30 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,26 +48,24 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.CameraPositionState
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
+import kotlinx.coroutines.launch
 
-
-// Categories
+// --- MODELS ---
 enum class PlaceCategory(val label: String) {
-    ALL("All"),
-    PARKING("Parking"),
-    BUILDINGS("Buildings"),
-    FOOD("Food")
+    ALL("All"), PARKING("Parking"), BUILDINGS("Buildings"), FOOD("Food")
 }
 
-// POI model
 data class CampusPlace(
     val name: String,
     val position: LatLng,
@@ -67,12 +73,70 @@ data class CampusPlace(
     val details: String
 )
 
-// User dropped marker model
 data class UserMarker(
     val id: Long,
     val position: LatLng,
     val comment: String = ""
 )
+
+// - MAP CONTROLS
+@Composable
+fun MapLocationControls(
+    cameraPositionState: CameraPositionState,
+    context: Context,
+    csuciCenter: LatLng,
+    modifier: Modifier = Modifier
+) {
+    val scope = rememberCoroutineScope()
+    // Local state to toggle between User and CSUCI
+    var nextTargetIsCampus by remember { mutableStateOf(false) }
+
+    Surface(
+        modifier = modifier.size(40.dp),
+        shape = MaterialTheme.shapes.extraSmall, // Square look
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 3.dp,
+        shadowElevation = 2.dp
+    ) {
+        IconButton(onClick = {
+            scope.launch {
+                if (nextTargetIsCampus) {
+                    // Action: Slides to CSUCI
+                    cameraPositionState.animate(
+                        CameraUpdateFactory.newLatLngZoom(csuciCenter, 15f)
+                    )
+                    nextTargetIsCampus = false
+                } else {
+                    // Action: Slides to User Location
+                    val fusedLocationClient =
+                        LocationServices.getFusedLocationProviderClient(context)
+                    try {
+                        @SuppressLint("MissingPermission")
+                        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                            location?.let {
+                                val userLatLng = LatLng(it.latitude, it.longitude)
+                                scope.launch {
+                                    cameraPositionState.animate(
+                                        CameraUpdateFactory.newLatLngZoom(userLatLng, 16f)
+                                    )
+                                    nextTargetIsCampus = true
+                                }
+                            }
+                        }
+                    } catch (_: SecurityException) {
+                    }
+                }
+            }
+        }) {
+            Icon(
+                imageVector = Icons.Default.MyLocation,
+                contentDescription = "Center Map",
+                tint = if (nextTargetIsCampus) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
 
 @SuppressLint("MissingPermission")
 @Composable
@@ -97,7 +161,6 @@ fun MapScreen(
         )
     }
 
-    var hasCenteredOnUserOnce by remember { mutableStateOf(false) }
     var requestLocationPermission by remember { mutableStateOf(false) }
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(
@@ -105,7 +168,6 @@ fun MapScreen(
     ) { granted ->
         hasLocationPermission = granted
         requestLocationPermission = false
-        if (granted) hasCenteredOnUserOnce = false
     }
 
     LaunchedEffect(requestLocationPermission) {
@@ -114,62 +176,45 @@ fun MapScreen(
         }
     }
 
-    LaunchedEffect(hasLocationPermission) {
-        if (hasLocationPermission && !hasCenteredOnUserOnce) {
-            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
-            try {
-                fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
-                    if (location != null && !hasCenteredOnUserOnce) {
-                        val myLatLng = LatLng(location.latitude, location.longitude)
-                        cameraPositionState.position = CameraPosition.fromLatLngZoom(myLatLng, 16f)
-                        hasCenteredOnUserOnce = true
-                    }
-                }
-            } catch (e: SecurityException) {
-                // Handle case where permission was revoked
-            }
-        }
-    }
-
     val droppedMarkers = remember { mutableStateListOf<UserMarker>() }
 
     val campusPlaces = remember {
         listOf(
             CampusPlace(
-                name = "Library",
-                position = LatLng(34.16283679848678, -119.04096318400194),
-                category = PlaceCategory.BUILDINGS,
-                details = "Study & books"
+                "Library",
+                LatLng(34.16283679848678, -119.04096318400194),
+                PlaceCategory.BUILDINGS,
+                "Study & books"
             ),
             CampusPlace(
-                name = "Enrollment Center",
-                position = LatLng(34.164163977501765, -119.0422077290137),
-                category = PlaceCategory.BUILDINGS,
-                details = "Student services"
+                "Enrollment Center",
+                LatLng(34.164163977501765, -119.0422077290137),
+                PlaceCategory.BUILDINGS,
+                "Student services"
             ),
             CampusPlace(
-                name = "Cafeteria / Food Court",
-                position = LatLng(34.1604931003304, -119.04159618532805),
-                category = PlaceCategory.FOOD,
-                details = "Food & drinks"
+                "Cafeteria / Food Court",
+                LatLng(34.1604931003304, -119.04159618532805),
+                PlaceCategory.FOOD,
+                "Food & drinks"
             ),
             CampusPlace(
-                name = "Bell Tower",
-                position = LatLng(34.161095875886836, -119.04307244420636),
-                category = PlaceCategory.BUILDINGS,
-                details = "Bell Tower"
+                "Bell Tower",
+                LatLng(34.161095875886836, -119.04307244420636),
+                PlaceCategory.BUILDINGS,
+                "Bell Tower"
             ),
             CampusPlace(
-                name = "Parking Lot A3",
-                position = LatLng(34.16667136314828, -119.0470635228976),
-                category = PlaceCategory.PARKING,
-                details = "Student parking"
+                "Parking Lot A3",
+                LatLng(34.16667136314828, -119.0470635228976),
+                PlaceCategory.PARKING,
+                "Student parking"
             ),
             CampusPlace(
-                name = "Parking Lot A4",
-                position = LatLng(34.164284810452386, -119.046471206339),
-                category = PlaceCategory.PARKING,
-                details = "Permit parking"
+                "Parking Lot A4",
+                LatLng(34.164284810452386, -119.046471206339),
+                PlaceCategory.PARKING,
+                "Permit parking"
             )
         )
     }
@@ -195,35 +240,57 @@ fun MapScreen(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
             properties = MapProperties(isMyLocationEnabled = hasLocationPermission),
-            uiSettings = MapUiSettings(myLocationButtonEnabled = hasLocationPermission),
-            onMapClick = { latLng ->
+            uiSettings = MapUiSettings(
+                myLocationButtonEnabled = false, // hide default to use custom square one
+                zoomControlsEnabled = true
+            ),
+            onMapLongClick = { latLng ->
                 droppedMarkers.add(UserMarker(id = System.currentTimeMillis(), position = latLng))
             }
         ) {
-            Marker(state = rememberMarkerState(position = csuciCenter), title = "CSUCI")
+            key("csuci-main") {
+                Marker(state = rememberMarkerState(position = csuciCenter), title = "CSUCI")
+            }
 
             visiblePlaces.forEach { place ->
-                Marker(
-                    state = rememberMarkerState(position = place.position),
-                    title = place.name,
-                    snippet = "${place.category.label} • ${place.details}"
-                )
+                key("campus-place-${place.name}") {
+                    Marker(
+                        state = rememberMarkerState(position = place.position),
+                        title = place.name,
+                        snippet = "${place.category.label} • ${place.details}"
+                    )
+                }
             }
 
             droppedMarkers.forEach { droppedMarker ->
-                Marker(
-                    state = rememberMarkerState(position = droppedMarker.position),
-                    title = droppedMarker.comment.ifBlank { "Dropped Marker" },
-                    snippet = "Tap for options (edit/remove)",
-                    icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE),
-                    onClick = {
-                        selectedDroppedMarkerForOptions = droppedMarker
-                        true
-                    }
-                )
+                key("user-marker-${droppedMarker.id}") {
+                    Marker(
+                        state = rememberMarkerState(position = droppedMarker.position),
+                        title = droppedMarker.comment.ifBlank { "Dropped Marker" },
+                        snippet = "Tap for options (edit/remove)",
+                        icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE),
+                        onClick = {
+                            selectedDroppedMarkerForOptions = droppedMarker
+                            true
+                        }
+                    )
+                }
             }
         }
 
+        // --- Custom Center Button ---
+        if (hasLocationPermission) {
+            MapLocationControls(
+                cameraPositionState = cameraPositionState,
+                context = context,
+                csuciCenter = csuciCenter,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 12.dp, bottom = 115.dp) // Sits exactly above zoom controls
+            )
+        }
+
+        // Search Card UI
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -241,28 +308,17 @@ fun MapScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = if (isPanelExpanded) "Search & Filter (tap to collapse)"
-                        else "Search & Filter (tap to expand)",
+                        text = if (isPanelExpanded) "Search & Filter (tap to collapse)" else "Search & Filter",
                         style = MaterialTheme.typography.labelLarge
                     )
-                    Text(
-                        text = if (isPanelExpanded) "▲" else "▼",
-                        style = MaterialTheme.typography.labelLarge
-                    )
+                    Text(text = if (isPanelExpanded) "▲" else "▼")
                 }
 
                 if (isPanelExpanded) {
-                    Spacer(modifier = Modifier.height(8.dp))
-
                     if (!hasLocationPermission) {
-                        TextButton(onClick = { requestLocationPermission = true }) {
-                            Text("Enable Location")
-                        }
-                        Text(
-                            "Location is off until you allow it.",
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
+                        TextButton(onClick = {
+                            requestLocationPermission = true
+                        }) { Text("Enable Location") }
                     }
 
                     OutlinedTextField(
@@ -274,8 +330,6 @@ fun MapScreen(
                     )
 
                     Spacer(modifier = Modifier.height(10.dp))
-                    Text("Filter:", style = MaterialTheme.typography.labelLarge)
-
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(PlaceCategory.entries) { category ->
                             FilterChip(
@@ -285,17 +339,11 @@ fun MapScreen(
                             )
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Showing ${visiblePlaces.size} place(s) • Dropped markers: ${droppedMarkers.size}",
-                        style = MaterialTheme.typography.labelMedium
-                    )
                 }
             }
         }
 
-        // Dialogs (Edit/Remove) - Implementation stays the same as your mockup...
+        // --- DIALOGS ---
         if (selectedDroppedMarkerForOptions != null) {
             val selectedMarker = selectedDroppedMarkerForOptions!!
             AlertDialog(
@@ -304,7 +352,6 @@ fun MapScreen(
                 text = {
                     Column {
                         Text(text = selectedMarker.comment.ifBlank { "Details: (none)" })
-                        Spacer(modifier = Modifier.height(10.dp))
                         TextButton(onClick = {
                             selectedDroppedMarkerForOptions = null
                             markerBeingEdited = selectedMarker
@@ -333,7 +380,6 @@ fun MapScreen(
                         value = editLabelText,
                         onValueChange = { editLabelText = it },
                         label = { Text("Comment / detail") },
-                        singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                 },
@@ -344,11 +390,6 @@ fun MapScreen(
                             droppedMarkers[index].copy(comment = editLabelText.trim())
                         markerBeingEdited = null
                     }) { Text("Save") }
-                },
-                dismissButton = {
-                    TextButton(onClick = {
-                        markerBeingEdited = null
-                    }) { Text("Cancel") }
                 }
             )
         }
@@ -365,9 +406,7 @@ fun MapScreen(
                     }) { Text("Confirm") }
                 },
                 dismissButton = {
-                    TextButton(onClick = {
-                        markerPendingRemoval = null
-                    }) { Text("Cancel") }
+                    TextButton(onClick = { markerPendingRemoval = null }) { Text("Cancel") }
                 }
             )
         }
