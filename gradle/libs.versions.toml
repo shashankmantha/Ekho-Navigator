@@ -17,6 +17,9 @@ androidxCoreSplashscreen = "1.2.0"
 androidxLifecycleViewModelNavigation3 = "2.10.0"
 androidxNavigation3 = "1.0.1"
 kotlinxSerializationJson = "1.10.0"
+googleMapsCompose = "6.1.2"
+playServicesMaps = "19.0.0"
+playServicesLocation = "21.3.0"
 
 # Images
 coil = "3.3.0"
@@ -61,6 +64,10 @@ androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navig
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
+# Google Maps
+google-maps-compose = { group = "com.google.maps.android", name = "maps-compose", version.ref = "googleMapsCompose" }
+play-services-maps = { group = "com.google.android.gms", name = "play-services-maps", version.ref = "playServicesMaps" }
+play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
