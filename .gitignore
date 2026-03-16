@@ -39,7 +39,7 @@ Thumbs.db
 # Firebase / Secrets / Keystores
 ############################################
 
-#google-services.json
+google-services.json
 *.jks
 *.keystore
 *.p12
