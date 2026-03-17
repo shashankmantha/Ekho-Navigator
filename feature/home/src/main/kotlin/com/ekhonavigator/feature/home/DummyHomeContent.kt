@@ -56,7 +56,7 @@ internal fun DummyHomeContent(
             .verticalScroll(scrollState)
             .padding(bottom = 24.dp),
     ) {
-        WeatherWidget(Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
+        WeatherSection(Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
 
         SectionLabel("NEXT UP", Modifier.padding(horizontal = 16.dp))
         NextClassCard(
@@ -213,68 +213,6 @@ private fun categoryColor(category: EventCategory): Color = when (category) {
 
 
 // ── Sub-composables ─────────────────────────────────────────
-
-@Composable
-private fun WeatherWidget(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(
-                Brush.horizontalGradient(
-                    listOf(Color(0xFF1565C0), Color(0xFF1E88E5), Color(0xFF42A5F5)),
-                ),
-            )
-            .padding(20.dp),
-    ) {
-        Column {
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top,
-            ) {
-                Column {
-                    Text("72°F", color = Color.White, fontSize = 36.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(2.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(EkhoIcons.Cloud, null, Modifier.size(18.dp), tint = Color.White.copy(0.85f))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Partly Cloudy", color = Color.White.copy(0.9f), fontSize = 14.sp)
-                    }
-                    Spacer(Modifier.height(2.dp))
-                    Text("📍 School Campus", color = Color.White.copy(0.7f), fontSize = 12.sp)
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    WeatherPill(EkhoIcons.Air, "8 mph")
-                    Spacer(Modifier.height(6.dp))
-                    WeatherPill(EkhoIcons.WaterDrop, "65%")
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            Box(
-                Modifier
-                    .background(Color.White.copy(0.2f), RoundedCornerShape(8.dp))
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-            ) {
-                Text("4 classes today", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-            }
-        }
-    }
-}
-
-@Composable
-private fun WeatherPill(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String) {
-    Row(
-        Modifier
-            .background(Color.White.copy(0.18f), RoundedCornerShape(20.dp))
-            .padding(horizontal = 10.dp, vertical = 5.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(icon, null, Modifier.size(14.dp), tint = Color.White.copy(0.9f))
-        Spacer(Modifier.width(4.dp))
-        Text(label, color = Color.White.copy(0.9f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
-    }
-}
 
 @Composable
 private fun SectionLabel(label: String, modifier: Modifier = Modifier) {
