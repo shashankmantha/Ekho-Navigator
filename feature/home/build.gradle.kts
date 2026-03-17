@@ -46,7 +46,13 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.activity.compose)
+<<<<<<< feature/events/campus
 
+=======
+    implementation(libs.play.services.location)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
+    
+>>>>>>> develop
     // Runtime library for JSON serialization
     implementation(libs.kotlinx.serialization.json)
 
