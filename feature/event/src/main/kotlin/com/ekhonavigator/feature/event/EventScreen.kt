@@ -42,8 +42,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.CalendarEvent
 import java.time.ZoneId
@@ -57,7 +58,13 @@ import java.time.format.DateTimeFormatter
 fun EventScreen(
     eventId: String,
     modifier: Modifier = Modifier,
-    viewModel: EventDetailViewModel = hiltViewModel(),
+    viewModel: EventDetailViewModel = hiltViewModel(
+        checkNotNull(
+            LocalViewModelStoreOwner.current
+        ) {
+                "No ViewModelStoreOwner was provided via LocalViewModelStoreOwner"
+            }, null
+    ),
 ) {
     // Tell the ViewModel which event to observe
     LaunchedEffect(eventId) {
