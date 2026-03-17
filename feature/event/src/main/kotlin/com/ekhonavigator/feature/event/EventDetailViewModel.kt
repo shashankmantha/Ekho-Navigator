@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.ekhonavigator.core.data.repository.CalendarRepository
 import com.ekhonavigator.core.model.CalendarEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -35,6 +36,7 @@ class EventDetailViewModel @Inject constructor(
 
     private val _eventId = MutableStateFlow("")
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     val event: StateFlow<CalendarEvent?> = _eventId
         .filter { it.isNotEmpty() }
         .flatMapLatest { id -> repository.observeEventById(id) }
