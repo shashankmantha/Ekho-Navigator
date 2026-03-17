@@ -56,7 +56,7 @@ internal fun DummyHomeContent(
             .verticalScroll(scrollState)
             .padding(bottom = 24.dp),
     ) {
-        WeatherSection(Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
+        WeatherWidget(Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
 
         SectionLabel("NEXT UP", Modifier.padding(horizontal = 16.dp))
         NextClassCard(
@@ -217,7 +217,6 @@ private fun categoryColor(category: EventCategory): Color = when (category) {
 // ── Sub-composables ─────────────────────────────────────────
 
 @Composable
-<<<<<<< feature/events/campus
 private fun WeatherWidget(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
@@ -300,8 +299,6 @@ private fun WeatherPill(icon: androidx.compose.ui.graphics.vector.ImageVector, l
 }
 
 @Composable
-=======
->>>>>>> develop
 private fun SectionLabel(label: String, modifier: Modifier = Modifier) {
     Text(
         text = label,
