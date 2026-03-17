@@ -6,6 +6,9 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
+    // google services plug in
+    id("com.google.gms.google-services")
+
 }
 
 android {
@@ -52,6 +55,11 @@ android {
 }
 
 dependencies {
+    // fire base dependencies
+    implementation(platform("com.google.firebase:firebase-bom:34.4.0"))
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-firestore")
+
     implementation(projects.core.designsystem)
     implementation(projects.core.navigation)
     implementation(projects.feature.account)
