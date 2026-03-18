@@ -86,7 +86,10 @@ fun HomeScreen(
             .verticalScroll(rememberScrollState())
             .padding(bottom = 24.dp),
     ) {
-        WeatherSection(Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
+        WeatherSection(
+            viewModel = viewModel,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        )
 
         // ---- Header row: label + filter chip ----
         Row(
