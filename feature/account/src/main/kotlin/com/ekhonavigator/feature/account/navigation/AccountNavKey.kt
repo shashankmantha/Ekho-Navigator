@@ -7,6 +7,7 @@ import com.ekhonavigator.core.navigation.Navigator
 import com.ekhonavigator.feature.account.AccountScreen
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
+
 @Serializable
 object AccountNavKey : NavKey
 

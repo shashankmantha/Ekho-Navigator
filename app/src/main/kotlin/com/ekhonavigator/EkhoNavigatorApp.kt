@@ -147,11 +147,13 @@ fun EkhoNavigatorApp() {
                             SocialScreen(onEventClick = navigator::navigateToEvent)
                         }
                     }
+
                     is AccountNavKey -> {
                         NavEntry(key) {
                             AccountScreen()
                         }
                     }
+
                     is EventNavKey -> {
                         NavEntry(key) {
                             EventScreen(eventId = key.id)

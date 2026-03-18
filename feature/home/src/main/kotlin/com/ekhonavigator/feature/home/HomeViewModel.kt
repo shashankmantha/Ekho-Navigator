@@ -96,7 +96,12 @@ class HomeViewModel @Inject constructor(
                 isLoading = false,
                 currentTemperature = fahrenheitLabel(response.current.temperature2m),
                 conditionLabel = weatherCodeToLabel(response.current.weatherCode),
-                locationLabel = "\uD83D\uDCCD ${formatLocationLabel(location.latitude, location.longitude)}",
+                locationLabel = "\uD83D\uDCCD ${
+                    formatLocationLabel(
+                        location.latitude,
+                        location.longitude
+                    )
+                }",
                 windLabel = "${response.current.windSpeed10m.roundToInt()} mph",
                 humidityLabel = "${response.current.relativeHumidity2m}%",
                 highLowLabel = buildHighLowLabel(todayForecast),
@@ -126,13 +131,13 @@ class HomeViewModel @Inject constructor(
         return withContext(Dispatchers.IO) {
             val url = URL(
                 "https://api.open-meteo.com/v1/forecast" +
-                    "?latitude=$latitude" +
-                    "&longitude=$longitude" +
-                    "&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code" +
-                    "&hourly=temperature_2m,weather_code" +
-                    "&temperature_unit=fahrenheit" +
-                    "&wind_speed_unit=mph" +
-                    "&timezone=auto",
+                        "?latitude=$latitude" +
+                        "&longitude=$longitude" +
+                        "&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code" +
+                        "&hourly=temperature_2m,weather_code" +
+                        "&temperature_unit=fahrenheit" +
+                        "&wind_speed_unit=mph" +
+                        "&timezone=auto",
             )
 
             val connection = (url.openConnection() as HttpURLConnection).apply {
