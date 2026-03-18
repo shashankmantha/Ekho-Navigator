@@ -62,8 +62,8 @@ fun EventScreen(
         checkNotNull(
             LocalViewModelStoreOwner.current
         ) {
-                "No ViewModelStoreOwner was provided via LocalViewModelStoreOwner"
-            }, null
+            "No ViewModelStoreOwner was provided via LocalViewModelStoreOwner"
+        }, null
     ),
 ) {
     // Tell the ViewModel which event to observe
