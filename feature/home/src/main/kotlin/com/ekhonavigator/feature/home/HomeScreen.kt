@@ -35,6 +35,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.CalendarEvent
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -48,35 +49,47 @@ fun HomeScreen(
     val allEvents by viewModel.events.collectAsStateWithLifecycle()
     val showAll by viewModel.showAll.collectAsStateWithLifecycle()
 
-    // ---- Date filtering done on the screen side ----
+    // ---- Date filtering ----
     val zone = remember { ZoneId.of("America/Los_Angeles") }
     val today = remember { LocalDate.now(zone) }
+    val tomorrow = remember { today.plusDays(1) }
 
-    // Group future events by day, pick today — or fall back to the next day with events
-    val (displayDate, dayEvents) = remember(allEvents, today) {
+    // Accumulate days of events until we reach a minimum or exhaust the lookahead
+    val eventsByDate = remember(allEvents, today) {
+        val now = Instant.now()
+        val cutoff = today.plusDays(7)
+
         val byDate = allEvents
+            .filter { it.endTime.isAfter(now) }
             .filter { !it.startTime.atZone(zone).toLocalDate().isBefore(today) }
             .groupBy { it.startTime.atZone(zone).toLocalDate() }
             .toSortedMap()
 
-        val todayEvents = byDate[today]
-        if (!todayEvents.isNullOrEmpty()) {
-            today to todayEvents
-        } else {
-            // First future day that has events, or empty today
-            val nextEntry = byDate.entries.firstOrNull { it.key.isAfter(today) }
-            (nextEntry?.key ?: today) to (nextEntry?.value ?: emptyList())
+        val result = linkedMapOf<LocalDate, List<CalendarEvent>>()
+        var total = 0
+        for ((date, events) in byDate) {
+            if (date.isAfter(cutoff)) break
+            result[date] = events
+            total += events.size
+            if (total >= 3) break
         }
+        result
     }
 
+    val allDayEvents = remember(eventsByDate) { eventsByDate.values.flatten() }
     val dateFormatter = remember { DateTimeFormatter.ofPattern("MMM d") }
-    val sectionLabel = remember(displayDate, today, dayEvents) {
-        if (dayEvents.isEmpty()) {
+    val dayHeaderFormatter = remember { DateTimeFormatter.ofPattern("EEEE, MMMM d") }
+    val sectionLabel = remember(eventsByDate, today) {
+        if (eventsByDate.isEmpty()) {
             "UPCOMING"
-        } else when (displayDate) {
-            today -> "TODAY ON CAMPUS"
-            today.plusDays(1) -> "TOMORROW ON CAMPUS"
-            else -> "UPCOMING — ${displayDate.format(dateFormatter).uppercase()}"
+        } else if (eventsByDate.size == 1) {
+            when (eventsByDate.keys.first()) {
+                today -> "TODAY ON CAMPUS"
+                tomorrow -> "TOMORROW ON CAMPUS"
+                else -> "UPCOMING — ${eventsByDate.keys.first().format(dateFormatter).uppercase()}"
+            }
+        } else {
+            "UPCOMING ON CAMPUS"
         }
     }
 
@@ -123,7 +136,7 @@ fun HomeScreen(
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 1.dp,
         ) {
-            if (dayEvents.isEmpty()) {
+            if (allDayEvents.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -137,14 +150,36 @@ fun HomeScreen(
                     )
                 }
             } else {
+                val showDayHeaders = eventsByDate.size > 1
+
                 Column {
-                    dayEvents.forEachIndexed { index, event ->
-                        TodayEventCard(
-                            event = event,
-                            onClick = { onEventClick(event.id) },
-                        )
-                        if (index < dayEvents.lastIndex) {
-                            Spacer(Modifier.height(2.dp))
+                    eventsByDate.entries.forEachIndexed { dayIndex, (date, dayEvents) ->
+                        if (showDayHeaders) {
+                            if (dayIndex > 0) {
+                                Spacer(Modifier.height(4.dp))
+                            }
+                            Text(
+                                text = when (date) {
+                                    today -> "Today"
+                                    tomorrow -> "Tomorrow"
+                                    else -> date.format(dayHeaderFormatter)
+                                },
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(
+                                    horizontal = 16.dp,
+                                    vertical = 4.dp,
+                                ),
+                            )
+                        }
+                        dayEvents.forEachIndexed { index, event ->
+                            TodayEventCard(
+                                event = event,
+                                onClick = { onEventClick(event.id) },
+                            )
+                            if (dayIndex < eventsByDate.size - 1 || index < dayEvents.lastIndex) {
+                                Spacer(Modifier.height(2.dp))
+                            }
                         }
                     }
                 }
