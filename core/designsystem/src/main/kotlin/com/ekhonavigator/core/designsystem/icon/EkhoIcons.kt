@@ -2,6 +2,8 @@ package com.ekhonavigator.core.designsystem.icon
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.ShortText
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.MoreVert
@@ -31,6 +33,8 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.ShortText
 import androidx.compose.material.icons.rounded.Upcoming
+import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.ViewDay
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.outlined.Air
@@ -63,7 +67,13 @@ object EkhoIcons {
     val ShortText = Icons.AutoMirrored.Rounded.ShortText
     val Upcoming = Icons.Rounded.Upcoming
     val UpcomingBorder = Icons.Outlined.Upcoming
+    val Schedule = Icons.Rounded.Schedule
+    val Share = Icons.Rounded.Share
     val ViewDay = Icons.Rounded.ViewDay
+
+    // Directional — for calendar month navigation, carousels, etc.
+    val ChevronLeft = Icons.AutoMirrored.Rounded.KeyboardArrowLeft
+    val ChevronRight = Icons.AutoMirrored.Rounded.KeyboardArrowRight
 
     // Navigation — selected (filled/rounded)
     val Home = Icons.Rounded.Home

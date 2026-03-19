@@ -38,6 +38,7 @@ android {
 
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -61,6 +62,10 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore")
 
     implementation(projects.core.designsystem)
+    implementation(projects.core.model)
+    implementation(projects.core.data)
+    implementation(projects.core.database)
+    implementation(projects.core.network)
     implementation(projects.core.navigation)
     implementation(projects.feature.account)
     implementation(projects.feature.home)
@@ -69,11 +74,11 @@ dependencies {
     implementation(projects.feature.event)
     implementation(projects.feature.social)
     implementation(projects.feature.map)
-    
+
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.lifecycle.viewModel.navigation3)
-    
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -88,7 +93,11 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
-    
+
+    implementation(libs.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

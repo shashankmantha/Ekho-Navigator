@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -36,6 +38,9 @@ dependencies {
     api(projects.core.designsystem)
     api(projects.core.navigation)
     api(projects.feature.event)
+    implementation(projects.core.model)
+    implementation(projects.core.data)
+    implementation(projects.core.designsystem)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.tooling.preview)
@@ -47,8 +52,14 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.activity.compose)
     implementation(libs.play.services.location)
+
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.androidx.hilt.navigation.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
-    
+
     // Runtime library for JSON serialization
     implementation(libs.kotlinx.serialization.json)
 

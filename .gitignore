@@ -27,6 +27,7 @@ out/
 
 *.class
 *.log
+/.kotlin/sessions
 
 ############################################
 # OS Generated Files
@@ -49,3 +50,4 @@ Thumbs.db
 ############################################
 
 navigation.json
+/.idea/caches
