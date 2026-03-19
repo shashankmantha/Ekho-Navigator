@@ -16,32 +16,33 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 
-/*
-Main user account area. This will show login/sign-out and other optional user info
-
-@TODO Create repository for this feature in core
-@TODO Create ViewModel for this screen in this folder
-@TODO Replace with actual screen
-*/
 
 @Composable
 fun AccountScreen(
     modifier: Modifier = Modifier,
-    onGoogleSignInClick: () -> Unit = {},
     onContinueAsGuestClick: () -> Unit = {},
 ) {
+    val viewModel: AccountViewModel = viewModel()
+    val uiState by viewModel.uiState.collectAsState()
+
+    val context = LocalContext.current
+    val clientId = stringResource(R.string.default_web_client_id)
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -101,7 +102,9 @@ fun AccountScreen(
                 Spacer(modifier = Modifier.height(28.dp))
 
                 Button(
-                    onClick = onGoogleSignInClick,
+                    onClick = {
+                        viewModel.onGoogleSignInClick(context, clientId)
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
@@ -124,6 +127,37 @@ fun AccountScreen(
                     color = Color.Gray,
                     textAlign = TextAlign.Center
                 )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                when (uiState) {
+                    AccountUiState.Loading -> {
+                        Text(
+                            text = "Loading...",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+
+                    AccountUiState.SignedOut -> {
+                        // no extra text needed
+                    }
+
+                    is AccountUiState.SignedIn -> {
+                        Text(
+                            text = "Signed in!",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+
+                    is AccountUiState.Error -> {
+                        Text(
+                            text = (uiState as AccountUiState.Error).message,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
             }
         }
     }
