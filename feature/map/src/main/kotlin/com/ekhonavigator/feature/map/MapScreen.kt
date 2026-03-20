@@ -148,7 +148,7 @@ fun MapScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val csuciCenter = LatLng(34.16226919494319, -119.04360846675286)
+    val csuciCenter = LatLng(34.162134342787105, -119.04400892418893)
 
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(csuciCenter, 15f)
