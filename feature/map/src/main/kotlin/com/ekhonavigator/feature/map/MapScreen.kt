@@ -65,7 +65,8 @@ import kotlinx.coroutines.launch
 
 // --- MODELS ---
 enum class PlaceCategory(val label: String) {
-    ALL("All"), PARKING("Parking"), BUILDINGS("Buildings"), FOOD("Food")
+    ALL("All"), PARKING("Parking"), BUILDINGS("Buildings"),
+    FOOD("Food"), HOUSING("Housing"), SERVICES("Services")
 }
 
 data class CampusPlace(
@@ -147,7 +148,7 @@ fun MapScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val csuciCenter = LatLng(34.162120, -119.043167)
+    val csuciCenter = LatLng(34.16226919494319, -119.04360846675286)
 
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(csuciCenter, 15f)
@@ -180,46 +181,8 @@ fun MapScreen(
 
     val droppedMarkers = remember { mutableStateListOf<UserMarker>() }
 
-    val campusPlaces = remember {
-        listOf(
-            CampusPlace(
-                "Library",
-                LatLng(34.16283679848678, -119.04096318400194),
-                PlaceCategory.BUILDINGS,
-                "Study & books"
-            ),
-            CampusPlace(
-                "Enrollment Center",
-                LatLng(34.164163977501765, -119.0422077290137),
-                PlaceCategory.BUILDINGS,
-                "Student services"
-            ),
-            CampusPlace(
-                "Cafeteria / Food Court",
-                LatLng(34.1604931003304, -119.04159618532805),
-                PlaceCategory.FOOD,
-                "Food & drinks"
-            ),
-            CampusPlace(
-                "Bell Tower",
-                LatLng(34.161095875886836, -119.04307244420636),
-                PlaceCategory.BUILDINGS,
-                "Bell Tower"
-            ),
-            CampusPlace(
-                "Parking Lot A3",
-                LatLng(34.16667136314828, -119.0470635228976),
-                PlaceCategory.PARKING,
-                "Student parking"
-            ),
-            CampusPlace(
-                "Parking Lot A4",
-                LatLng(34.164284810452386, -119.046471206339),
-                PlaceCategory.PARKING,
-                "Permit parking"
-            )
-        )
-    }
+    // for campus location markers in CampusPlacesData.kt
+    val campusPlaces = remember { CampusPlacesData.places }
 
     var searchText by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf(PlaceCategory.ALL) }
@@ -251,7 +214,10 @@ fun MapScreen(
             }
         ) {
             key("csuci-main") {
-                Marker(state = rememberMarkerState(position = csuciCenter), title = "CSUCI")
+                Marker(
+                    state = rememberMarkerState(position = csuciCenter),
+                    title = "CSUCI Central Mall"
+                )
             }
 
             visiblePlaces.forEach { place ->
@@ -261,7 +227,7 @@ fun MapScreen(
                         title = place.name,
                         snippet = "${place.category.label} • ${place.details}",
                         onInfoWindowClick = {
-                            onEventClick(place.name)
+
                         }
                     )
                 }
