@@ -23,10 +23,12 @@ class AccountViewModel(
 
     fun checkUser() {
         val email = repo.getCurrentUserEmail()
+        val displayName = repo.getCurrentUserDisplayName()
+
         _uiState.value = if (email == null) {
             AccountUiState.SignedOut
         } else {
-            AccountUiState.SignedIn(email)
+            AccountUiState.SignedIn(email = email, displayName = displayName ?: "")
         }
     }
     fun onGoogleSignInClick(
