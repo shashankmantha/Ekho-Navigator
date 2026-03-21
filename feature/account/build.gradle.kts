@@ -33,6 +33,8 @@ android {
 }
 
 dependencies {
+    implementation(libs.firebase.storage)
+
     api(projects.core.navigation)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
