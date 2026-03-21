@@ -172,6 +172,23 @@ fun AccountScreen(
             EditProfileScreen(
                 userEmail = state.email,
                 initialDisplayName = state.displayName,
+                initialMajor = state.major,
+                initialDescription = state.description,
+                initialLinks = state.links,
+                initialMajorVisible = state.majorVisible,
+                initialDescriptionVisible = state.descriptionVisible,
+                initialLinksVisible = state.linksVisible,
+                onSaveClick = { displayName, major, description, links, majorVisible, descriptionVisible, linksVisible ->
+                    viewModel.saveProfile(
+                        displayName = displayName,
+                        major = major,
+                        description = description,
+                        links = links,
+                        majorVisible = majorVisible,
+                        descriptionVisible = descriptionVisible,
+                        linksVisible = linksVisible,
+                    )
+                },
                 onSignOutClick = {
                     viewModel.onSignOutClick()
                 },

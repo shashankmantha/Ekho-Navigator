@@ -41,21 +41,26 @@ import androidx.compose.ui.unit.dp
 fun EditProfileScreen(
     userEmail: String,
     initialDisplayName: String,
+    initialMajor: String,
+    initialDescription: String,
+    initialLinks: String,
+    initialMajorVisible: Boolean,
+    initialDescriptionVisible: Boolean,
+    initialLinksVisible: Boolean,
+    onSaveClick: (
+        String, String, String, String, Boolean, Boolean, Boolean
+    ) -> Unit,
     onSignOutClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var displayName by rememberSaveable { mutableStateOf(initialDisplayName) }
-    var major by rememberSaveable { mutableStateOf("") }
-    var description by rememberSaveable {
-        mutableStateOf("Hey! I'm "+ displayName +", nice to meet you.")
-    }
-    var links by rememberSaveable {
-        mutableStateOf("github.com/")
-    }
+    var major by rememberSaveable { mutableStateOf(initialMajor) }
+    var description by rememberSaveable { mutableStateOf(initialDescription) }
+    var links by rememberSaveable { mutableStateOf(initialLinks) }
 
-    var majorVisible by rememberSaveable { mutableStateOf(true) }
-    var descriptionVisible by rememberSaveable { mutableStateOf(true) }
-    var linksVisible by rememberSaveable { mutableStateOf(true) }
+    var majorVisible by rememberSaveable { mutableStateOf(initialMajorVisible) }
+    var descriptionVisible by rememberSaveable { mutableStateOf(initialDescriptionVisible) }
+    var linksVisible by rememberSaveable { mutableStateOf(initialLinksVisible) }
 
     Column(
         modifier = modifier
@@ -136,6 +141,31 @@ fun EditProfileScreen(
         }
 
         Spacer(modifier = Modifier.height(24.dp))
+
+        OutlinedButton(
+            onClick = {
+                onSaveClick(
+                    displayName,
+                    major,
+                    description,
+                    links,
+                    majorVisible,
+                    descriptionVisible,
+                    linksVisible,
+                )
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            shape = RoundedCornerShape(16.dp),
+        ) {
+            Text(
+                text = "Save Profile",
+                style = MaterialTheme.typography.titleMedium,
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         OutlinedButton(
             onClick = onSignOutClick,

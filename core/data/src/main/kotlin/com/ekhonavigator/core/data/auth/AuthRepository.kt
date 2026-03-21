@@ -7,6 +7,8 @@ interface AuthRepository {
 
     fun getCurrentUserDisplayName(): String?
 
+    fun getCurrentUserUid(): String?
+
     suspend fun signInWithGoogle(
         context: Context,
         webClientId: String,

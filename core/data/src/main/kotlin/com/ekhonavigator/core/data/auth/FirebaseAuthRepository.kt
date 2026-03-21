@@ -16,11 +16,15 @@ class FirebaseAuthRepository(
 ) : AuthRepository {
 
     override fun getCurrentUserEmail(): String? {
-        return auth.currentUser?.email
+        return FirebaseAuth.getInstance().currentUser?.email
     }
 
     override fun getCurrentUserDisplayName(): String? {
         return FirebaseAuth.getInstance().currentUser?.displayName
+    }
+
+    override fun getCurrentUserUid(): String? {
+        return FirebaseAuth.getInstance().currentUser?.uid
     }
 
     override suspend fun signInWithGoogle(
