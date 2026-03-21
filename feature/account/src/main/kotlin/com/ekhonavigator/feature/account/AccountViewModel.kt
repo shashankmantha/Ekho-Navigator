@@ -81,11 +81,10 @@ class AccountViewModel(
         majorVisible: Boolean,
         descriptionVisible: Boolean,
         linksVisible: Boolean,
+        avatarId: String,
     ) {
         val uid = authRepo.getCurrentUserUid() ?: return
         val email = authRepo.getCurrentUserEmail() ?: ""
-
-        val currentAvatarId = (uiState.value as? AccountUiState.SignedIn)?.avatarId ?: "avatar_default"
 
         viewModelScope.launch {
             try {
@@ -100,42 +99,13 @@ class AccountViewModel(
                         majorVisible = majorVisible,
                         descriptionVisible = descriptionVisible,
                         linksVisible = linksVisible,
-                        avatarId = currentAvatarId,
-                    ),
-                )
-                checkUser()
-            } catch (e: Exception) {
-                _uiState.value = AccountUiState.Error(
-                    e.message ?: "Failed to save profile"
-                )
-            }
-        }
-    }
-
-    fun selectAvatar(avatarId: String) {
-        val uid = authRepo.getCurrentUserUid() ?: return
-        val currentState = _uiState.value as? AccountUiState.SignedIn ?: return
-
-        viewModelScope.launch {
-            try {
-                profileRepo.saveProfile(
-                    uid = uid,
-                    profile = UserProfile(
-                        displayName = currentState.displayName,
-                        email = currentState.email,
-                        major = currentState.major,
-                        description = currentState.description,
-                        links = currentState.links,
-                        majorVisible = currentState.majorVisible,
-                        descriptionVisible = currentState.descriptionVisible,
-                        linksVisible = currentState.linksVisible,
                         avatarId = avatarId,
                     ),
                 )
                 checkUser()
             } catch (e: Exception) {
                 _uiState.value = AccountUiState.Error(
-                    e.message ?: "Failed to save avatar"
+                    e.message ?: "Failed to save profile"
                 )
             }
         }

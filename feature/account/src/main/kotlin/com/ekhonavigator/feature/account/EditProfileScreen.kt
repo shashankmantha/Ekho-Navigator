@@ -1,5 +1,6 @@
 package com.ekhonavigator.feature.account
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -40,7 +41,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.Image
 
 private val avatarOptions = listOf(
     "avatar_default",
@@ -60,9 +60,8 @@ fun EditProfileScreen(
     initialDescriptionVisible: Boolean,
     initialLinksVisible: Boolean,
     avatarId: String,
-    onAvatarSelected: (String) -> Unit,
     onSaveClick: (
-        String, String, String, String, Boolean, Boolean, Boolean
+        String, String, String, String, Boolean, Boolean, Boolean, String
     ) -> Unit,
     onSignOutClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -76,6 +75,7 @@ fun EditProfileScreen(
     var descriptionVisible by rememberSaveable { mutableStateOf(initialDescriptionVisible) }
     var linksVisible by rememberSaveable { mutableStateOf(initialLinksVisible) }
 
+    var selectedAvatarId by rememberSaveable { mutableStateOf(avatarId) }
     var showAvatarDialog by rememberSaveable { mutableStateOf(false) }
 
     Column(
@@ -89,8 +89,7 @@ fun EditProfileScreen(
     ) {
         ProfileHeader(
             email = userEmail,
-            title = "Edit Profile",
-            avatarId = avatarId,
+            avatarId = selectedAvatarId,
             onAvatarClick = { showAvatarDialog = true },
         )
 
@@ -167,6 +166,7 @@ fun EditProfileScreen(
                     majorVisible,
                     descriptionVisible,
                     linksVisible,
+                    selectedAvatarId,
                 )
             },
             modifier = Modifier
@@ -224,7 +224,7 @@ fun EditProfileScreen(
                                 .size(72.dp)
                                 .clip(CircleShape)
                                 .clickable {
-                                    onAvatarSelected(option)
+                                    selectedAvatarId = option
                                     showAvatarDialog = false
                                 },
                         )
@@ -238,7 +238,6 @@ fun EditProfileScreen(
 @Composable
 private fun ProfileHeader(
     email: String,
-    title: String,
     avatarId: String,
     onAvatarClick: () -> Unit,
 ) {
@@ -276,7 +275,7 @@ private fun ProfileHeader(
         Spacer(modifier = Modifier.height(12.dp))
 
         Text(
-            text = title,
+            text = "Edit Profile",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
         )

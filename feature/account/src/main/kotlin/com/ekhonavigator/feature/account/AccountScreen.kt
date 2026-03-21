@@ -189,10 +189,7 @@ fun AccountScreen(
                     initialDescriptionVisible = state.descriptionVisible,
                     initialLinksVisible = state.linksVisible,
                     avatarId = state.avatarId,
-                    onAvatarSelected = { avatarId ->
-                        viewModel.selectAvatar(avatarId)
-                    },
-                    onSaveClick = { displayName, major, description, links, majorVisible, descriptionVisible, linksVisible ->
+                    onSaveClick = { displayName, major, description, links, majorVisible, descriptionVisible, linksVisible, avatarId ->
                         val oldDisplayName = state.displayName
                         val oldMajor = state.major
                         val oldDescription = state.description
@@ -200,6 +197,7 @@ fun AccountScreen(
                         val oldMajorVisible = state.majorVisible
                         val oldDescriptionVisible = state.descriptionVisible
                         val oldLinksVisible = state.linksVisible
+                        val oldAvatarId = state.avatarId
 
                         viewModel.saveProfile(
                             displayName = displayName,
@@ -209,6 +207,7 @@ fun AccountScreen(
                             majorVisible = majorVisible,
                             descriptionVisible = descriptionVisible,
                             linksVisible = linksVisible,
+                            avatarId = avatarId,
                         )
 
                         scope.launch {
@@ -227,6 +226,7 @@ fun AccountScreen(
                                     majorVisible = oldMajorVisible,
                                     descriptionVisible = oldDescriptionVisible,
                                     linksVisible = oldLinksVisible,
+                                    avatarId = oldAvatarId,
                                 )
                             }
                         }
