@@ -1,27 +1,30 @@
 package com.ekhonavigator.feature.events
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -30,24 +33,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ekhonavigator.core.designsystem.component.EkhoEventCard
+import com.ekhonavigator.core.designsystem.component.EkhoSectionHeader
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
-import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventCategory
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-/**
- * Campus events list screen — shows all synced events with search and
- * category filtering. Unlike CalendarScreen which is a month-view
- * calendar, this is a straight scrollable list of all events.
- */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun EventsScreen(
     onEventClick: (String) -> Unit,
@@ -58,22 +57,33 @@ fun EventsScreen(
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
 
-    Column(modifier = modifier.fillMaxSize()) {
-        // ---- Search bar ----
-        EventSearchBar(
-            query = searchQuery,
-            onQueryChange = viewModel::setSearchQuery,
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface)
+    ) {
+        // ---- Search and Filter Section ----
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-        )
+                .padding(top = 12.dp, bottom = 12.dp)
+        ) {
+            EventSearchBar(
+                query = searchQuery,
+                onQueryChange = viewModel::setSearchQuery,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+            )
 
-        // ---- Category filter chips ----
-        CategoryFilterRow(
-            selectedCategory = selectedCategory,
-            onCategorySelected = viewModel::setCategory,
-            modifier = Modifier.fillMaxWidth(),
-        )
+            Spacer(Modifier.height(12.dp))
+
+            CategoryFilterRow(
+                selectedCategory = selectedCategory,
+                onCategorySelected = viewModel::setCategory,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
 
         // ---- Event list ----
         if (events.isEmpty()) {
@@ -85,56 +95,62 @@ fun EventsScreen(
             ) {
                 Text(
                     text = if (searchQuery.isNotBlank() || selectedCategory != null) {
-                        "No matching events"
+                        "No matching pulses"
                     } else {
-                        "No events yet"
+                        "Campus is quiet..."
                     },
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         } else {
-            // Group events by date for section headers
             val zone = remember { ZoneId.systemDefault() }
             val eventsByDate = remember(events) {
                 events.groupBy { it.startTime.atZone(zone).toLocalDate() }
                     .toSortedMap()
             }
 
-            val headerFormatter = remember {
-                DateTimeFormatter.ofPattern("EEEE, MMMM d")
-            }
+            val dayHeaderFormatter = remember { DateTimeFormatter.ofPattern("EEEE, MMMM d") }
+            val timeFormatter = remember { DateTimeFormatter.ofPattern("h:mm a") }
             val today = remember { LocalDate.now() }
             val tomorrow = remember { today.plusDays(1) }
 
-            @OptIn(ExperimentalFoundationApi::class)
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(vertical = 4.dp),
+                contentPadding = PaddingValues(bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 eventsByDate.forEach { (date, dayEvents) ->
                     stickyHeader(key = date.toString()) {
-                        val label = when (date) {
+                        val headerLabel = when (date) {
                             today -> "Today"
                             tomorrow -> "Tomorrow"
-                            else -> date.format(headerFormatter)
+                            else -> date.format(dayHeaderFormatter)
                         }
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary,
+                        val isImportant = date == today || date == tomorrow
+
+                        EkhoSectionHeader(
+                            title = headerLabel,
+                            isImportant = isImportant,
                             modifier = Modifier
-                                .fillMaxWidth()
                                 .background(MaterialTheme.colorScheme.surface)
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                                .padding(horizontal = 16.dp)
                         )
                     }
 
                     items(dayEvents, key = { it.id }) { event ->
-                        EventCard(
-                            event = event,
-                            onClick = { onEventClick(event.id) },
+                        val startTime = event.startTime.atZone(zone).format(timeFormatter)
+                        val endTime = event.endTime.atZone(zone).format(timeFormatter)
+                        
+                        EkhoEventCard(
+                            title = event.title,
+                            timeRange = "$startTime – $endTime",
+                            location = event.location,
+                            categoryColors = event.categories.map { Color(it.color) },
+                            isBookmarked = event.isBookmarked,
                             onBookmarkClick = { viewModel.toggleBookmark(event.id) },
+                            onClick = { onEventClick(event.id) },
+                            modifier = Modifier.padding(horizontal = 16.dp)
                         )
                     }
                 }
@@ -153,29 +169,30 @@ private fun EventSearchBar(
         value = query,
         onValueChange = onQueryChange,
         modifier = modifier,
-        placeholder = { Text("Search events\u2026") },
+        placeholder = { 
+            Text(
+                "Search...",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            ) 
+        },
         leadingIcon = {
             Icon(
                 imageVector = EkhoIcons.Search,
-                contentDescription = "Search",
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
             )
         },
-        trailingIcon = {
-            if (query.isNotBlank()) {
-                IconButton(onClick = { onQueryChange("") }) {
-                    Icon(
-                        imageVector = EkhoIcons.Close,
-                        contentDescription = "Clear search",
-                    )
-                }
-            }
-        },
         singleLine = true,
-        shape = RoundedCornerShape(28.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = TextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             focusedIndicatorColor = Color.Transparent,
             unfocusedIndicatorColor = Color.Transparent,
         ),
+        textStyle = MaterialTheme.typography.bodyMedium,
     )
 }
 
@@ -190,16 +207,22 @@ private fun CategoryFilterRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        // "All" chip
         item {
             FilterChip(
                 selected = selectedCategory == null,
                 onClick = { onCategorySelected(null) },
-                label = { Text("All") },
+                label = { 
+                    Text("ALL", style = MaterialTheme.typography.labelSmall) 
+                },
+                shape = RoundedCornerShape(8.dp),
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                ),
+                border = null
             )
         }
 
-        // One chip per category
         items(EventCategory.entries.toList()) { category ->
             FilterChip(
                 selected = selectedCategory == category,
@@ -208,100 +231,16 @@ private fun CategoryFilterRow(
                         if (selectedCategory == category) null else category,
                     )
                 },
-                label = { Text(category.displayName) },
+                label = { 
+                    Text(category.displayName.uppercase(), style = MaterialTheme.typography.labelSmall) 
+                },
+                shape = RoundedCornerShape(8.dp),
                 colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = Color(category.color).copy(alpha = 0.15f),
-                    selectedLabelColor = Color(category.color),
+                    selectedContainerColor = Color(category.color),
+                    selectedLabelColor = Color.White,
                 ),
+                border = null
             )
-        }
-    }
-}
-
-/**
- * Event card with category color bar, time, location, and bookmark toggle.
- */
-@Composable
-private fun EventCard(
-    event: CalendarEvent,
-    onClick: () -> Unit,
-    onBookmarkClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val timeFormatter = remember { DateTimeFormatter.ofPattern("h:mm a") }
-    val zone = remember { ZoneId.systemDefault() }
-
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        onClick = onClick,
-    ) {
-        Row(modifier = Modifier.padding(12.dp)) {
-            // Category color bar
-            Box(
-                modifier = Modifier
-                    .width(4.dp)
-                    .height(56.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(Color(event.primaryCategory.color)),
-            )
-
-            Column(
-                modifier = Modifier
-                    .padding(start = 12.dp)
-                    .weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Text(
-                    text = event.title,
-                    style = MaterialTheme.typography.titleSmall,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-
-                val startTime = event.startTime.atZone(zone).format(timeFormatter)
-                val endTime = event.endTime.atZone(zone).format(timeFormatter)
-                Text(
-                    text = "$startTime \u2013 $endTime",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-
-                if (event.location.isNotBlank()) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Icon(
-                            imageVector = EkhoIcons.Place,
-                            contentDescription = null,
-                            modifier = Modifier.height(14.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = event.location,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-            }
-
-            // Bookmark toggle
-            IconButton(onClick = onBookmarkClick) {
-                Icon(
-                    imageVector = if (event.isBookmarked) EkhoIcons.Bookmark else EkhoIcons.BookmarkBorder,
-                    contentDescription = if (event.isBookmarked) "Remove bookmark" else "Bookmark",
-                    tint = if (event.isBookmarked) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                )
-            }
         }
     }
 }

@@ -52,6 +52,12 @@ class HomeViewModel @Inject constructor(
         _showAll.value = !_showAll.value
     }
 
+    fun toggleBookmark(eventId: String) {
+        viewModelScope.launch {
+            repository.toggleBookmark(eventId)
+        }
+    }
+
     // ---- Weather state ----
 
     private val _weatherState = MutableStateFlow(WeatherUiState())
@@ -96,12 +102,7 @@ class HomeViewModel @Inject constructor(
                 isLoading = false,
                 currentTemperature = fahrenheitLabel(response.current.temperature2m),
                 conditionLabel = weatherCodeToLabel(response.current.weatherCode),
-                locationLabel = "\uD83D\uDCCD ${
-                    formatLocationLabel(
-                        location.latitude,
-                        location.longitude
-                    )
-                }",
+                locationLabel = "CSUCI Campus",
                 windLabel = "${response.current.windSpeed10m.roundToInt()} mph",
                 humidityLabel = "${response.current.relativeHumidity2m}%",
                 highLowLabel = buildHighLowLabel(todayForecast),
