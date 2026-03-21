@@ -35,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
@@ -199,6 +200,11 @@ fun MapScreen(
         val matchesSearch = place.name.contains(searchText, ignoreCase = true)
         matchesCategory && matchesSearch
     }
+    // Checks if user zoomed in enough to see the building icons.
+    // using derivedStateOf so the map doesn't lag when pinching/zooming.
+    val zoomRevealsCampusMarkers by remember {
+        derivedStateOf { cameraPositionState.position.zoom >= 16f }
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
         GoogleMap(
@@ -219,17 +225,19 @@ fun MapScreen(
                     title = "CSUCI Central Mall"
                 )
             }
+            // Only show the campus markers if the zoom is high enough.
+            if (zoomRevealsCampusMarkers) {
+                visiblePlaces.forEach { place ->
+                    key("campus-place-${place.name}") {
+                        Marker(
+                            state = rememberMarkerState(position = place.position),
+                            title = place.name,
+                            snippet = "${place.category.label} • ${place.details}",
+                            onInfoWindowClick = {
 
-            visiblePlaces.forEach { place ->
-                key("campus-place-${place.name}") {
-                    Marker(
-                        state = rememberMarkerState(position = place.position),
-                        title = place.name,
-                        snippet = "${place.category.label} • ${place.details}",
-                        onInfoWindowClick = {
-
-                        }
-                    )
+                            }
+                        )
+                    }
                 }
             }
 
