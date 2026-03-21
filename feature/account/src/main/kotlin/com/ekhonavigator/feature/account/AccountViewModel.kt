@@ -36,24 +36,31 @@ class AccountViewModel(
         }
 
         viewModelScope.launch {
-            val profile = profileRepo.getProfile(uid)
+            try {
+                val profile = profileRepo.getProfile(uid)
 
-            _uiState.value = AccountUiState.SignedIn(
-                email = email,
-                displayName = profile?.displayName?.ifBlank { displayName ?: "" } ?: (displayName ?: ""),
-                major = profile?.major ?: "",
-                description = profile?.description ?: "",
-                links = profile?.links ?: "",
-                majorVisible = profile?.majorVisible ?: true,
-                descriptionVisible = profile?.descriptionVisible ?: true,
-                linksVisible = profile?.linksVisible ?: true,
-            )
+                _uiState.value = AccountUiState.SignedIn(
+                    email = email,
+                    displayName = profile?.displayName?.ifBlank { displayName ?: "" } ?: (displayName ?: ""),
+                    major = profile?.major ?: "",
+                    description = profile?.description ?: "",
+                    links = profile?.links ?: "",
+                    majorVisible = profile?.majorVisible ?: true,
+                    descriptionVisible = profile?.descriptionVisible ?: true,
+                    linksVisible = profile?.linksVisible ?: true,
+                    avatarId = profile?.avatarId ?: "avatar_default",
+                )
+            } catch (e: Exception) {
+                _uiState.value = AccountUiState.Error(
+                    e.message ?: "Failed to load account information"
+                )
+            }
         }
     }
 
     fun onGoogleSignInClick(
         context: Context,
-        clientId: String
+        clientId: String,
     ) {
         viewModelScope.launch {
             _uiState.value = AccountUiState.Loading
@@ -78,21 +85,59 @@ class AccountViewModel(
         val uid = authRepo.getCurrentUserUid() ?: return
         val email = authRepo.getCurrentUserEmail() ?: ""
 
+        val currentAvatarId = (uiState.value as? AccountUiState.SignedIn)?.avatarId ?: "avatar_default"
+
         viewModelScope.launch {
-            profileRepo.saveProfile(
-                uid = uid,
-                profile = UserProfile(
-                    displayName = displayName,
-                    email = email,
-                    major = major,
-                    description = description,
-                    links = links,
-                    majorVisible = majorVisible,
-                    descriptionVisible = descriptionVisible,
-                    linksVisible = linksVisible,
+            try {
+                profileRepo.saveProfile(
+                    uid = uid,
+                    profile = UserProfile(
+                        displayName = displayName,
+                        email = email,
+                        major = major,
+                        description = description,
+                        links = links,
+                        majorVisible = majorVisible,
+                        descriptionVisible = descriptionVisible,
+                        linksVisible = linksVisible,
+                        avatarId = currentAvatarId,
+                    ),
                 )
-            )
-            checkUser()
+                checkUser()
+            } catch (e: Exception) {
+                _uiState.value = AccountUiState.Error(
+                    e.message ?: "Failed to save profile"
+                )
+            }
+        }
+    }
+
+    fun selectAvatar(avatarId: String) {
+        val uid = authRepo.getCurrentUserUid() ?: return
+        val currentState = _uiState.value as? AccountUiState.SignedIn ?: return
+
+        viewModelScope.launch {
+            try {
+                profileRepo.saveProfile(
+                    uid = uid,
+                    profile = UserProfile(
+                        displayName = currentState.displayName,
+                        email = currentState.email,
+                        major = currentState.major,
+                        description = currentState.description,
+                        links = currentState.links,
+                        majorVisible = currentState.majorVisible,
+                        descriptionVisible = currentState.descriptionVisible,
+                        linksVisible = currentState.linksVisible,
+                        avatarId = avatarId,
+                    ),
+                )
+                checkUser()
+            } catch (e: Exception) {
+                _uiState.value = AccountUiState.Error(
+                    e.message ?: "Failed to save avatar"
+                )
+            }
         }
     }
 

@@ -1,9 +1,11 @@
 package com.ekhonavigator.feature.account
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -18,6 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -25,17 +28,26 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.Image
+
+private val avatarOptions = listOf(
+    "avatar_default",
+    "avatar_dolphin",
+    "avatar_whale",
+    "avatar_turtle",
+)
 
 @Composable
 fun EditProfileScreen(
@@ -47,6 +59,8 @@ fun EditProfileScreen(
     initialMajorVisible: Boolean,
     initialDescriptionVisible: Boolean,
     initialLinksVisible: Boolean,
+    avatarId: String,
+    onAvatarSelected: (String) -> Unit,
     onSaveClick: (
         String, String, String, String, Boolean, Boolean, Boolean
     ) -> Unit,
@@ -62,6 +76,8 @@ fun EditProfileScreen(
     var descriptionVisible by rememberSaveable { mutableStateOf(initialDescriptionVisible) }
     var linksVisible by rememberSaveable { mutableStateOf(initialLinksVisible) }
 
+    var showAvatarDialog by rememberSaveable { mutableStateOf(false) }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -74,14 +90,13 @@ fun EditProfileScreen(
         ProfileHeader(
             email = userEmail,
             title = "Edit Profile",
-            displayName = displayName,
+            avatarId = avatarId,
+            onAvatarClick = { showAvatarDialog = true },
         )
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        ProfileFieldCard(
-            label = "Display Name",
-        ) {
+        ProfileFieldCard(label = "Display Name") {
             OutlinedTextField(
                 value = displayName,
                 onValueChange = { displayName = it },
@@ -182,46 +197,72 @@ fun EditProfileScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
     }
+
+    if (showAvatarDialog) {
+        AlertDialog(
+            onDismissRequest = { showAvatarDialog = false },
+            confirmButton = {
+                TextButton(onClick = { showAvatarDialog = false }) {
+                    Text("Close")
+                }
+            },
+            title = {
+                Text("Choose an Avatar")
+            },
+            text = {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    avatarOptions.forEach { option ->
+                        val avatarRes = avatarIdToRes(option)
+
+                        Image(
+                            painter = painterResource(id = avatarRes),
+                            contentDescription = option,
+                            modifier = Modifier
+                                .size(72.dp)
+                                .clip(CircleShape)
+                                .clickable {
+                                    onAvatarSelected(option)
+                                    showAvatarDialog = false
+                                },
+                        )
+                    }
+                }
+            },
+        )
+    }
 }
 
 @Composable
 private fun ProfileHeader(
     email: String,
     title: String,
-    displayName: String,
+    avatarId: String,
+    onAvatarClick: () -> Unit,
 ) {
-    val firstLetter = displayName
-        .trim()
-        .firstOrNull()
-        ?.uppercase()
-        ?: "?"
-
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
             contentAlignment = Alignment.BottomEnd,
         ) {
-            Box(
+            Image(
+                painter = painterResource(id = avatarIdToRes(avatarId)),
+                contentDescription = "Profile avatar",
                 modifier = Modifier
                     .size(96.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = firstLetter,
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
+                    .clickable { onAvatarClick() },
+            )
 
             Box(
                 modifier = Modifier
                     .size(32.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surface),
+                    .background(MaterialTheme.colorScheme.surface)
+                    .clickable { onAvatarClick() },
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -247,6 +288,15 @@ private fun ProfileHeader(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+private fun avatarIdToRes(avatarId: String): Int {
+    return when (avatarId) {
+        "avatar_dolphin" -> R.drawable.avatar_dolphin
+        "avatar_whale" -> R.drawable.avatar_whale
+        "avatar_turtle" -> R.drawable.avatar_turtle
+        else -> R.drawable.avatar_default
     }
 }
 

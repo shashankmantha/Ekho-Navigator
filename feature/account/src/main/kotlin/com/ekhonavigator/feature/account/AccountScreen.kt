@@ -188,8 +188,11 @@ fun AccountScreen(
                     initialMajorVisible = state.majorVisible,
                     initialDescriptionVisible = state.descriptionVisible,
                     initialLinksVisible = state.linksVisible,
+                    avatarId = state.avatarId,
+                    onAvatarSelected = { avatarId ->
+                        viewModel.selectAvatar(avatarId)
+                    },
                     onSaveClick = { displayName, major, description, links, majorVisible, descriptionVisible, linksVisible ->
-
                         val oldDisplayName = state.displayName
                         val oldMajor = state.major
                         val oldDescription = state.description

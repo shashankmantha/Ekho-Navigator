@@ -9,4 +9,5 @@ data class UserProfile(
     val majorVisible: Boolean = true,
     val descriptionVisible: Boolean = true,
     val linksVisible: Boolean = true,
+    val avatarId: String = "avatar_default",
 )

@@ -12,6 +12,7 @@ sealed interface AccountUiState {
         val majorVisible: Boolean,
         val descriptionVisible: Boolean,
         val linksVisible: Boolean,
+        val avatarId: String,
     ) : AccountUiState
     data class Error(val message: String) : AccountUiState
 }
