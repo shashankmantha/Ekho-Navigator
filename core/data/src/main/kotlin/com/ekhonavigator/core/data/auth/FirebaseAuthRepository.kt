@@ -25,6 +25,7 @@ class FirebaseAuthRepository(
 
     override fun getCurrentUserUid(): String? {
         return FirebaseAuth.getInstance().currentUser?.uid
+        return auth.currentUser?.email
     }
 
     override suspend fun signInWithGoogle(

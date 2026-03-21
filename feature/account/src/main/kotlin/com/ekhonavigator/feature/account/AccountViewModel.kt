@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 class AccountViewModel(
     private val authRepo: AuthRepository = FirebaseAuthRepository(),
     private val profileRepo: ProfileRepository = FirestoreProfileRepository(),
+    private val repo: AuthRepository = FirebaseAuthRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<AccountUiState>(AccountUiState.Loading)
@@ -61,6 +62,16 @@ class AccountViewModel(
     fun onGoogleSignInClick(
         context: Context,
         clientId: String,
+        val email = repo.getCurrentUserEmail()
+        _uiState.value = if (email == null) {
+            AccountUiState.SignedOut
+        } else {
+            AccountUiState.SignedIn(email)
+        }
+    }
+    fun onGoogleSignInClick(
+        context: Context,
+        clientId: String
     ) {
         viewModelScope.launch {
             _uiState.value = AccountUiState.Loading
@@ -106,6 +117,11 @@ class AccountViewModel(
             } catch (e: Exception) {
                 _uiState.value = AccountUiState.Error(
                     e.message ?: "Failed to save profile"
+                repo.signInWithGoogle(context, clientId)
+                checkUser()
+            } catch (e: Exception) {
+                _uiState.value = AccountUiState.Error(
+                    e.message ?: "Sign-in failed"
                 )
             }
         }
@@ -113,6 +129,7 @@ class AccountViewModel(
 
     fun onSignOutClick() {
         authRepo.signOut()
+        repo.signOut()
         checkUser()
     }
 }

@@ -40,9 +40,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 
+
 @Composable
 fun AccountScreen(
     modifier: Modifier = Modifier,
+    onContinueAsGuestClick: () -> Unit = {},
 ) {
     val viewModel: AccountViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
@@ -175,6 +177,22 @@ fun AccountScreen(
                     item {
                         Spacer(modifier = Modifier.height(200.dp))
                     }
+                Button(
+                    onClick = {
+                        viewModel.onGoogleSignInClick(context, clientId)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text(
+                        text = "Sign in with Google",
+                        style = MaterialTheme.typography.labelLarge
+                    )
                 }
             }
 
@@ -236,6 +254,37 @@ fun AccountScreen(
                     },
                     modifier = Modifier.fillMaxSize(),
                 )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                when (uiState) {
+                    AccountUiState.Loading -> {
+                        Text(
+                            text = "Loading...",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+
+                    AccountUiState.SignedOut -> {
+                        // no extra text needed
+                    }
+
+                    is AccountUiState.SignedIn -> {
+                        Text(
+                            text = "Signed in!",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+
+                    is AccountUiState.Error -> {
+                        Text(
+                            text = (uiState as AccountUiState.Error).message,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
             }
         }
 
