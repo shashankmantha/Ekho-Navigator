@@ -6,7 +6,10 @@ import android.content.Context
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -62,6 +65,7 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerInfoWindowContent
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 // --- MODELS ---
@@ -188,6 +192,13 @@ fun MapScreen(
     var searchText by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf(PlaceCategory.BUILDINGS) }
     var isPanelExpanded by remember { mutableStateOf(true) }
+    var showFilterTip by remember { mutableStateOf(true) }
+
+    // Hides the tip automatically after 10 seconds
+    LaunchedEffect(Unit) {
+        delay(10000)
+        showFilterTip = false
+    }
 
     var selectedDroppedMarkerForOptions by remember { mutableStateOf<UserMarker?>(null) }
     var markerBeingEdited by remember { mutableStateOf<UserMarker?>(null) }
@@ -298,54 +309,91 @@ fun MapScreen(
             )
         }
 
-        // Search Card UI
-        Card(
+        // Search & Filter Overlay
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp)
-                .animateContentSize(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+                .padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { isPanelExpanded = !isPanelExpanded }
-                        .padding(vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = if (isPanelExpanded) "Search & Filter (tap to collapse)" else "Search & Filter",
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                    Text(text = if (isPanelExpanded) "▲" else "▼")
-                }
 
-                if (isPanelExpanded) {
-                    if (!hasLocationPermission) {
-                        TextButton(onClick = {
-                            requestLocationPermission = true
-                        }) { Text("Enable Location") }
+            // Search Card UI
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .animateContentSize(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { isPanelExpanded = !isPanelExpanded }
+                            .padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = if (isPanelExpanded) "Search & Filter (tap to collapse)" else "Search & Filter",
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                        Text(text = if (isPanelExpanded) "▲" else "▼")
                     }
 
-                    OutlinedTextField(
-                        value = searchText,
-                        onValueChange = { searchText = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Search campus places") },
-                        singleLine = true
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(PlaceCategory.entries) { category ->
-                            FilterChip(
-                                selected = (selectedCategory == category),
-                                onClick = { selectedCategory = category },
-                                label = { Text(category.label) }
-                            )
+                    if (isPanelExpanded) {
+                        if (!hasLocationPermission) {
+                            TextButton(onClick = {
+                                requestLocationPermission = true
+                            }) { Text("Enable Location") }
                         }
+
+                        OutlinedTextField(
+                            value = searchText,
+                            onValueChange = { searchText = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Search campus places") },
+                            singleLine = true
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(PlaceCategory.entries) { category ->
+                                FilterChip(
+                                    selected = (selectedCategory == category),
+                                    onClick = { selectedCategory = category },
+                                    label = { Text(category.label) }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            // FLOATING TIP MESSAGE
+            // floats centered directly under the card
+            AnimatedVisibility(
+                visible = showFilterTip && selectedCategory == PlaceCategory.BUILDINGS,
+                enter = fadeIn(),
+                exit = fadeOut(),
+                modifier = Modifier.padding(top = 8.dp)
+            ) {
+                Surface(
+                    modifier = Modifier.clickable { showFilterTip = false },
+                    shape = MaterialTheme.shapes.extraLarge,
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    tonalElevation = 6.dp,
+                    shadowElevation = 4.dp
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Click filters to see even more points of interest",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        Spacer(modifier = Modifier.size(8.dp))
+                        Text("✕", style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }
