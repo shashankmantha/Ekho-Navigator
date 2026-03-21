@@ -186,7 +186,7 @@ fun MapScreen(
     val campusPlaces = remember { CampusPlacesData.places }
 
     var searchText by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf(PlaceCategory.ALL) }
+    var selectedCategory by remember { mutableStateOf(PlaceCategory.BUILDINGS) }
     var isPanelExpanded by remember { mutableStateOf(true) }
 
     var selectedDroppedMarkerForOptions by remember { mutableStateOf<UserMarker?>(null) }
