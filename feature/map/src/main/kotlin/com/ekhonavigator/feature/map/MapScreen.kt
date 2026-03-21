@@ -195,9 +195,16 @@ fun MapScreen(
     var markerPendingRemoval by remember { mutableStateOf<UserMarker?>(null) }
 
     val visiblePlaces = campusPlaces.filter { place ->
-        val matchesCategory =
-            (selectedCategory == PlaceCategory.ALL) || (place.category == selectedCategory)
         val matchesSearch = place.name.contains(searchText, ignoreCase = true)
+
+        // 1. If user is typing, we ignore categories (matchesCategory = true)
+        // 2. If search is empty, we respect the category chips
+        val matchesCategory = if (searchText.isNotBlank()) {
+            true
+        } else {
+            (selectedCategory == PlaceCategory.ALL) || (place.category == selectedCategory)
+        }
+
         matchesCategory && matchesSearch
     }
     // Checks if user zoomed in enough to see the building icons.
@@ -226,7 +233,8 @@ fun MapScreen(
                 )
             }
             // Only show the campus markers if the zoom is high enough.
-            if (zoomRevealsCampusMarkers) {
+            // Only shows markers if zoomed in OR if the user has typed something in the search bar
+            if (zoomRevealsCampusMarkers || searchText.isNotBlank()) {
                 visiblePlaces.forEach { place ->
                     key("campus-place-${place.name}") {
                         Marker(
