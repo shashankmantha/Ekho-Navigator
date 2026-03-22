@@ -6,7 +6,10 @@ import android.content.Context
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
@@ -61,11 +65,13 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerInfoWindowContent
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 // --- MODELS ---
 enum class PlaceCategory(val label: String) {
-    ALL("All"), PARKING("Parking"), BUILDINGS("Buildings"), FOOD("Food")
+    ALL("All"), PARKING("Parking"), BUILDINGS("Buildings"),
+    FOOD("Food"), HOUSING("Housing"), SERVICES("Services")
 }
 
 data class CampusPlace(
@@ -147,7 +153,7 @@ fun MapScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val csuciCenter = LatLng(34.162120, -119.043167)
+    val csuciCenter = LatLng(34.162134342787105, -119.04400892418893)
 
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(csuciCenter, 15f)
@@ -180,50 +186,19 @@ fun MapScreen(
 
     val droppedMarkers = remember { mutableStateListOf<UserMarker>() }
 
-    val campusPlaces = remember {
-        listOf(
-            CampusPlace(
-                "Library",
-                LatLng(34.16283679848678, -119.04096318400194),
-                PlaceCategory.BUILDINGS,
-                "Study & books"
-            ),
-            CampusPlace(
-                "Enrollment Center",
-                LatLng(34.164163977501765, -119.0422077290137),
-                PlaceCategory.BUILDINGS,
-                "Student services"
-            ),
-            CampusPlace(
-                "Cafeteria / Food Court",
-                LatLng(34.1604931003304, -119.04159618532805),
-                PlaceCategory.FOOD,
-                "Food & drinks"
-            ),
-            CampusPlace(
-                "Bell Tower",
-                LatLng(34.161095875886836, -119.04307244420636),
-                PlaceCategory.BUILDINGS,
-                "Bell Tower"
-            ),
-            CampusPlace(
-                "Parking Lot A3",
-                LatLng(34.16667136314828, -119.0470635228976),
-                PlaceCategory.PARKING,
-                "Student parking"
-            ),
-            CampusPlace(
-                "Parking Lot A4",
-                LatLng(34.164284810452386, -119.046471206339),
-                PlaceCategory.PARKING,
-                "Permit parking"
-            )
-        )
-    }
+    // for campus location markers in CampusPlacesData.kt
+    val campusPlaces = remember { CampusPlacesData.places }
 
     var searchText by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf(PlaceCategory.ALL) }
+    var selectedCategory by remember { mutableStateOf(PlaceCategory.BUILDINGS) }
     var isPanelExpanded by remember { mutableStateOf(true) }
+    var showFilterTip by remember { mutableStateOf(true) }
+
+    // Hides the tip automatically after 10 seconds
+    LaunchedEffect(Unit) {
+        delay(10000)
+        showFilterTip = false
+    }
 
     var selectedDroppedMarkerForOptions by remember { mutableStateOf<UserMarker?>(null) }
     var markerBeingEdited by remember { mutableStateOf<UserMarker?>(null) }
@@ -231,10 +206,22 @@ fun MapScreen(
     var markerPendingRemoval by remember { mutableStateOf<UserMarker?>(null) }
 
     val visiblePlaces = campusPlaces.filter { place ->
-        val matchesCategory =
-            (selectedCategory == PlaceCategory.ALL) || (place.category == selectedCategory)
         val matchesSearch = place.name.contains(searchText, ignoreCase = true)
+
+        // 1. If user is typing, we ignore categories (matchesCategory = true)
+        // 2. If search is empty, we respect the category chips
+        val matchesCategory = if (searchText.isNotBlank()) {
+            true
+        } else {
+            (selectedCategory == PlaceCategory.ALL) || (place.category == selectedCategory)
+        }
+
         matchesCategory && matchesSearch
+    }
+    // Checks if user zoomed in enough to see the building icons.
+    // using derivedStateOf so the map doesn't lag when pinching/zooming.
+    val zoomRevealsCampusMarkers by remember {
+        derivedStateOf { cameraPositionState.position.zoom >= 16f }
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -251,19 +238,25 @@ fun MapScreen(
             }
         ) {
             key("csuci-main") {
-                Marker(state = rememberMarkerState(position = csuciCenter), title = "CSUCI")
+                Marker(
+                    state = rememberMarkerState(position = csuciCenter),
+                    title = "CSUCI Central Mall"
+                )
             }
+            // Only show the campus markers if the zoom is high enough.
+            // Only shows markers if zoomed in OR if the user has typed something in the search bar
+            if (zoomRevealsCampusMarkers || searchText.isNotBlank()) {
+                visiblePlaces.forEach { place ->
+                    key("campus-place-${place.name}") {
+                        Marker(
+                            state = rememberMarkerState(position = place.position),
+                            title = place.name,
+                            snippet = "${place.category.label} • ${place.details}",
+                            onInfoWindowClick = {
 
-            visiblePlaces.forEach { place ->
-                key("campus-place-${place.name}") {
-                    Marker(
-                        state = rememberMarkerState(position = place.position),
-                        title = place.name,
-                        snippet = "${place.category.label} • ${place.details}",
-                        onInfoWindowClick = {
-                            onEventClick(place.name)
-                        }
-                    )
+                            }
+                        )
+                    }
                 }
             }
 
@@ -316,54 +309,91 @@ fun MapScreen(
             )
         }
 
-        // Search Card UI
-        Card(
+        // Search & Filter Overlay
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp)
-                .animateContentSize(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+                .padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { isPanelExpanded = !isPanelExpanded }
-                        .padding(vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = if (isPanelExpanded) "Search & Filter (tap to collapse)" else "Search & Filter",
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                    Text(text = if (isPanelExpanded) "▲" else "▼")
-                }
 
-                if (isPanelExpanded) {
-                    if (!hasLocationPermission) {
-                        TextButton(onClick = {
-                            requestLocationPermission = true
-                        }) { Text("Enable Location") }
+            // Search Card UI
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .animateContentSize(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { isPanelExpanded = !isPanelExpanded }
+                            .padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = if (isPanelExpanded) "Search & Filter (tap to collapse)" else "Search & Filter",
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                        Text(text = if (isPanelExpanded) "▲" else "▼")
                     }
 
-                    OutlinedTextField(
-                        value = searchText,
-                        onValueChange = { searchText = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Search campus places") },
-                        singleLine = true
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(PlaceCategory.entries) { category ->
-                            FilterChip(
-                                selected = (selectedCategory == category),
-                                onClick = { selectedCategory = category },
-                                label = { Text(category.label) }
-                            )
+                    if (isPanelExpanded) {
+                        if (!hasLocationPermission) {
+                            TextButton(onClick = {
+                                requestLocationPermission = true
+                            }) { Text("Enable Location") }
                         }
+
+                        OutlinedTextField(
+                            value = searchText,
+                            onValueChange = { searchText = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Search campus places") },
+                            singleLine = true
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(PlaceCategory.entries) { category ->
+                                FilterChip(
+                                    selected = (selectedCategory == category),
+                                    onClick = { selectedCategory = category },
+                                    label = { Text(category.label) }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            // FLOATING TIP MESSAGE
+            // floats centered directly under the card
+            AnimatedVisibility(
+                visible = showFilterTip && selectedCategory == PlaceCategory.BUILDINGS,
+                enter = fadeIn(),
+                exit = fadeOut(),
+                modifier = Modifier.padding(top = 8.dp)
+            ) {
+                Surface(
+                    modifier = Modifier.clickable { showFilterTip = false },
+                    shape = MaterialTheme.shapes.extraLarge,
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    tonalElevation = 6.dp,
+                    shadowElevation = 4.dp
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Zoom in to see points of interest. Click filters to see even more.",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        Spacer(modifier = Modifier.size(8.dp))
+                        Text("✕", style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }
