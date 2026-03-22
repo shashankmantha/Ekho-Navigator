@@ -63,7 +63,7 @@ fun RowScope.EkhoNavigationBarItem(
         colors = NavigationBarItemDefaults.colors(
             selectedIconColor = EkhoNavigationDefaults.navigationSelectedItemColor(),
             unselectedIconColor = EkhoNavigationDefaults.navigationContentColor(),
-            selectedTextColor = EkhoNavigationDefaults.navigationSelectedItemColor(),
+            selectedTextColor = EkhoNavigationDefaults.navigationSelectedTextColor(),
             unselectedTextColor = EkhoNavigationDefaults.navigationContentColor(),
             indicatorColor = EkhoNavigationDefaults.navigationIndicatorColor(),
         ),
@@ -84,6 +84,7 @@ fun EkhoNavigationBar(
 ) {
     NavigationBar(
         modifier = modifier,
+        containerColor = Color.Transparent,
         contentColor = EkhoNavigationDefaults.navigationContentColor(),
         tonalElevation = 0.dp,
         content = content,
@@ -127,7 +128,7 @@ fun EkhoNavigationRailItem(
         colors = NavigationRailItemDefaults.colors(
             selectedIconColor = EkhoNavigationDefaults.navigationSelectedItemColor(),
             unselectedIconColor = EkhoNavigationDefaults.navigationContentColor(),
-            selectedTextColor = EkhoNavigationDefaults.navigationSelectedItemColor(),
+            selectedTextColor = EkhoNavigationDefaults.navigationSelectedTextColor(),
             unselectedTextColor = EkhoNavigationDefaults.navigationContentColor(),
             indicatorColor = EkhoNavigationDefaults.navigationIndicatorColor(),
         ),
@@ -179,21 +180,21 @@ fun EkhoNavigationSuiteScaffold(
         navigationBarItemColors = NavigationBarItemDefaults.colors(
             selectedIconColor = EkhoNavigationDefaults.navigationSelectedItemColor(),
             unselectedIconColor = EkhoNavigationDefaults.navigationContentColor(),
-            selectedTextColor = EkhoNavigationDefaults.navigationSelectedItemColor(),
+            selectedTextColor = EkhoNavigationDefaults.navigationSelectedTextColor(),
             unselectedTextColor = EkhoNavigationDefaults.navigationContentColor(),
             indicatorColor = EkhoNavigationDefaults.navigationIndicatorColor(),
         ),
         navigationRailItemColors = NavigationRailItemDefaults.colors(
             selectedIconColor = EkhoNavigationDefaults.navigationSelectedItemColor(),
             unselectedIconColor = EkhoNavigationDefaults.navigationContentColor(),
-            selectedTextColor = EkhoNavigationDefaults.navigationSelectedItemColor(),
+            selectedTextColor = EkhoNavigationDefaults.navigationSelectedTextColor(),
             unselectedTextColor = EkhoNavigationDefaults.navigationContentColor(),
             indicatorColor = EkhoNavigationDefaults.navigationIndicatorColor(),
         ),
         navigationDrawerItemColors = NavigationDrawerItemDefaults.colors(
             selectedIconColor = EkhoNavigationDefaults.navigationSelectedItemColor(),
             unselectedIconColor = EkhoNavigationDefaults.navigationContentColor(),
-            selectedTextColor = EkhoNavigationDefaults.navigationSelectedItemColor(),
+            selectedTextColor = EkhoNavigationDefaults.navigationSelectedTextColor(),
             unselectedTextColor = EkhoNavigationDefaults.navigationContentColor(),
         ),
     )
@@ -208,6 +209,7 @@ fun EkhoNavigationSuiteScaffold(
         layoutType = layoutType,
         containerColor = Color.Transparent,
         navigationSuiteColors = NavigationSuiteDefaults.colors(
+            navigationBarContainerColor = Color.Transparent,
             navigationBarContentColor = EkhoNavigationDefaults.navigationContentColor(),
             navigationRailContainerColor = Color.Transparent,
         ),
@@ -336,6 +338,9 @@ object EkhoNavigationDefaults {
 
     @Composable
     fun navigationSelectedItemColor() = MaterialTheme.colorScheme.onPrimaryContainer
+
+    @Composable
+    fun navigationSelectedTextColor() = MaterialTheme.colorScheme.onSurface
 
     @Composable
     fun navigationIndicatorColor() = MaterialTheme.colorScheme.primaryContainer
