@@ -388,7 +388,7 @@ fun MapScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Click filters to see even more points of interest",
+                            text = "Zoom in to see points of interest. Click filters to see even more.",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
