@@ -54,19 +54,21 @@ fun EkhoEventCard(
         shadowElevation = 2.dp
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Multi-category minimal accent lozenge
             Column(
-                modifier = Modifier.width(4.dp),
+                modifier = Modifier
+                    .width(4.dp)
+                    .height(44.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 if (categoryColors.isEmpty()) {
                     Box(
                         modifier = Modifier
-                            .width(4.dp)
-                            .height(54.dp)
+                            .fillMaxWidth()
+                            .weight(1f)
                             .clip(RoundedCornerShape(2.dp))
                             .background(MaterialTheme.colorScheme.outlineVariant)
                     )
@@ -74,8 +76,8 @@ fun EkhoEventCard(
                     categoryColors.take(4).forEach { color ->
                         Box(
                             modifier = Modifier
-                                .width(4.dp)
-                                .height(if (categoryColors.size > 1) 12.dp else 54.dp)
+                                .fillMaxWidth()
+                                .weight(1f)
                                 .clip(RoundedCornerShape(2.dp))
                                 .background(color)
                         )
@@ -85,58 +87,54 @@ fun EkhoEventCard(
 
             Column(
                 modifier = Modifier
-                    .padding(start = 16.dp)
+                    .padding(start = 12.dp)
                     .weight(1f)
             ) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     fontWeight = FontWeight.Bold,
-                    lineHeight = 20.sp
+                    lineHeight = 16.sp
                 )
 
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(2.dp))
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = EkhoIcons.Schedule,
+                        contentDescription = null,
+                        modifier = Modifier.size(10.dp),
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = timeRange,
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                if (location.isNotBlank()) {
+                    Spacer(Modifier.height(1.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = EkhoIcons.Schedule,
+                            imageVector = EkhoIcons.Place,
                             contentDescription = null,
-                            modifier = Modifier.size(12.dp),
-                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                            modifier = Modifier.size(10.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
                         Spacer(Modifier.width(4.dp))
                         Text(
-                            text = timeRange,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = FontWeight.SemiBold
+                            text = location,
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
-                    }
-
-                    if (location.isNotBlank()) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = EkhoIcons.Place,
-                                contentDescription = null,
-                                modifier = Modifier.size(12.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                text = location,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
                     }
                 }
             }
@@ -149,7 +147,7 @@ fun EkhoEventCard(
                     imageVector = if (isBookmarked) EkhoIcons.Bookmark else EkhoIcons.BookmarkBorder,
                     contentDescription = null,
                     tint = if (isBookmarked) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outlineVariant,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
