@@ -2,6 +2,7 @@ package com.ekhonavigator.feature.events
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -33,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -55,7 +58,7 @@ fun EventsScreen(
 ) {
     val events by viewModel.events.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
-    val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
+    val selectedCategories by viewModel.selectedCategories.collectAsStateWithLifecycle()
 
     Column(
         modifier = modifier
@@ -79,8 +82,9 @@ fun EventsScreen(
             Spacer(Modifier.height(12.dp))
 
             CategoryFilterRow(
-                selectedCategory = selectedCategory,
-                onCategorySelected = viewModel::setCategory,
+                selectedCategories = selectedCategories,
+                onToggleCategory = viewModel::toggleCategory,
+                onClearAll = viewModel::clearCategories,
                 modifier = Modifier.fillMaxWidth(),
             )
         }
@@ -94,7 +98,7 @@ fun EventsScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = if (searchQuery.isNotBlank() || selectedCategory != null) {
+                    text = if (searchQuery.isNotBlank() || selectedCategories.isNotEmpty()) {
                         "No matching pulses"
                     } else {
                         "Campus is quiet..."
@@ -198,8 +202,9 @@ private fun EventSearchBar(
 
 @Composable
 private fun CategoryFilterRow(
-    selectedCategory: EventCategory?,
-    onCategorySelected: (EventCategory?) -> Unit,
+    selectedCategories: Set<EventCategory>,
+    onToggleCategory: (EventCategory) -> Unit,
+    onClearAll: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyRow(
@@ -209,37 +214,63 @@ private fun CategoryFilterRow(
     ) {
         item {
             FilterChip(
-                selected = selectedCategory == null,
-                onClick = { onCategorySelected(null) },
+                selected = selectedCategories.isEmpty(),
+                onClick = onClearAll,
                 label = { 
-                    Text("ALL", style = MaterialTheme.typography.labelSmall) 
+                    Text("All", style = MaterialTheme.typography.labelSmall) 
                 },
-                shape = RoundedCornerShape(8.dp),
+                shape = RoundedCornerShape(12.dp),
                 colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 ),
                 border = null
             )
         }
 
         items(EventCategory.entries.toList()) { category ->
+            val isSelected = category in selectedCategories
+            val categoryColor = Color(category.color)
+            
             FilterChip(
-                selected = selectedCategory == category,
-                onClick = {
-                    onCategorySelected(
-                        if (selectedCategory == category) null else category,
+                selected = isSelected,
+                onClick = { onToggleCategory(category) },
+                leadingIcon = {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(categoryColor)
+                            .then(
+                                if (isSelected) {
+                                    Modifier.border(1.dp, Color.White.copy(alpha = 0.5f), CircleShape)
+                                } else Modifier
+                            )
                     )
                 },
                 label = { 
-                    Text(category.displayName.uppercase(), style = MaterialTheme.typography.labelSmall) 
+                    Text(
+                        text = category.displayName, 
+                        style = MaterialTheme.typography.labelSmall
+                    ) 
                 },
-                shape = RoundedCornerShape(8.dp),
+                shape = RoundedCornerShape(12.dp),
                 colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = Color(category.color),
-                    selectedLabelColor = Color.White,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    selectedContainerColor = categoryColor.copy(alpha = 0.15f),
+                    selectedLabelColor = categoryColor,
                 ),
-                border = null
+                border = FilterChipDefaults.filterChipBorder(
+                    enabled = true,
+                    selected = isSelected,
+                    borderColor = Color.Transparent,
+                    selectedBorderColor = categoryColor.copy(alpha = 0.3f),
+                    borderWidth = 1.dp,
+                    selectedBorderWidth = 1.dp
+                )
             )
         }
     }
