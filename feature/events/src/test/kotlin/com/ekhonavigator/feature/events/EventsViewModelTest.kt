@@ -179,7 +179,7 @@ class EventsViewModelTest {
         repository.emit(listOf(alumniEvent, staffEvent))
         viewModel.events.first { it.size == 2 }
 
-        viewModel.setCategory(EventCategory.ALUMNI)
+        viewModel.toggleCategory(EventCategory.ALUMNI)
 
         val filtered = viewModel.events.first { it.size == 1 }
         assertEquals(EventCategory.ALUMNI, filtered[0].primaryCategory)
@@ -194,10 +194,10 @@ class EventsViewModelTest {
         viewModel.events.first { it.size == 2 }
 
         // Set a filter, then clear it
-        viewModel.setCategory(EventCategory.ALUMNI)
+        viewModel.toggleCategory(EventCategory.ALUMNI)
         viewModel.events.first { it.size == 1 }
 
-        viewModel.setCategory(null)
+        viewModel.clearCategories()
         val all = viewModel.events.first { it.size == 2 }
         assertEquals(2, all.size)
     }
@@ -214,7 +214,7 @@ class EventsViewModelTest {
         repository.emit(listOf(multiCatEvent))
         viewModel.events.first { it.isNotEmpty() }
 
-        viewModel.setCategory(EventCategory.STAFF)
+        viewModel.toggleCategory(EventCategory.STAFF)
         val filtered = viewModel.events.first { it.isNotEmpty() }
         assertEquals(1, filtered.size)
     }
@@ -242,7 +242,7 @@ class EventsViewModelTest {
 
         // Filter by "music" AND Alumni — only musicAlumni should match
         viewModel.setSearchQuery("music")
-        viewModel.setCategory(EventCategory.ALUMNI)
+        viewModel.toggleCategory(EventCategory.ALUMNI)
 
         val filtered = viewModel.events.first { it.size == 1 }
         assertEquals("Music Night", filtered[0].title)
