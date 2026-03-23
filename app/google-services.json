@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "850648391453-39kq5k9su2537vme8cb957tgqau89h2n.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.ekhonavigator",
+            "certificate_hash": "a8ad1d95308276a331903e106048b76397497c07"
+          }
+        },
+        {
           "client_id": "850648391453-3u7phl8u63984149q5t0gh8fpcn7jghu.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
