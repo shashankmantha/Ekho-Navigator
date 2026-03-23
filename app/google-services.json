@@ -46,6 +46,14 @@
           }
         },
         {
+          "client_id": "850648391453-jkn7f8ptfbf4as21i5aoipio16j29688.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.ekhonavigator",
+            "certificate_hash": "cbad341033dfbfcb4b696e9a192287d7fca1d76c"
+          }
+        },
+        {
           "client_id": "850648391453-n3ch5s175np67ofr24p2lg2h7dub9ai2.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
