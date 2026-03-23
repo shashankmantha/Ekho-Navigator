@@ -14,6 +14,15 @@ class FirestoreProfileRepository : ProfileRepository {
     }
 
     override suspend fun saveProfile(uid: String, profile: UserProfile) {
-        firestore.collection("users").document(uid).set(profile).await()
+        val normalizedProfile = profile.copy(
+            displayNameLower = profile.displayName.trim().lowercase(),
+            emailLower = profile.email.trim().lowercase(),
+            majorLower = profile.major.trim().lowercase(),
+        )
+
+        firestore.collection("users")
+            .document(uid)
+            .set(normalizedProfile)
+            .await()
     }
 }
