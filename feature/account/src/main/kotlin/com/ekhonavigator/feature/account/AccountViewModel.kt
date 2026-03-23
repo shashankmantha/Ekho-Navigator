@@ -92,8 +92,11 @@ class AccountViewModel(
                     uid = uid,
                     profile = UserProfile(
                         displayName = displayName,
+                        displayNameLower = displayName.trim().lowercase(),
                         email = email,
+                        emailLower = email.trim().lowercase(),
                         major = major,
+                        majorLower = major.trim().lowercase(),
                         description = description,
                         links = links,
                         majorVisible = majorVisible,

@@ -9,23 +9,23 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
+import javax.inject.Inject
 import kotlinx.coroutines.tasks.await
 
-class FirebaseAuthRepository(
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
-) : AuthRepository {
+class FirebaseAuthRepository @Inject constructor() : AuthRepository {
+
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
 
     override fun getCurrentUserEmail(): String? {
-        return FirebaseAuth.getInstance().currentUser?.email
+        return auth.currentUser?.email
     }
 
     override fun getCurrentUserDisplayName(): String? {
-        return FirebaseAuth.getInstance().currentUser?.displayName
+        return auth.currentUser?.displayName
     }
 
     override fun getCurrentUserUid(): String? {
-        return FirebaseAuth.getInstance().currentUser?.uid
-        return auth.currentUser?.email
+        return auth.currentUser?.uid
     }
 
     override suspend fun signInWithGoogle(
