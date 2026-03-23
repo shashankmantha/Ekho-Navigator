@@ -62,6 +62,7 @@ val TOP_LEVEL_NAV_ITEMS = mapOf(
     HomeNavKey to HOME,
     CalendarNavKey to CALENDAR,
     EventsNavKey to EVENTS,
-    SocialNavKey to SOCIAL,
+    // uncomment when ready
+    //SocialNavKey to SOCIAL,
     MapNavKey to MAP,
 )
