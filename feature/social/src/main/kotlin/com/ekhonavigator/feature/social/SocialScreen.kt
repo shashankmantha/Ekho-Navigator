@@ -22,14 +22,28 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.LaunchedEffect
+
+
 
 @Composable
+
+
 fun SocialScreen(
     onEventClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SocialViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(Unit) {
+       viewModel.loadSocialData()
+    }
 
     Column(
         modifier = modifier
@@ -50,21 +64,12 @@ fun SocialScreen(
             singleLine = true,
         )
 
-        when {
-            uiState.isLoading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
-
-            uiState.errorMessage != null -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            if (uiState.errorMessage != null) {
+                item {
                     Text(
                         text = uiState.errorMessage ?: "Unknown error",
                         color = MaterialTheme.colorScheme.error,
@@ -72,31 +77,117 @@ fun SocialScreen(
                 }
             }
 
-            uiState.searchQuery.trim().length < 2 -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text("Type at least 2 letters to search")
+            if (uiState.incomingRequests.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "Friend Requests",
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                }
+
+
+
+                items(uiState.incomingRequests, key = { "request_${it.uid}" }) { request ->
+                    ListItem(
+                        headlineContent = {
+                            Text(request.displayName)
+                        },
+                        supportingContent = {
+                            if (request.major.isNotBlank()) {
+                                Text(request.major)
+                            }
+                        },
+                        trailingContent = {
+                            Row {
+                                TextButton(
+                                    onClick = { viewModel.acceptFriendRequest(request.uid) }
+                                ) {
+                                    Text("Accept")
+                                }
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                TextButton(
+                                    onClick = { viewModel.denyFriendRequest(request.uid) }
+                                ) {
+                                    Text("Deny")
+                                }
+                            }
+
+
+                        },
+                    )
+                    HorizontalDivider()
                 }
             }
 
-            uiState.users.isEmpty() -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text("No users found")
+            if (uiState.friends.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "Friends",
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                }
+
+                items(uiState.friends, key = { "friend_${it.uid}" }) { friend ->
+                    ListItem(
+                        headlineContent = {
+                            Text(friend.displayName)
+                        },
+                        supportingContent = {
+                            if (friend.major.isNotBlank()) {
+                                Text(friend.major)
+                            }
+                        },
+                    )
+                    HorizontalDivider()
                 }
             }
 
-            else -> {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    items(uiState.users, key = { it.id }) { user ->
+            item {
+                Text(
+                    text = "Find People",
+                    style = MaterialTheme.typography.titleLarge,
+                )
+            }
+
+            when {
+                uiState.isLoading -> {
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                }
+
+                uiState.searchQuery.trim().length < 2 -> {
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text("Type at least 2 letters to search")
+                        }
+                    }
+                }
+
+                uiState.users.isEmpty() -> {
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text("No users found")
+                        }
+                    }
+                }
+
+                else -> {
+                    items(uiState.users, key = { "user_${it.id}" }) { user ->
                         ListItem(
-                            modifier = Modifier.clickable(enabled = false) {},
                             headlineContent = {
                                 Text(user.displayName)
                             },
@@ -111,6 +202,49 @@ fun SocialScreen(
 
                                 if (subtitle.isNotBlank()) {
                                     Text(subtitle)
+                                }
+                            },
+                            trailingContent = {
+
+                                val isFriend = uiState.friends.any { it.uid == user.id }
+                                val isPending = user.id in uiState.outgoingRequestIds
+                                val hasIncomingRequest = uiState.incomingRequests.any { it.uid == user.id }
+
+                                when {
+                                    isFriend -> {
+                                        Button(
+                                            onClick = {},
+                                            enabled = false,
+                                        ) {
+                                            Text("Friended")
+                                        }
+                                    }
+
+                                    isPending -> {
+                                        Button(
+                                            onClick = {},
+                                            enabled = false,
+                                        ) {
+                                            Text("Pending")
+                                        }
+                                    }
+
+                                    hasIncomingRequest -> {
+                                        Button(
+                                            onClick = {},
+                                            enabled = false,
+                                        ) {
+                                            Text("Requested You")
+                                        }
+                                    }
+
+                                    else -> {
+                                        Button(
+                                            onClick = { viewModel.sendFriendRequest(user.id) }
+                                        ) {
+                                            Text("Add")
+                                        }
+                                    }
                                 }
                             },
                         )

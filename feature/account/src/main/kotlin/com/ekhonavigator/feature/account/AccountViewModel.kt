@@ -49,6 +49,7 @@ class AccountViewModel(
                     descriptionVisible = profile?.descriptionVisible ?: true,
                     linksVisible = profile?.linksVisible ?: true,
                     avatarId = profile?.avatarId ?: "avatar_default",
+                    searchable = profile?.searchable ?: true
                 )
             } catch (e: Exception) {
                 _uiState.value = AccountUiState.Error(
@@ -82,6 +83,7 @@ class AccountViewModel(
         descriptionVisible: Boolean,
         linksVisible: Boolean,
         avatarId: String,
+        searchable: Boolean,
     ) {
         val uid = authRepo.getCurrentUserUid() ?: return
         val email = authRepo.getCurrentUserEmail() ?: ""
@@ -103,6 +105,7 @@ class AccountViewModel(
                         descriptionVisible = descriptionVisible,
                         linksVisible = linksVisible,
                         avatarId = avatarId,
+                        searchable = searchable,
                     ),
                 )
                 checkUser()

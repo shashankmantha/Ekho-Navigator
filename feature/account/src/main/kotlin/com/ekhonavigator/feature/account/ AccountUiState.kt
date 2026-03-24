@@ -3,6 +3,7 @@ package com.ekhonavigator.feature.account
 sealed interface AccountUiState {
     data object Loading : AccountUiState
     data object SignedOut : AccountUiState
+
     data class SignedIn(
         val email: String,
         val displayName: String,
@@ -13,6 +14,8 @@ sealed interface AccountUiState {
         val descriptionVisible: Boolean,
         val linksVisible: Boolean,
         val avatarId: String,
+        val searchable: Boolean,
     ) : AccountUiState
+
     data class Error(val message: String) : AccountUiState
 }

@@ -59,9 +59,10 @@ fun EditProfileScreen(
     initialMajorVisible: Boolean,
     initialDescriptionVisible: Boolean,
     initialLinksVisible: Boolean,
+    initialSearchable: Boolean,
     avatarId: String,
     onSaveClick: (
-        String, String, String, String, Boolean, Boolean, Boolean, String
+        String, String, String, String, Boolean, Boolean, Boolean, Boolean, String
     ) -> Unit,
     onSignOutClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -74,6 +75,7 @@ fun EditProfileScreen(
     var majorVisible by rememberSaveable { mutableStateOf(initialMajorVisible) }
     var descriptionVisible by rememberSaveable { mutableStateOf(initialDescriptionVisible) }
     var linksVisible by rememberSaveable { mutableStateOf(initialLinksVisible) }
+    var searchable by rememberSaveable { mutableStateOf(initialSearchable) }
 
     var selectedAvatarId by rememberSaveable { mutableStateOf(avatarId) }
     var showAvatarDialog by rememberSaveable { mutableStateOf(false) }
@@ -153,6 +155,40 @@ fun EditProfileScreen(
                 shape = RoundedCornerShape(14.dp),
             )
         }
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ProfileFieldCard(label = "Social Search") {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(
+                        text = "Appear in search",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = "Turn this off to make your profile unsearchable in the Social tab.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                Spacer(modifier = Modifier.size(12.dp))
+
+                Switch(
+                    checked = searchable,
+                    onCheckedChange = { searchable = it },
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -166,6 +202,7 @@ fun EditProfileScreen(
                     majorVisible,
                     descriptionVisible,
                     linksVisible,
+                    searchable,
                     selectedAvatarId,
                 )
             },
