@@ -15,11 +15,16 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.ekhonavigator.core.data.social.FriendRequest
+import com.ekhonavigator.core.data.social.FriendUser
 
 data class SocialUiState(
     val searchQuery: String = "",
     val isLoading: Boolean = false,
     val users: List<SocialUser> = emptyList(),
+    val incomingRequests: List<FriendRequest> = emptyList(),
+    val friends: List<FriendUser> = emptyList(),
+    val outgoingRequestIds: Set<String> = emptySet(),
     val errorMessage: String? = null,
 )
 
@@ -36,6 +41,8 @@ class SocialViewModel @Inject constructor(
     private val queryFlow = MutableStateFlow("")
 
     init {
+        loadSocialData()
+
         viewModelScope.launch {
             queryFlow
                 .debounce(300)
@@ -62,6 +69,89 @@ class SocialViewModel @Inject constructor(
         _uiState.update { it.copy(searchQuery = query) }
         queryFlow.value = query
     }
+    fun loadSocialData() {
+        val currentUserId = authRepository.getCurrentUserUid() ?: return
+
+        viewModelScope.launch {
+            runCatching {
+                val requests = repository.getIncomingRequests(currentUserId)
+                val friends = repository.getFriends(currentUserId)
+                val outgoingRequestIds = repository.getOutgoingRequestIds(currentUserId)
+                Triple(requests, friends, outgoingRequestIds)
+            }.onSuccess { (requests, friends, outgoingRequestIds) ->
+                _uiState.update {
+                    it.copy(
+                        incomingRequests = requests,
+                        friends = friends,
+                        outgoingRequestIds = outgoingRequestIds,
+                        errorMessage = null,
+                    )
+                }
+            }.onFailure { e ->
+                _uiState.update {
+                    it.copy(
+                        errorMessage = e.message ?: "Failed to load social data",
+                    )
+                }
+            }
+        }
+    }
+
+    fun sendFriendRequest(targetUserId: String) {
+        val currentUserId = authRepository.getCurrentUserUid() ?: return
+
+        viewModelScope.launch {
+            runCatching {
+                repository.sendFriendRequest(currentUserId, targetUserId)
+            }.onSuccess {
+                loadSocialData()
+            }.onFailure { e ->
+                _uiState.update {
+                    it.copy(
+                        errorMessage = e.message ?: "Failed to send friend request",
+                    )
+                }
+            }
+        }
+    }
+
+    fun acceptFriendRequest(fromUserId: String) {
+        val currentUserId = authRepository.getCurrentUserUid() ?: return
+
+        viewModelScope.launch {
+            runCatching {
+                repository.acceptFriendRequest(currentUserId, fromUserId)
+            }.onSuccess {
+                loadSocialData()
+            }.onFailure { e ->
+                _uiState.update {
+                    it.copy(
+                        errorMessage = e.message ?: "Failed to accept friend request",
+                    )
+                }
+            }
+        }
+    }
+
+    fun denyFriendRequest(fromUserId: String) {
+        val currentUserId = authRepository.getCurrentUserUid() ?: return
+
+        viewModelScope.launch {
+            runCatching {
+                repository.denyFriendRequest(currentUserId, fromUserId)
+            }.onSuccess {
+                loadSocialData()
+            }.onFailure { e ->
+                _uiState.update {
+                    it.copy(
+                        errorMessage = e.message ?: "Failed to deny friend request",
+                    )
+                }
+            }
+        }
+    }
+
+
 
     private fun searchUsers(query: String) {
         viewModelScope.launch {
