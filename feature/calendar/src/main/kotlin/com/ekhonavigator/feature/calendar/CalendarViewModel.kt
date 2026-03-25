@@ -18,6 +18,7 @@ import java.time.YearMonth
 import java.time.ZoneId
 import javax.inject.Inject
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
 
 /**
  * Drives the Calendar screen.
@@ -83,6 +84,11 @@ class CalendarViewModel @Inject constructor(
         _currentMonth.value = month
     }
 
+    fun toggleBookmark(eventId: String) {
+        viewModelScope.launch {
+            repository.toggleBookmark(eventId)
+        }
+    }
     /**
      * Enqueues a one-time WorkManager sync. The actual network call happens
      * in CalendarSyncWorker on a background thread — this just drops the
