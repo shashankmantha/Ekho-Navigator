@@ -43,6 +43,7 @@ fun EkhoEventCard(
     onBookmarkClick: () -> Unit,
     modifier: Modifier = Modifier,
     isBookmarked: Boolean = false,
+    showBookmark: Boolean = true,
 ) {
     Surface(
         modifier = modifier
@@ -139,16 +140,18 @@ fun EkhoEventCard(
                 }
             }
 
-            IconButton(
-                onClick = onBookmarkClick,
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    imageVector = if (isBookmarked) EkhoIcons.Bookmark else EkhoIcons.BookmarkBorder,
-                    contentDescription = null,
-                    tint = if (isBookmarked) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outlineVariant,
-                    modifier = Modifier.size(20.dp)
-                )
+            if (showBookmark) {
+                IconButton(
+                    onClick = onBookmarkClick,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isBookmarked) EkhoIcons.Bookmark else EkhoIcons.BookmarkBorder,
+                        contentDescription = null,
+                        tint = if (isBookmarked) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outlineVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
     }

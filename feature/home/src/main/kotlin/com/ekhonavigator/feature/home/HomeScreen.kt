@@ -34,6 +34,7 @@ import com.ekhonavigator.core.designsystem.component.EkhoEventCard
 import com.ekhonavigator.core.designsystem.component.EkhoSectionHeader
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.CalendarEvent
+import com.ekhonavigator.core.model.EventSource
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -185,6 +186,7 @@ fun HomeScreen(
                                 location = event.location,
                                 categoryColors = event.categories.map { Color(it.color) },
                                 isBookmarked = event.isBookmarked,
+                                showBookmark = event.source == EventSource.ICAL_FEED,
                                 onBookmarkClick = { viewModel.toggleBookmark(event.id) },
                                 onClick = { onEventClick(event.id) },
                                 modifier = Modifier.padding(horizontal = 16.dp)

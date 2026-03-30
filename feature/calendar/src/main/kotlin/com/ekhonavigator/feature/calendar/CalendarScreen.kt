@@ -29,6 +29,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ekhonavigator.core.designsystem.component.EkhoEventCard
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import com.ekhonavigator.core.model.EventSource
 import com.ekhonavigator.feature.calendar.component.CalendarTitle
 import com.ekhonavigator.feature.calendar.component.DayContent
 import com.kizitonwose.calendar.compose.HorizontalCalendar
@@ -161,6 +162,7 @@ fun CalendarScreen(
                         location = event.location,
                         categoryColors = event.categories.map { Color(it.color) },
                         isBookmarked = event.isBookmarked,
+                        showBookmark = event.source == EventSource.ICAL_FEED,
                         onBookmarkClick = { viewModel.toggleBookmark(event.id) },
                         onClick = { onEventClick(event.id) }
                     )

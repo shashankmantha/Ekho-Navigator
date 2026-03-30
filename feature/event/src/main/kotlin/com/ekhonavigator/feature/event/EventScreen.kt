@@ -47,6 +47,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.CalendarEvent
+import com.ekhonavigator.core.model.EventSource
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
@@ -120,16 +121,18 @@ private fun EventDetailContent(
                 modifier = Modifier.weight(1f),
             )
 
-            IconButton(onClick = onBookmarkClick) {
-                Icon(
-                    imageVector = if (event.isBookmarked) EkhoIcons.Bookmark else EkhoIcons.BookmarkBorder,
-                    contentDescription = if (event.isBookmarked) "Remove bookmark" else "Bookmark",
-                    tint = if (event.isBookmarked) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                )
+            if (event.source == EventSource.ICAL_FEED) {
+                IconButton(onClick = onBookmarkClick) {
+                    Icon(
+                        imageVector = if (event.isBookmarked) EkhoIcons.Bookmark else EkhoIcons.BookmarkBorder,
+                        contentDescription = if (event.isBookmarked) "Remove bookmark" else "Bookmark",
+                        tint = if (event.isBookmarked) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                }
             }
 
             IconButton(onClick = {
