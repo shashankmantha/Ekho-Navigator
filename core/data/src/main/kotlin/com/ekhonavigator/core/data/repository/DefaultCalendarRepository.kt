@@ -62,7 +62,7 @@ class DefaultCalendarRepository @Inject constructor(
 
             // Remove events no longer in the feed (but keep bookmarked ones)
             val activeUids = networkEvents.map { it.uid }
-            calendarEventDao.deleteEventsNotIn(activeUids)
+            calendarEventDao.deleteICalEventsNotIn(activeUids)
 
             SyncResult.Success(eventsUpdated = entities.size)
         } catch (e: Exception) {

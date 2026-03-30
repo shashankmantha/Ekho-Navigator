@@ -1,7 +1,9 @@
 package com.ekhonavigator.core.data.di
 
 import com.ekhonavigator.core.data.repository.CalendarRepository
+import com.ekhonavigator.core.data.repository.CustomEventRepository
 import com.ekhonavigator.core.data.repository.DefaultCalendarRepository
+import com.ekhonavigator.core.data.repository.DefaultCustomEventRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -15,4 +17,9 @@ abstract class DataModule {
     abstract fun bindCalendarRepository(
         impl: DefaultCalendarRepository,
     ): CalendarRepository
+
+    @Binds
+    abstract fun bindCustomEventRepository(
+        impl: DefaultCustomEventRepository,
+    ): CustomEventRepository
 }
