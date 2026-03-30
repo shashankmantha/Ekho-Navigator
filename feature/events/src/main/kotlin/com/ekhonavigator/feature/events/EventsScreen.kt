@@ -23,9 +23,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -53,6 +55,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun EventsScreen(
     onEventClick: (String) -> Unit,
+    onCreateEventClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: EventsViewModel = hiltViewModel(),
 ) {
@@ -60,9 +63,27 @@ fun EventsScreen(
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val selectedCategories by viewModel.selectedCategories.collectAsStateWithLifecycle()
 
+    Scaffold(
+        modifier = modifier,
+        floatingActionButton = {
+            if (viewModel.isSignedIn) {
+                FloatingActionButton(
+                    onClick = onCreateEventClick,
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                ) {
+                    Icon(
+                        imageVector = EkhoIcons.Add,
+                        contentDescription = "Create event",
+                    )
+                }
+            }
+        },
+    ) { innerPadding ->
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
+            .padding(innerPadding)
             .background(MaterialTheme.colorScheme.surface)
     ) {
         // ---- Search and Filter Section ----
@@ -121,7 +142,7 @@ fun EventsScreen(
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 24.dp),
+                contentPadding = PaddingValues(bottom = 88.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 eventsByDate.forEach { (date, dayEvents) ->
@@ -161,6 +182,7 @@ fun EventsScreen(
             }
         }
     }
+    } // Scaffold
 }
 
 @Composable

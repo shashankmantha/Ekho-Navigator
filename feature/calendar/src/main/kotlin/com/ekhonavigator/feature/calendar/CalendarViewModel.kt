@@ -2,6 +2,7 @@ package com.ekhonavigator.feature.calendar
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
+import com.ekhonavigator.core.data.auth.AuthRepository
 import com.ekhonavigator.core.data.repository.CalendarRepository
 import com.ekhonavigator.core.data.sync.SyncInitializer
 import com.ekhonavigator.core.model.CalendarEvent
@@ -32,8 +33,12 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class CalendarViewModel @Inject constructor(
     private val repository: CalendarRepository,
+    private val authRepository: AuthRepository,
     @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
+
+    val isSignedIn: Boolean
+        get() = authRepository.getCurrentUserUid() != null
 
     // ---- User-driven state ----
 

@@ -2,6 +2,7 @@ package com.ekhonavigator.feature.events
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ekhonavigator.core.data.auth.AuthRepository
 import com.ekhonavigator.core.data.repository.CalendarRepository
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventCategory
@@ -24,7 +25,11 @@ import javax.inject.Inject
 @HiltViewModel
 class EventsViewModel @Inject constructor(
     private val repository: CalendarRepository,
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
+
+    val isSignedIn: Boolean
+        get() = authRepository.getCurrentUserUid() != null
 
     // ---- Filter state ----
 

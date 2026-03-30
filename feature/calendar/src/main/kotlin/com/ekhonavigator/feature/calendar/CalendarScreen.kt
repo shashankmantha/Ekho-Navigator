@@ -9,8 +9,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -25,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ekhonavigator.core.designsystem.component.EkhoEventCard
+import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.feature.calendar.component.CalendarTitle
 import com.ekhonavigator.feature.calendar.component.DayContent
 import com.kizitonwose.calendar.compose.HorizontalCalendar
@@ -40,6 +44,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun CalendarScreen(
     onEventClick: (String) -> Unit,
+    onCreateEventClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: CalendarViewModel = hiltViewModel(),
 ) {
@@ -71,7 +76,24 @@ fun CalendarScreen(
             .collect { month -> viewModel.setMonth(month) }
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
+    Scaffold(
+        modifier = modifier,
+        floatingActionButton = {
+            if (viewModel.isSignedIn) {
+                FloatingActionButton(
+                    onClick = onCreateEventClick,
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                ) {
+                    Icon(
+                        imageVector = EkhoIcons.Add,
+                        contentDescription = "Create event",
+                    )
+                }
+            }
+        },
+    ) { innerPadding ->
+    Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
         HorizontalCalendar(
             state = calendarState,
             monthHeader = { month ->
@@ -126,7 +148,7 @@ fun CalendarScreen(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(eventsForSelectedDate, key = { it.id }) { event ->
@@ -146,4 +168,5 @@ fun CalendarScreen(
             }
         }
     }
+    } // Scaffold
 }
