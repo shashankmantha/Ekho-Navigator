@@ -2,6 +2,7 @@ package com.ekhonavigator.feature.events
 
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.testing.MainDispatcherRule
+import com.ekhonavigator.core.testing.TestAuthRepository
 import com.ekhonavigator.core.testing.TestCalendarRepository
 import com.ekhonavigator.core.testing.testCalendarEvent
 import kotlinx.coroutines.flow.first
@@ -56,6 +57,7 @@ class EventsViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private lateinit var repository: TestCalendarRepository
+    private lateinit var authRepository: TestAuthRepository
     private lateinit var viewModel: EventsViewModel
 
     /**
@@ -65,7 +67,8 @@ class EventsViewModelTest {
     @Before
     fun setup() {
         repository = TestCalendarRepository()
-        viewModel = EventsViewModel(repository)
+        authRepository = TestAuthRepository()
+        viewModel = EventsViewModel(repository, authRepository)
     }
 
     @Test
