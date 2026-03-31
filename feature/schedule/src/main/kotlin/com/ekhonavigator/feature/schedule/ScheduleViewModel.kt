@@ -10,7 +10,7 @@ import com.ekhonavigator.core.data.sync.SyncInitializer
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSource
-import com.ekhonavigator.core.model.EventSourceFilter
+import com.ekhonavigator.core.model.ScheduleSourceType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -46,101 +46,81 @@ class ScheduleViewModel @Inject constructor(
     }
 
     // ══════════════════════════════════════════════════
-    // Shared state (used across tabs)
+    // Shared state (used across Month + Day screens)
     // ══════════════════════════════════════════════════
 
     private val _selectedDate = MutableStateFlow(LocalDate.now())
     val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
 
+    /** Multi-select source filter: all types active by default. */
+    private val _activeSourceTypes = MutableStateFlow(ScheduleSourceType.entries.toSet())
+    val activeSourceTypes: StateFlow<Set<ScheduleSourceType>> = _activeSourceTypes.asStateFlow()
+
+    /** Multi-select category filter: empty = show all categories. */
+    private val _selectedCategories = MutableStateFlow<Set<EventCategory>>(emptySet())
+    val selectedCategories: StateFlow<Set<EventCategory>> = _selectedCategories.asStateFlow()
+
     // ══════════════════════════════════════════════════
-    // Month tab state (ported from CalendarViewModel)
+    // Month tab state
     // ══════════════════════════════════════════════════
 
-    private val _currentMonth = MutableStateFlow(YearMonth.now())
-    val currentMonth: StateFlow<YearMonth> = _currentMonth.asStateFlow()
+    private val _visibleMonthRange = MutableStateFlow(
+        YearMonth.now() to YearMonth.now()
+    )
 
-    private val _monthSourceFilter = MutableStateFlow(EventSourceFilter.ALL)
-    val monthSourceFilter: StateFlow<EventSourceFilter> = _monthSourceFilter.asStateFlow()
+    /**
+     * All events visible on the calendar grid (unfiltered).
+     * Spans from one week before the first visible month to one week
+     * after the last visible month, covering all bleed-in days.
+     */
+    private val rawEventsForMonth: StateFlow<List<CalendarEvent>> = _visibleMonthRange
+        .flatMapLatest { (first, last) ->
+            val zone = ZoneId.systemDefault()
+            val start = first.atDay(1).minusWeeks(1).atStartOfDay(zone).toInstant()
+            val end = last.plusMonths(1).atDay(1).plusWeeks(1).atStartOfDay(zone).toInstant()
+            repository.observeEventsByDateRange(start, end)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    private val _monthSelectedCategories = MutableStateFlow<Set<EventCategory>>(emptySet())
-    val monthSelectedCategories: StateFlow<Set<EventCategory>> = _monthSelectedCategories.asStateFlow()
+    /** Events for the month, filtered by source types + categories. */
+    val eventsForMonth: StateFlow<List<CalendarEvent>> = combine(
+        rawEventsForMonth,
+        _activeSourceTypes,
+        _selectedCategories,
+    ) { events, activeTypes, categories ->
+        events.filter { it.matchesSourceTypes(activeTypes) && it.matchesCategories(categories) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** All events in the selected date range (unfiltered by source/category). */
-    private val rawEventsForSelectedDate: StateFlow<List<CalendarEvent>> = _selectedDate
+    /** Events for the selected date, filtered by source types + categories (for DayScreen). */
+    val eventsForSelectedDate: StateFlow<List<CalendarEvent>> = _selectedDate
         .flatMapLatest { date ->
             val zone = ZoneId.systemDefault()
             val start = date.atStartOfDay(zone).toInstant()
             val end = date.plusDays(1).atStartOfDay(zone).toInstant()
-            repository.observeEventsByDateRange(start, end)
-        }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
-    /** Events for the selected date, filtered by source and category. */
-    val monthEventsForSelectedDate: StateFlow<List<CalendarEvent>> = combine(
-        rawEventsForSelectedDate,
-        _monthSourceFilter,
-        _monthSelectedCategories,
-    ) { events, source, selected ->
-        events.filter { event ->
-            val matchesSource = when (source) {
-                EventSourceFilter.ALL -> true
-                EventSourceFilter.CAMPUS -> event.source == EventSource.ICAL_FEED
-                EventSourceFilter.PERSONAL -> event.source != EventSource.ICAL_FEED
+            combine(
+                repository.observeEventsByDateRange(start, end),
+                _activeSourceTypes,
+                _selectedCategories,
+            ) { events, activeTypes, categories ->
+                events.filter { it.matchesSourceTypes(activeTypes) && it.matchesCategories(categories) }
             }
-            val matchesCategory = selected.isEmpty() ||
-                    event.categories.any { it in selected }
-            matchesSource && matchesCategory
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
-    /** Categories available in the source-filtered events for the selected date. */
-    val monthAvailableCategories: StateFlow<List<EventCategory>> = combine(
-        rawEventsForSelectedDate,
-        _monthSourceFilter,
-    ) { events, source ->
-        events
-            .filter { event ->
-                when (source) {
-                    EventSourceFilter.ALL -> true
-                    EventSourceFilter.CAMPUS -> event.source == EventSource.ICAL_FEED
-                    EventSourceFilter.PERSONAL -> event.source != EventSource.ICAL_FEED
-                }
-            }
-            .flatMap { it.categories }
-            .distinct()
-            .sortedBy { it.ordinal }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
-    /** All events in the month (unfiltered, for calendar dot indicators). */
-    val eventsForMonth: StateFlow<List<CalendarEvent>> = _currentMonth
-        .flatMapLatest { month ->
-            val zone = ZoneId.systemDefault()
-            val start = month.atDay(1).atStartOfDay(zone).toInstant()
-            val end = month.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant()
-            repository.observeEventsByDateRange(start, end)
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     // ══════════════════════════════════════════════════
-    // Discover tab state (ported from EventsViewModel)
+    // Discover tab state (search is Discover-specific, filters are shared)
     // ══════════════════════════════════════════════════
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
-    private val _discoverSourceFilter = MutableStateFlow(EventSourceFilter.ALL)
-    val discoverSourceFilter: StateFlow<EventSourceFilter> = _discoverSourceFilter.asStateFlow()
-
-    private val _discoverSelectedCategories = MutableStateFlow<Set<EventCategory>>(emptySet())
-    val discoverSelectedCategories: StateFlow<Set<EventCategory>> = _discoverSelectedCategories.asStateFlow()
-
-    /** Filtered event list for the Discover tab. */
+    /** Filtered event list for the Discover tab. Uses shared source + category filters. */
     val discoverEvents: StateFlow<List<CalendarEvent>> = combine(
         repository.observeEvents(),
         _searchQuery,
-        _discoverSourceFilter,
-        _discoverSelectedCategories,
-    ) { allEvents, query, source, selected ->
+        _activeSourceTypes,
+        _selectedCategories,
+    ) { allEvents, query, activeTypes, categories ->
         val now = LocalDate.now(ZoneId.of("America/Los_Angeles"))
             .atStartOfDay(ZoneId.of("America/Los_Angeles"))
             .toInstant()
@@ -148,74 +128,49 @@ class ScheduleViewModel @Inject constructor(
         allEvents.filter { event ->
             val notPast = event.startTime >= now
 
-            val matchesSource = when (source) {
-                EventSourceFilter.ALL -> true
-                EventSourceFilter.CAMPUS -> event.source == EventSource.ICAL_FEED
-                EventSourceFilter.PERSONAL -> event.source != EventSource.ICAL_FEED
-            }
-
             val matchesQuery = query.isBlank() ||
                     event.title.contains(query, ignoreCase = true) ||
                     event.description.contains(query, ignoreCase = true) ||
                     event.location.contains(query, ignoreCase = true)
 
-            val matchesCategory = selected.isEmpty() ||
-                    event.categories.any { it in selected }
-
-            notPast && matchesSource && matchesQuery && matchesCategory
+            notPast && event.matchesSourceTypes(activeTypes) &&
+                    event.matchesCategories(categories) && matchesQuery
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** Categories available in the currently source-filtered discover events. */
-    val discoverAvailableCategories: StateFlow<List<EventCategory>> = combine(
-        repository.observeEvents(),
-        _discoverSourceFilter,
-    ) { allEvents, source ->
-        val now = LocalDate.now(ZoneId.of("America/Los_Angeles"))
-            .atStartOfDay(ZoneId.of("America/Los_Angeles"))
-            .toInstant()
-
-        allEvents
-            .filter { event ->
-                event.startTime >= now && when (source) {
-                    EventSourceFilter.ALL -> true
-                    EventSourceFilter.CAMPUS -> event.source == EventSource.ICAL_FEED
-                    EventSourceFilter.PERSONAL -> event.source != EventSource.ICAL_FEED
-                }
-            }
-            .flatMap { it.categories }
-            .distinct()
-            .sortedBy { it.ordinal }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
     // ══════════════════════════════════════════════════
-    // Actions — Month tab
+    // Actions — Schedule source filter (Month + Day)
     // ══════════════════════════════════════════════════
 
     fun selectDate(date: LocalDate) {
         _selectedDate.value = date
     }
 
-    fun setMonth(month: YearMonth) {
-        _currentMonth.value = month
+    fun setVisibleMonthRange(first: YearMonth, last: YearMonth) {
+        _visibleMonthRange.value = first to last
     }
 
-    fun setMonthSourceFilter(filter: EventSourceFilter) {
-        _monthSourceFilter.value = filter
-        _monthSelectedCategories.value = emptySet()
-    }
-
-    fun toggleMonthCategory(category: EventCategory) {
-        val current = _monthSelectedCategories.value
-        _monthSelectedCategories.value = if (category in current) {
+    fun toggleCategory(category: EventCategory) {
+        val current = _selectedCategories.value
+        _selectedCategories.value = if (category in current) {
             current - category
         } else {
             current + category
         }
     }
 
-    fun clearMonthCategories() {
-        _monthSelectedCategories.value = emptySet()
+    fun clearCategories() {
+        _selectedCategories.value = emptySet()
+    }
+
+    fun toggleSourceType(type: ScheduleSourceType) {
+        val current = _activeSourceTypes.value
+        // Don't allow deselecting all — at least one must stay active
+        if (type in current && current.size > 1) {
+            _activeSourceTypes.value = current - type
+        } else if (type !in current) {
+            _activeSourceTypes.value = current + type
+        }
     }
 
     // ══════════════════════════════════════════════════
@@ -224,24 +179,6 @@ class ScheduleViewModel @Inject constructor(
 
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
-    }
-
-    fun setDiscoverSourceFilter(filter: EventSourceFilter) {
-        _discoverSourceFilter.value = filter
-        _discoverSelectedCategories.value = emptySet()
-    }
-
-    fun toggleDiscoverCategory(category: EventCategory) {
-        val current = _discoverSelectedCategories.value
-        _discoverSelectedCategories.value = if (category in current) {
-            current - category
-        } else {
-            current + category
-        }
-    }
-
-    fun clearDiscoverCategories() {
-        _discoverSelectedCategories.value = emptySet()
     }
 
     // ══════════════════════════════════════════════════
@@ -263,3 +200,35 @@ class ScheduleViewModel @Inject constructor(
             "https://25livepub.collegenet.com/calendars/csuci-calendar-of-events.ics"
     }
 }
+
+/**
+ * Check if a [CalendarEvent] matches any of the active [ScheduleSourceType]s.
+ * An event matches if ANY active type includes it.
+ */
+private fun CalendarEvent.matchesSourceTypes(activeTypes: Set<ScheduleSourceType>): Boolean {
+    for (type in activeTypes) {
+        when (type) {
+            ScheduleSourceType.SCHEDULE -> {
+                // CLASS_SCHEDULE source (future — not yet in EventSource)
+                // For now, no events match this type
+            }
+            ScheduleSourceType.CUSTOM -> {
+                if (source == EventSource.USER_CREATED || source == EventSource.SHARED) return true
+            }
+            ScheduleSourceType.CAMPUS -> {
+                if (source == EventSource.ICAL_FEED) return true
+            }
+            ScheduleSourceType.BOOKMARKED -> {
+                if (source == EventSource.ICAL_FEED && isBookmarked) return true
+            }
+        }
+    }
+    return false
+}
+
+/**
+ * Check if a [CalendarEvent] matches the selected categories.
+ * Empty set = no filter = all events pass.
+ */
+private fun CalendarEvent.matchesCategories(selected: Set<EventCategory>): Boolean =
+    selected.isEmpty() || categories.any { it in selected }

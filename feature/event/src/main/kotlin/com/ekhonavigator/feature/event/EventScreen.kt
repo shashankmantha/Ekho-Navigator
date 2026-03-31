@@ -199,7 +199,7 @@ private fun EventDetailContent(
                         imageVector = if (event.isBookmarked) EkhoIcons.Bookmark else EkhoIcons.BookmarkBorder,
                         contentDescription = if (event.isBookmarked) "Remove bookmark" else "Bookmark",
                         tint = if (event.isBookmarked) {
-                            MaterialTheme.colorScheme.primary
+                            MaterialTheme.colorScheme.tertiary
                         } else {
                             MaterialTheme.colorScheme.onSurfaceVariant
                         },
@@ -218,27 +218,30 @@ private fun EventDetailContent(
             }
         }
 
-        // ---- Category chips ----
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            event.categories.forEach { category ->
-                AssistChip(
-                    onClick = { },
-                    label = { Text(category.displayName) },
-                    leadingIcon = {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(Color(category.color)),
-                        )
-                    },
-                    colors = AssistChipDefaults.assistChipColors(
-                        containerColor = Color(category.color).copy(alpha = 0.1f),
-                        labelColor = Color(category.color),
-                    ),
-                )
+        // ---- Category chips (monochromatic) ----
+        if (event.categories.isNotEmpty()) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                event.categories.forEach { category ->
+                    AssistChip(
+                        onClick = { },
+                        label = {
+                            Text(
+                                text = category.displayName,
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        },
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
+                        border = AssistChipDefaults.assistChipBorder(
+                            enabled = true,
+                            borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                        ),
+                    )
+                }
             }
         }
 

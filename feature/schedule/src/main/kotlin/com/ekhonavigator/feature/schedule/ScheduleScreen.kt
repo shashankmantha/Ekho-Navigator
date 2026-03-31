@@ -21,11 +21,15 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
@@ -38,9 +42,12 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,16 +57,17 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ekhonavigator.core.designsystem.component.EkhoEventCard
 import com.ekhonavigator.core.designsystem.component.EkhoSectionHeader
+import com.ekhonavigator.core.designsystem.component.sourceAccentColor
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
-import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSource
-import com.ekhonavigator.core.model.EventSourceFilter
+import com.ekhonavigator.core.model.ScheduleSourceType
 import com.ekhonavigator.feature.schedule.component.CalendarTitle
 import com.ekhonavigator.feature.schedule.component.DayContent
 import com.ekhonavigator.feature.schedule.component.DaysOfWeekHeader
-import com.kizitonwose.calendar.compose.HorizontalCalendar
+import com.kizitonwose.calendar.compose.VerticalCalendar
 import com.kizitonwose.calendar.compose.rememberCalendarState
+import com.kizitonwose.calendar.core.OutDateStyle
 import com.kizitonwose.calendar.core.daysOfWeek
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -80,6 +88,7 @@ private enum class ScheduleTab(val title: String) {
 @Composable
 fun ScheduleScreen(
     onEventClick: (String) -> Unit,
+    onDayClick: (Long) -> Unit,
     onCreateEventClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ScheduleViewModel = hiltViewModel(),
@@ -90,20 +99,40 @@ fun ScheduleScreen(
         pageCount = { tabs.size },
     )
     val scope = rememberCoroutineScope()
+    var snapToTodayTrigger by remember { mutableStateOf(0) }
 
     Scaffold(
         modifier = modifier,
         floatingActionButton = {
-            if (viewModel.isSignedIn) {
-                FloatingActionButton(
-                    onClick = onCreateEventClick,
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                ) {
-                    Icon(
-                        imageVector = EkhoIcons.Add,
-                        contentDescription = "Create event",
-                    )
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                if (pagerState.currentPage == ScheduleTab.MONTH.ordinal) {
+                    SmallFloatingActionButton(
+                        onClick = { snapToTodayTrigger++ },
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    ) {
+                        Icon(
+                            imageVector = EkhoIcons.CalendarFilled,
+                            contentDescription = "Jump to today",
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                }
+
+                if (viewModel.isSignedIn) {
+                    FloatingActionButton(
+                        onClick = onCreateEventClick,
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    ) {
+                        Icon(
+                            imageVector = EkhoIcons.Add,
+                            contentDescription = "Create event",
+                        )
+                    }
                 }
             }
         },
@@ -111,7 +140,7 @@ fun ScheduleScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
+                .padding(bottom = innerPadding.calculateBottomPadding()),
         ) {
             // Tab row
             TabRow(
@@ -153,7 +182,8 @@ fun ScheduleScreen(
                     ScheduleTab.WEEK -> WeekTab()
                     ScheduleTab.MONTH -> MonthTab(
                         viewModel = viewModel,
-                        onEventClick = onEventClick,
+                        onDayClick = onDayClick,
+                        snapToTodayTrigger = snapToTodayTrigger,
                     )
                     ScheduleTab.DISCOVER -> DiscoverTab(
                         viewModel = viewModel,
@@ -184,26 +214,22 @@ private fun WeekTab() {
 }
 
 // ══════════════════════════════════════════════════
-// Month Tab — ported from CalendarScreen
+// Month Tab — full-screen grid + color-coded filters
 // ══════════════════════════════════════════════════
 
 @Composable
 private fun MonthTab(
     viewModel: ScheduleViewModel,
-    onEventClick: (String) -> Unit,
+    onDayClick: (Long) -> Unit,
+    snapToTodayTrigger: Int = 0,
 ) {
-    val selectedDate by viewModel.selectedDate.collectAsStateWithLifecycle()
-    val eventsForSelectedDate by viewModel.monthEventsForSelectedDate.collectAsStateWithLifecycle()
     val eventsForMonth by viewModel.eventsForMonth.collectAsStateWithLifecycle()
-    val sourceFilter by viewModel.monthSourceFilter.collectAsStateWithLifecycle()
-    val selectedCategories by viewModel.monthSelectedCategories.collectAsStateWithLifecycle()
-    val availableCategories by viewModel.monthAvailableCategories.collectAsStateWithLifecycle()
+    val activeSourceTypes by viewModel.activeSourceTypes.collectAsStateWithLifecycle()
+    val selectedCategories by viewModel.selectedCategories.collectAsStateWithLifecycle()
 
     val today = remember { LocalDate.now() }
     val daysOfWeek = remember { daysOfWeek() }
     val scope = rememberCoroutineScope()
-    val timeFormatter = remember { DateTimeFormatter.ofPattern("h:mm a") }
-    val zone = remember { ZoneId.systemDefault() }
 
     val eventsByDay = remember(eventsForMonth) {
         eventsForMonth.groupBy { event ->
@@ -216,114 +242,90 @@ private fun MonthTab(
         endMonth = YearMonth.now().plusMonths(12),
         firstVisibleMonth = YearMonth.now(),
         firstDayOfWeek = daysOfWeek.first(),
+        outDateStyle = OutDateStyle.EndOfRow,
     )
 
     LaunchedEffect(calendarState) {
-        snapshotFlow { calendarState.firstVisibleMonth.yearMonth }
-            .collect { month -> viewModel.setMonth(month) }
+        snapshotFlow {
+            calendarState.firstVisibleMonth.yearMonth to
+                    calendarState.lastVisibleMonth.yearMonth
+        }.collect { (first, last) ->
+            viewModel.setVisibleMonthRange(first, last)
+        }
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        HorizontalCalendar(
-            state = calendarState,
-            monthHeader = { month ->
-                CalendarTitle(
-                    month = month.yearMonth,
-                    onPreviousMonth = {
-                        scope.launch {
-                            calendarState.animateScrollToMonth(
-                                month.yearMonth.minusMonths(1),
-                            )
-                        }
-                    },
-                    onNextMonth = {
-                        scope.launch {
-                            calendarState.animateScrollToMonth(
-                                month.yearMonth.plusMonths(1),
-                            )
-                        }
-                    },
+    LaunchedEffect(snapToTodayTrigger) {
+        if (snapToTodayTrigger > 0) {
+            calendarState.animateScrollToMonth(YearMonth.from(today))
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Source filter chips + category filter
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ScheduleSourceFilterRow(
+                    activeTypes = activeSourceTypes,
+                    onToggle = viewModel::toggleSourceType,
+                    modifier = Modifier.weight(1f),
                 )
-                DaysOfWeekHeader(daysOfWeek = daysOfWeek)
-            },
-            dayContent = { day ->
-                DayContent(
-                    day = day,
-                    isSelected = day.date == selectedDate,
-                    isToday = day.date == today,
-                    events = eventsByDay[day.date].orEmpty(),
-                    onClick = { viewModel.selectDate(day.date) },
+
+                // Category filter inline
+                CategoryFilterButton(
+                    selectedCategories = selectedCategories,
+                    onToggleCategory = viewModel::toggleCategory,
+                    onClearAll = viewModel::clearCategories,
                 )
-            },
-        )
+            }
 
-        HorizontalDivider(
-            modifier = Modifier.padding(vertical = 8.dp),
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
-        )
+            // Pinned day-of-week header (doesn't scroll)
+            DaysOfWeekHeader(daysOfWeek = daysOfWeek)
 
-        // Source filter row
-        SourceFilterRow(
-            selected = sourceFilter,
-            onSelect = viewModel::setMonthSourceFilter,
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        // Reactive category filter
-        if (availableCategories.isNotEmpty()) {
-            Spacer(Modifier.height(4.dp))
-            CategoryFilterRow(
-                availableCategories = availableCategories,
-                selectedCategories = selectedCategories,
-                onToggleCategory = viewModel::toggleMonthCategory,
-                onClearAll = viewModel::clearMonthCategories,
-                modifier = Modifier.fillMaxWidth(),
+            // Vertically scrolling calendar grid
+            VerticalCalendar(
+                state = calendarState,
+                monthHeader = { month ->
+                    CalendarTitle(
+                        month = month.yearMonth,
+                        onPreviousMonth = {
+                            scope.launch {
+                                calendarState.animateScrollToMonth(
+                                    month.yearMonth.minusMonths(1),
+                                )
+                            }
+                        },
+                        onNextMonth = {
+                            scope.launch {
+                                calendarState.animateScrollToMonth(
+                                    month.yearMonth.plusMonths(1),
+                                )
+                            }
+                        },
+                    )
+                },
+                dayContent = { day ->
+                    DayContent(
+                        day = day,
+                        isSelected = day.date == today,
+                        isToday = day.date == today,
+                        events = eventsByDay[day.date].orEmpty(),
+                        onClick = { onDayClick(day.date.toEpochDay()) },
+                    )
+                },
             )
         }
 
-        Spacer(Modifier.height(4.dp))
-
-        if (eventsForSelectedDate.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(32.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "No events on this day",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                items(eventsForSelectedDate, key = { it.id }) { event ->
-                    val startTime = event.startTime.atZone(zone).format(timeFormatter)
-                    val endTime = event.endTime.atZone(zone).format(timeFormatter)
-
-                    EkhoEventCard(
-                        title = event.title,
-                        timeRange = "$startTime – $endTime",
-                        location = event.location,
-                        categoryColors = event.categories.map { Color(it.color) },
-                        isBookmarked = event.isBookmarked,
-                        showBookmark = event.source == EventSource.ICAL_FEED,
-                        onBookmarkClick = { viewModel.toggleBookmark(event.id) },
-                        onClick = { onEventClick(event.id) },
-                    )
-                }
-            }
-        }
     }
 }
 
 // ══════════════════════════════════════════════════
-// Discover Tab — ported from EventsScreen
+// Discover Tab — event list with search/filters
 // ══════════════════════════════════════════════════
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -334,49 +336,45 @@ private fun DiscoverTab(
 ) {
     val events by viewModel.discoverEvents.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
-    val sourceFilter by viewModel.discoverSourceFilter.collectAsStateWithLifecycle()
-    val selectedCategories by viewModel.discoverSelectedCategories.collectAsStateWithLifecycle()
-    val availableCategories by viewModel.discoverAvailableCategories.collectAsStateWithLifecycle()
+    val activeSourceTypes by viewModel.activeSourceTypes.collectAsStateWithLifecycle()
+    val selectedCategories by viewModel.selectedCategories.collectAsStateWithLifecycle()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface),
     ) {
-        // Search and filter section
-        Column(
+        // Search bar
+        EventSearchBar(
+            query = searchQuery,
+            onQueryChange = viewModel::setSearchQuery,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 12.dp, bottom = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+        )
+
+        // Source filter chips + category filter (shared with Month tab)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            EventSearchBar(
-                query = searchQuery,
-                onQueryChange = viewModel::setSearchQuery,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+            ScheduleSourceFilterRow(
+                activeTypes = activeSourceTypes,
+                onToggle = viewModel::toggleSourceType,
+                modifier = Modifier.weight(1f),
             )
 
-            Spacer(Modifier.height(12.dp))
-
-            SourceFilterRow(
-                selected = sourceFilter,
-                onSelect = viewModel::setDiscoverSourceFilter,
-                modifier = Modifier.fillMaxWidth(),
+            CategoryFilterButton(
+                selectedCategories = selectedCategories,
+                onToggleCategory = viewModel::toggleCategory,
+                onClearAll = viewModel::clearCategories,
             )
-
-            if (availableCategories.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp))
-
-                CategoryFilterRow(
-                    availableCategories = availableCategories,
-                    selectedCategories = selectedCategories,
-                    onToggleCategory = viewModel::toggleDiscoverCategory,
-                    onClearAll = viewModel::clearDiscoverCategories,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
         }
+
+        Spacer(Modifier.height(4.dp))
 
         // Event list
         if (events.isEmpty()) {
@@ -439,7 +437,7 @@ private fun DiscoverTab(
                             title = event.title,
                             timeRange = "$startTime – $endTime",
                             location = event.location,
-                            categoryColors = event.categories.map { Color(it.color) },
+                            accentColor = sourceAccentColor(event.source.name, event.isBookmarked),
                             isBookmarked = event.isBookmarked,
                             showBookmark = event.source == EventSource.ICAL_FEED,
                             onBookmarkClick = { viewModel.toggleBookmark(event.id) },
@@ -454,7 +452,7 @@ private fun DiscoverTab(
 }
 
 // ══════════════════════════════════════════════════
-// Shared filter composables (used by Month + Discover tabs)
+// Discover tab filter composables
 // ══════════════════════════════════════════════════
 
 @Composable
@@ -494,116 +492,110 @@ private fun EventSearchBar(
     )
 }
 
-@Composable
-private fun SourceFilterRow(
-    selected: EventSourceFilter,
-    onSelect: (EventSourceFilter) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier.padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        EventSourceFilter.entries.forEach { filter ->
-            FilterChip(
-                selected = filter == selected,
-                onClick = { onSelect(filter) },
-                label = {
-                    Text(
-                        text = when (filter) {
-                            EventSourceFilter.ALL -> "All"
-                            EventSourceFilter.CAMPUS -> "Campus"
-                            EventSourceFilter.PERSONAL -> "My Events"
-                        },
-                        style = MaterialTheme.typography.labelSmall,
-                    )
-                },
-                shape = RoundedCornerShape(12.dp),
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                ),
-                border = null,
-            )
-        }
-    }
-}
+
+// ══════════════════════════════════════════════════
+// Category filter dropdown (Month tab — bottom end)
+// ══════════════════════════════════════════════════
 
 @Composable
-private fun CategoryFilterRow(
-    availableCategories: List<EventCategory>,
+private fun CategoryFilterButton(
     selectedCategories: Set<EventCategory>,
     onToggleCategory: (EventCategory) -> Unit,
     onClearAll: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    LazyRow(
-        modifier = modifier,
-        contentPadding = PaddingValues(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        item {
-            FilterChip(
-                selected = selectedCategories.isEmpty(),
-                onClick = onClearAll,
-                label = {
-                    Text("All", style = MaterialTheme.typography.labelSmall)
-                },
-                shape = RoundedCornerShape(12.dp),
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                ),
-                border = null,
-            )
-        }
+    var expanded by remember { mutableStateOf(false) }
+    val hasActiveFilter = selectedCategories.isNotEmpty()
+    val colors = MaterialTheme.colorScheme
 
-        items(availableCategories) { category ->
-            val isSelected = category in selectedCategories
-            val categoryColor = Color(category.color)
+    Box(modifier = modifier) {
+        FilterChip(
+            selected = hasActiveFilter,
+            onClick = { expanded = !expanded },
+            label = {
+                Icon(
+                    imageVector = EkhoIcons.Grid3x3,
+                    contentDescription = "Filter categories",
+                    modifier = Modifier.size(16.dp),
+                    tint = if (hasActiveFilter) colors.primary else colors.onSurfaceVariant,
+                )
+            },
+            modifier = Modifier.height(32.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = FilterChipDefaults.filterChipColors(
+                selectedContainerColor = colors.surfaceContainerHigh,
+                containerColor = colors.surfaceContainerHigh,
+            ),
+            border = FilterChipDefaults.filterChipBorder(
+                enabled = true,
+                selected = hasActiveFilter,
+                borderColor = Color.Transparent,
+                selectedBorderColor = colors.primary.copy(alpha = 0.3f),
+                borderWidth = 1.dp,
+                selectedBorderWidth = 1.dp,
+            ),
+        )
 
-            FilterChip(
-                selected = isSelected,
-                onClick = { onToggleCategory(category) },
-                leadingIcon = {
-                    Box(
-                        modifier = Modifier
-                            .size(10.dp)
-                            .clip(CircleShape)
-                            .background(categoryColor)
-                            .then(
-                                if (isSelected) {
-                                    Modifier.border(1.dp, Color.White.copy(alpha = 0.5f), CircleShape)
-                                } else Modifier,
-                            ),
-                    )
-                },
-                label = {
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.background(colors.surfaceContainerHigh),
+        ) {
+            // "All" option
+            DropdownMenuItem(
+                text = {
                     Text(
-                        text = category.displayName,
-                        style = MaterialTheme.typography.labelSmall,
+                        text = "All Categories",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = if (!hasActiveFilter) FontWeight.Bold else FontWeight.Normal,
                     )
                 },
-                shape = RoundedCornerShape(12.dp),
-                colors = FilterChipDefaults.filterChipColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    selectedContainerColor = categoryColor.copy(alpha = 0.15f),
-                    selectedLabelColor = categoryColor,
-                ),
-                border = FilterChipDefaults.filterChipBorder(
-                    enabled = true,
-                    selected = isSelected,
-                    borderColor = Color.Transparent,
-                    selectedBorderColor = categoryColor.copy(alpha = 0.3f),
-                    borderWidth = 1.dp,
-                    selectedBorderWidth = 1.dp,
-                ),
+                onClick = {
+                    onClearAll()
+                    expanded = false
+                },
+                trailingIcon = {
+                    if (!hasActiveFilter) {
+                        Icon(
+                            imageVector = EkhoIcons.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = colors.primary,
+                        )
+                    }
+                },
             )
+
+            HorizontalDivider(
+                color = colors.outlineVariant.copy(alpha = 0.2f),
+                modifier = Modifier.padding(vertical = 2.dp),
+            )
+
+            EventCategory.entries.forEach { category ->
+                val isSelected = category in selectedCategories
+
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = category.displayName,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected) colors.onSurface else colors.onSurfaceVariant,
+                        )
+                    },
+                    onClick = { onToggleCategory(category) },
+                    trailingIcon = {
+                        if (isSelected) {
+                            Icon(
+                                imageVector = EkhoIcons.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = colors.primary,
+                            )
+                        }
+                    },
+                )
+            }
         }
     }
 }

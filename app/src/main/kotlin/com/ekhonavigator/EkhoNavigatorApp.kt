@@ -47,8 +47,11 @@ import com.ekhonavigator.feature.event.navigation.EventNavKey
 import com.ekhonavigator.feature.event.navigation.navigateToEvent
 import com.ekhonavigator.feature.home.HomeScreen
 import com.ekhonavigator.feature.home.navigation.HomeNavKey
+import com.ekhonavigator.feature.schedule.DayScreen
 import com.ekhonavigator.feature.schedule.ScheduleScreen
+import com.ekhonavigator.feature.schedule.navigation.DayNavKey
 import com.ekhonavigator.feature.schedule.navigation.ScheduleNavKey
+import com.ekhonavigator.feature.schedule.navigation.navigateToDay
 import com.ekhonavigator.navigation.TOP_LEVEL_NAV_ITEMS
 
 @Composable
@@ -130,7 +133,17 @@ fun EkhoNavigatorApp(
                         NavEntry(key) {
                             ScheduleScreen(
                                 onEventClick = navigator::navigateToEvent,
+                                onDayClick = navigator::navigateToDay,
                                 onCreateEventClick = navigator::navigateToCreateEvent,
+                            )
+                        }
+                    }
+
+                    is DayNavKey -> {
+                        NavEntry(key) {
+                            DayScreen(
+                                epochDay = key.epochDay,
+                                onEventClick = navigator::navigateToEvent,
                             )
                         }
                     }
