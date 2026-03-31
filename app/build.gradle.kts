@@ -75,6 +75,7 @@ dependencies {
     implementation(projects.feature.calendar)
     implementation(projects.feature.events)
     implementation(projects.feature.event)
+    implementation(projects.feature.schedule)
     implementation(projects.feature.social)
     implementation(projects.feature.map)
 

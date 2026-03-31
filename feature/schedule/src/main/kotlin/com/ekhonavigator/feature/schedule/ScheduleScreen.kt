@@ -1,0 +1,609 @@
+package com.ekhonavigator.feature.schedule
+
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults.SecondaryIndicator
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ekhonavigator.core.designsystem.component.EkhoEventCard
+import com.ekhonavigator.core.designsystem.component.EkhoSectionHeader
+import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import com.ekhonavigator.core.model.CalendarEvent
+import com.ekhonavigator.core.model.EventCategory
+import com.ekhonavigator.core.model.EventSource
+import com.ekhonavigator.core.model.EventSourceFilter
+import com.ekhonavigator.feature.schedule.component.CalendarTitle
+import com.ekhonavigator.feature.schedule.component.DayContent
+import com.ekhonavigator.feature.schedule.component.DaysOfWeekHeader
+import com.kizitonwose.calendar.compose.HorizontalCalendar
+import com.kizitonwose.calendar.compose.rememberCalendarState
+import com.kizitonwose.calendar.core.daysOfWeek
+import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.YearMonth
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+
+/**
+ * Internal tab indices for the Schedule screen pager.
+ */
+private enum class ScheduleTab(val title: String) {
+    WEEK("Week"),
+    MONTH("Month"),
+    DISCOVER("Discover"),
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun ScheduleScreen(
+    onEventClick: (String) -> Unit,
+    onCreateEventClick: () -> Unit = {},
+    modifier: Modifier = Modifier,
+    viewModel: ScheduleViewModel = hiltViewModel(),
+) {
+    val tabs = remember { ScheduleTab.entries }
+    val pagerState = rememberPagerState(
+        initialPage = ScheduleTab.WEEK.ordinal,
+        pageCount = { tabs.size },
+    )
+    val scope = rememberCoroutineScope()
+
+    Scaffold(
+        modifier = modifier,
+        floatingActionButton = {
+            if (viewModel.isSignedIn) {
+                FloatingActionButton(
+                    onClick = onCreateEventClick,
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                ) {
+                    Icon(
+                        imageVector = EkhoIcons.Add,
+                        contentDescription = "Create event",
+                    )
+                }
+            }
+        },
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+        ) {
+            // Tab row
+            TabRow(
+                selectedTabIndex = pagerState.currentPage,
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                indicator = { tabPositions ->
+                    if (pagerState.currentPage < tabPositions.size) {
+                        SecondaryIndicator(
+                            modifier = Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage]),
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                },
+            ) {
+                tabs.forEach { tab ->
+                    Tab(
+                        selected = pagerState.currentPage == tab.ordinal,
+                        onClick = {
+                            scope.launch { pagerState.animateScrollToPage(tab.ordinal) }
+                        },
+                        text = {
+                            Text(
+                                text = tab.title,
+                                style = MaterialTheme.typography.labelMedium,
+                            )
+                        },
+                    )
+                }
+            }
+
+            // Pager content
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize(),
+                beyondViewportPageCount = 1,
+            ) { page ->
+                when (tabs[page]) {
+                    ScheduleTab.WEEK -> WeekTab()
+                    ScheduleTab.MONTH -> MonthTab(
+                        viewModel = viewModel,
+                        onEventClick = onEventClick,
+                    )
+                    ScheduleTab.DISCOVER -> DiscoverTab(
+                        viewModel = viewModel,
+                        onEventClick = onEventClick,
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ══════════════════════════════════════════════════
+// Week Tab — placeholder, next phase
+// ══════════════════════════════════════════════════
+
+@Composable
+private fun WeekTab() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "Timetable coming soon",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+// ══════════════════════════════════════════════════
+// Month Tab — ported from CalendarScreen
+// ══════════════════════════════════════════════════
+
+@Composable
+private fun MonthTab(
+    viewModel: ScheduleViewModel,
+    onEventClick: (String) -> Unit,
+) {
+    val selectedDate by viewModel.selectedDate.collectAsStateWithLifecycle()
+    val eventsForSelectedDate by viewModel.monthEventsForSelectedDate.collectAsStateWithLifecycle()
+    val eventsForMonth by viewModel.eventsForMonth.collectAsStateWithLifecycle()
+    val sourceFilter by viewModel.monthSourceFilter.collectAsStateWithLifecycle()
+    val selectedCategories by viewModel.monthSelectedCategories.collectAsStateWithLifecycle()
+    val availableCategories by viewModel.monthAvailableCategories.collectAsStateWithLifecycle()
+
+    val today = remember { LocalDate.now() }
+    val daysOfWeek = remember { daysOfWeek() }
+    val scope = rememberCoroutineScope()
+    val timeFormatter = remember { DateTimeFormatter.ofPattern("h:mm a") }
+    val zone = remember { ZoneId.systemDefault() }
+
+    val eventsByDay = remember(eventsForMonth) {
+        eventsForMonth.groupBy { event ->
+            event.startTime.atZone(ZoneId.systemDefault()).toLocalDate()
+        }
+    }
+
+    val calendarState = rememberCalendarState(
+        startMonth = YearMonth.now().minusMonths(12),
+        endMonth = YearMonth.now().plusMonths(12),
+        firstVisibleMonth = YearMonth.now(),
+        firstDayOfWeek = daysOfWeek.first(),
+    )
+
+    LaunchedEffect(calendarState) {
+        snapshotFlow { calendarState.firstVisibleMonth.yearMonth }
+            .collect { month -> viewModel.setMonth(month) }
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        HorizontalCalendar(
+            state = calendarState,
+            monthHeader = { month ->
+                CalendarTitle(
+                    month = month.yearMonth,
+                    onPreviousMonth = {
+                        scope.launch {
+                            calendarState.animateScrollToMonth(
+                                month.yearMonth.minusMonths(1),
+                            )
+                        }
+                    },
+                    onNextMonth = {
+                        scope.launch {
+                            calendarState.animateScrollToMonth(
+                                month.yearMonth.plusMonths(1),
+                            )
+                        }
+                    },
+                )
+                DaysOfWeekHeader(daysOfWeek = daysOfWeek)
+            },
+            dayContent = { day ->
+                DayContent(
+                    day = day,
+                    isSelected = day.date == selectedDate,
+                    isToday = day.date == today,
+                    events = eventsByDay[day.date].orEmpty(),
+                    onClick = { viewModel.selectDate(day.date) },
+                )
+            },
+        )
+
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 8.dp),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+        )
+
+        // Source filter row
+        SourceFilterRow(
+            selected = sourceFilter,
+            onSelect = viewModel::setMonthSourceFilter,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        // Reactive category filter
+        if (availableCategories.isNotEmpty()) {
+            Spacer(Modifier.height(4.dp))
+            CategoryFilterRow(
+                availableCategories = availableCategories,
+                selectedCategories = selectedCategories,
+                onToggleCategory = viewModel::toggleMonthCategory,
+                onClearAll = viewModel::clearMonthCategories,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+
+        Spacer(Modifier.height(4.dp))
+
+        if (eventsForSelectedDate.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "No events on this day",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                items(eventsForSelectedDate, key = { it.id }) { event ->
+                    val startTime = event.startTime.atZone(zone).format(timeFormatter)
+                    val endTime = event.endTime.atZone(zone).format(timeFormatter)
+
+                    EkhoEventCard(
+                        title = event.title,
+                        timeRange = "$startTime – $endTime",
+                        location = event.location,
+                        categoryColors = event.categories.map { Color(it.color) },
+                        isBookmarked = event.isBookmarked,
+                        showBookmark = event.source == EventSource.ICAL_FEED,
+                        onBookmarkClick = { viewModel.toggleBookmark(event.id) },
+                        onClick = { onEventClick(event.id) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ══════════════════════════════════════════════════
+// Discover Tab — ported from EventsScreen
+// ══════════════════════════════════════════════════
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun DiscoverTab(
+    viewModel: ScheduleViewModel,
+    onEventClick: (String) -> Unit,
+) {
+    val events by viewModel.discoverEvents.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val sourceFilter by viewModel.discoverSourceFilter.collectAsStateWithLifecycle()
+    val selectedCategories by viewModel.discoverSelectedCategories.collectAsStateWithLifecycle()
+    val availableCategories by viewModel.discoverAvailableCategories.collectAsStateWithLifecycle()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface),
+    ) {
+        // Search and filter section
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 12.dp, bottom = 12.dp),
+        ) {
+            EventSearchBar(
+                query = searchQuery,
+                onQueryChange = viewModel::setSearchQuery,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            SourceFilterRow(
+                selected = sourceFilter,
+                onSelect = viewModel::setDiscoverSourceFilter,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            if (availableCategories.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+
+                CategoryFilterRow(
+                    availableCategories = availableCategories,
+                    selectedCategories = selectedCategories,
+                    onToggleCategory = viewModel::toggleDiscoverCategory,
+                    onClearAll = viewModel::clearDiscoverCategories,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+
+        // Event list
+        if (events.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = if (searchQuery.isNotBlank() || selectedCategories.isNotEmpty()) {
+                        "No matching pulses"
+                    } else {
+                        "Campus is quiet..."
+                    },
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else {
+            val zone = remember { ZoneId.systemDefault() }
+            val eventsByDate = remember(events) {
+                events.groupBy { it.startTime.atZone(zone).toLocalDate() }
+                    .toSortedMap()
+            }
+
+            val dayHeaderFormatter = remember { DateTimeFormatter.ofPattern("EEEE, MMMM d") }
+            val timeFormatter = remember { DateTimeFormatter.ofPattern("h:mm a") }
+            val today = remember { LocalDate.now() }
+            val tomorrow = remember { today.plusDays(1) }
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 88.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                eventsByDate.forEach { (date, dayEvents) ->
+                    stickyHeader(key = date.toString()) {
+                        val headerLabel = when (date) {
+                            today -> "Today"
+                            tomorrow -> "Tomorrow"
+                            else -> date.format(dayHeaderFormatter)
+                        }
+                        val isImportant = date == today || date == tomorrow
+
+                        EkhoSectionHeader(
+                            title = headerLabel,
+                            isImportant = isImportant,
+                            modifier = Modifier
+                                .background(MaterialTheme.colorScheme.surface)
+                                .padding(horizontal = 16.dp),
+                        )
+                    }
+
+                    items(dayEvents, key = { it.id }) { event ->
+                        val startTime = event.startTime.atZone(zone).format(timeFormatter)
+                        val endTime = event.endTime.atZone(zone).format(timeFormatter)
+
+                        EkhoEventCard(
+                            title = event.title,
+                            timeRange = "$startTime – $endTime",
+                            location = event.location,
+                            categoryColors = event.categories.map { Color(it.color) },
+                            isBookmarked = event.isBookmarked,
+                            showBookmark = event.source == EventSource.ICAL_FEED,
+                            onBookmarkClick = { viewModel.toggleBookmark(event.id) },
+                            onClick = { onEventClick(event.id) },
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ══════════════════════════════════════════════════
+// Shared filter composables (used by Month + Discover tabs)
+// ══════════════════════════════════════════════════
+
+@Composable
+private fun EventSearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    TextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier = modifier,
+        placeholder = {
+            Text(
+                "Search...",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            )
+        },
+        leadingIcon = {
+            Icon(
+                imageVector = EkhoIcons.Search,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
+        },
+        singleLine = true,
+        shape = RoundedCornerShape(12.dp),
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+        ),
+        textStyle = MaterialTheme.typography.bodyMedium,
+    )
+}
+
+@Composable
+private fun SourceFilterRow(
+    selected: EventSourceFilter,
+    onSelect: (EventSourceFilter) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        EventSourceFilter.entries.forEach { filter ->
+            FilterChip(
+                selected = filter == selected,
+                onClick = { onSelect(filter) },
+                label = {
+                    Text(
+                        text = when (filter) {
+                            EventSourceFilter.ALL -> "All"
+                            EventSourceFilter.CAMPUS -> "Campus"
+                            EventSourceFilter.PERSONAL -> "My Events"
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                },
+                shape = RoundedCornerShape(12.dp),
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+                border = null,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CategoryFilterRow(
+    availableCategories: List<EventCategory>,
+    selectedCategories: Set<EventCategory>,
+    onToggleCategory: (EventCategory) -> Unit,
+    onClearAll: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyRow(
+        modifier = modifier,
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        item {
+            FilterChip(
+                selected = selectedCategories.isEmpty(),
+                onClick = onClearAll,
+                label = {
+                    Text("All", style = MaterialTheme.typography.labelSmall)
+                },
+                shape = RoundedCornerShape(12.dp),
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+                border = null,
+            )
+        }
+
+        items(availableCategories) { category ->
+            val isSelected = category in selectedCategories
+            val categoryColor = Color(category.color)
+
+            FilterChip(
+                selected = isSelected,
+                onClick = { onToggleCategory(category) },
+                leadingIcon = {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(categoryColor)
+                            .then(
+                                if (isSelected) {
+                                    Modifier.border(1.dp, Color.White.copy(alpha = 0.5f), CircleShape)
+                                } else Modifier,
+                            ),
+                    )
+                },
+                label = {
+                    Text(
+                        text = category.displayName,
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                },
+                shape = RoundedCornerShape(12.dp),
+                colors = FilterChipDefaults.filterChipColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    selectedContainerColor = categoryColor.copy(alpha = 0.15f),
+                    selectedLabelColor = categoryColor,
+                ),
+                border = FilterChipDefaults.filterChipBorder(
+                    enabled = true,
+                    selected = isSelected,
+                    borderColor = Color.Transparent,
+                    selectedBorderColor = categoryColor.copy(alpha = 0.3f),
+                    borderWidth = 1.dp,
+                    selectedBorderWidth = 1.dp,
+                ),
+            )
+        }
+    }
+}

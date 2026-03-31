@@ -2,7 +2,6 @@
 
 package com.ekhonavigator
 
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -23,7 +22,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.res.stringResource
 import androidx.navigation3.ui.NavDisplay
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
@@ -34,8 +32,6 @@ import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.navigation.Navigator
 import com.ekhonavigator.core.navigation.rememberNavigationState
 import com.ekhonavigator.core.navigation.toEntries
-import com.ekhonavigator.feature.calendar.CalendarScreen
-import com.ekhonavigator.feature.calendar.navigation.CalendarNavKey
 import com.ekhonavigator.feature.map.MapScreen
 import com.ekhonavigator.feature.map.navigation.MapNavKey
 import com.ekhonavigator.feature.account.navigation.navigateToAccount
@@ -44,15 +40,15 @@ import com.ekhonavigator.feature.account.navigation.AccountNavKey
 import com.ekhonavigator.feature.social.SocialScreen
 import com.ekhonavigator.feature.social.navigation.SocialNavKey
 import com.ekhonavigator.feature.events.CreateEventScreen
-import com.ekhonavigator.feature.events.EventsScreen
 import com.ekhonavigator.feature.events.navigation.CreateEventNavKey
-import com.ekhonavigator.feature.events.navigation.EventsNavKey
 import com.ekhonavigator.feature.events.navigation.navigateToCreateEvent
 import com.ekhonavigator.feature.event.EventScreen
 import com.ekhonavigator.feature.event.navigation.EventNavKey
 import com.ekhonavigator.feature.event.navigation.navigateToEvent
 import com.ekhonavigator.feature.home.HomeScreen
 import com.ekhonavigator.feature.home.navigation.HomeNavKey
+import com.ekhonavigator.feature.schedule.ScheduleScreen
+import com.ekhonavigator.feature.schedule.navigation.ScheduleNavKey
 import com.ekhonavigator.navigation.TOP_LEVEL_NAV_ITEMS
 
 @Composable
@@ -130,18 +126,9 @@ fun EkhoNavigatorApp(
                         }
                     }
 
-                    is CalendarNavKey -> {
+                    is ScheduleNavKey -> {
                         NavEntry(key) {
-                            CalendarScreen(
-                                onEventClick = navigator::navigateToEvent,
-                                onCreateEventClick = navigator::navigateToCreateEvent,
-                            )
-                        }
-                    }
-
-                    is EventsNavKey -> {
-                        NavEntry(key) {
-                            EventsScreen(
+                            ScheduleScreen(
                                 onEventClick = navigator::navigateToEvent,
                                 onCreateEventClick = navigator::navigateToCreateEvent,
                             )
