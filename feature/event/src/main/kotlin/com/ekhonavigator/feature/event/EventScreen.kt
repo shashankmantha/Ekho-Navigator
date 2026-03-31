@@ -86,10 +86,16 @@ fun EventScreen(
 
     // Track whether we ever loaded an event — if it disappears after loading,
     // the event was deleted (by owner, by self, or by remote sync) and we navigate back.
+    // Also handles navigating back to a deleted event from the nav stack.
     var hadEvent by remember { mutableStateOf(false) }
     if (event != null) hadEvent = true
     LaunchedEffect(event, hadEvent) {
         if (hadEvent && event == null) onBack()
+    }
+    // If event never loads (deleted before we got here), bail after a short delay
+    LaunchedEffect(eventId) {
+        kotlinx.coroutines.delay(500)
+        if (!hadEvent) onBack()
     }
 
     if (event == null) {
