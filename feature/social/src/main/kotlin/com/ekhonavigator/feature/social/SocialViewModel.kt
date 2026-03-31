@@ -151,6 +151,24 @@ class SocialViewModel @Inject constructor(
         }
     }
 
+    fun removeFriend(friendUserId: String) {
+        val currentUserId = authRepository.getCurrentUserUid() ?: return
+
+        viewModelScope.launch {
+            runCatching {
+                repository.removeFriend(currentUserId, friendUserId)
+            }.onSuccess {
+                loadSocialData()
+            }.onFailure { e ->
+                _uiState.update {
+                    it.copy(
+                        errorMessage = e.message ?: "Failed to remove friend",
+                    )
+                }
+            }
+        }
+    }
+
 
 
     private fun searchUsers(query: String) {

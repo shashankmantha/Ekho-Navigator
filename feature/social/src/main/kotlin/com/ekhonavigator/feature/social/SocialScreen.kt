@@ -139,6 +139,13 @@ fun SocialScreen(
                                 Text(friend.major)
                             }
                         },
+                        trailingContent = {
+                            TextButton(
+                                onClick = { viewModel.removeFriend(friend.uid) }
+                            ) {
+                                Text("Delete")
+                            }
+                        },
                     )
                     HorizontalDivider()
                 }
