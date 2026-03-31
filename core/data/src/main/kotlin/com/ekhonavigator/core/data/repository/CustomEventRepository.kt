@@ -45,4 +45,7 @@ interface CustomEventRepository {
 
     /** Stop listening. Call on sign-out or app teardown. */
     fun stopSync()
+
+    /** Stop listening and clear all user-specific events from Room. Call on sign-out. */
+    suspend fun onSignOut()
 }

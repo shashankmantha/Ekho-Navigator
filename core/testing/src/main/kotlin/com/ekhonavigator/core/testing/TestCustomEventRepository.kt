@@ -46,4 +46,6 @@ class TestCustomEventRepository : CustomEventRepository {
     override fun startSync(scope: CoroutineScope) {}
 
     override fun stopSync() {}
+
+    override suspend fun onSignOut() {}
 }

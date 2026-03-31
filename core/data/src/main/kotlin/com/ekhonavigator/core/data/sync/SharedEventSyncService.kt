@@ -27,12 +27,16 @@ class SharedEventSyncService @Inject constructor(
 ) {
     private var listenerRegistration: ListenerRegistration? = null
     private var initialSyncDone = false
+    private var lastUid: String? = null
 
     /** Event IDs currently being deleted — listener skips these to avoid race conditions. */
     val pendingDeletes = mutableSetOf<String>()
 
     fun startListening(scope: CoroutineScope) {
         val uid = authRepository.getCurrentUserUid() ?: return
+
+        lastUid = uid
+
         stopListening()
         initialSyncDone = false
 
@@ -88,5 +92,12 @@ class SharedEventSyncService @Inject constructor(
     fun stopListening() {
         listenerRegistration?.remove()
         listenerRegistration = null
+    }
+
+    /** Stop listening and clear all user-specific events from Room. Call on sign-out. */
+    suspend fun stopAndClearUserData() {
+        stopListening()
+        lastUid = null
+        calendarEventDao.deleteAllUserEvents()
     }
 }

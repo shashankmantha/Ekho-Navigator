@@ -225,4 +225,8 @@ class DefaultCustomEventRepository @Inject constructor(
     override fun stopSync() {
         sharedEventSyncService.stopListening()
     }
+
+    override suspend fun onSignOut() {
+        sharedEventSyncService.stopAndClearUserData()
+    }
 }

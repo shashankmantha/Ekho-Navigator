@@ -56,7 +56,10 @@ import com.ekhonavigator.feature.home.navigation.HomeNavKey
 import com.ekhonavigator.navigation.TOP_LEVEL_NAV_ITEMS
 
 @Composable
-fun EkhoNavigatorApp() {
+fun EkhoNavigatorApp(
+    onSignIn: () -> Unit = {},
+    onSignOut: () -> Unit = {},
+) {
     val navigationState = rememberNavigationState(
         startKey = HomeNavKey,
         topLevelKeys = TOP_LEVEL_NAV_ITEMS.keys
@@ -165,7 +168,10 @@ fun EkhoNavigatorApp() {
 
                     is AccountNavKey -> {
                         NavEntry(key) {
-                            AccountScreen()
+                            AccountScreen(
+                                onSignIn = onSignIn,
+                                onSignOut = onSignOut,
+                            )
                         }
                     }
 

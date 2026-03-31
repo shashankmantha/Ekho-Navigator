@@ -63,4 +63,7 @@ interface CalendarEventDao {
 
     @Query("DELETE FROM calendar_events WHERE uid = :id")
     suspend fun deleteEvent(id: String)
+
+    @Query("DELETE FROM calendar_events WHERE source != 'ICAL_FEED'")
+    suspend fun deleteAllUserEvents()
 }
