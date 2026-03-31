@@ -171,7 +171,13 @@ fun EkhoNavigatorApp() {
 
                     is EventNavKey -> {
                         NavEntry(key) {
-                            EventScreen(eventId = key.id)
+                            EventScreen(
+                                eventId = key.id,
+                                // this is here because we have custom event deletion
+                                // so the standard back button is not enough here
+                                // normally the top nav bar handles all back functionality
+                                onBack = navigator::goBack,
+                            )
                         }
                     }
 

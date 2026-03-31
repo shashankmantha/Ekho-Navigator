@@ -6,12 +6,16 @@ import com.ekhonavigator.core.data.auth.AuthRepository
 import com.ekhonavigator.core.data.repository.CalendarRepository
 import com.ekhonavigator.core.data.sync.SyncInitializer
 import com.ekhonavigator.core.model.CalendarEvent
+import com.ekhonavigator.core.model.EventCategory
+import com.ekhonavigator.core.model.EventSource
+import com.ekhonavigator.core.model.EventSourceFilter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
@@ -21,15 +25,6 @@ import javax.inject.Inject
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 
-/**
- * Drives the Calendar screen.
- *
- * Holds the currently selected date and displayed month. When either changes,
- * the corresponding event lists re-query the repository automatically via
- * flatMapLatest — a Flow operator that cancels the previous collector and
- * switches to a new one whenever the upstream value changes (like switching
- * radio channels: you only hear the latest station).
- */
 @HiltViewModel
 class CalendarViewModel @Inject constructor(
     private val repository: CalendarRepository,
@@ -48,16 +43,16 @@ class CalendarViewModel @Inject constructor(
     private val _currentMonth = MutableStateFlow(YearMonth.now())
     val currentMonth: StateFlow<YearMonth> = _currentMonth.asStateFlow()
 
+    private val _sourceFilter = MutableStateFlow(EventSourceFilter.ALL)
+    val sourceFilter: StateFlow<EventSourceFilter> = _sourceFilter.asStateFlow()
+
+    private val _selectedCategories = MutableStateFlow<Set<EventCategory>>(emptySet())
+    val selectedCategories: StateFlow<Set<EventCategory>> = _selectedCategories.asStateFlow()
+
     // ---- Derived event streams ----
 
-    /**
-     * Events that fall on [selectedDate]. Updates automatically when the
-     * user taps a different day.
-     *
-     * flatMapLatest: whenever _selectedDate emits a new date, this cancels
-     * the old Room query Flow and subscribes to a new one for the new range.
-     */
-    val eventsForSelectedDate: StateFlow<List<CalendarEvent>> = _selectedDate
+    /** All events in the selected date range (unfiltered by source/category). */
+    private val rawEventsForSelectedDate: StateFlow<List<CalendarEvent>> = _selectedDate
         .flatMapLatest { date ->
             val zone = ZoneId.systemDefault()
             val start = date.atStartOfDay(zone).toInstant()
@@ -66,10 +61,43 @@ class CalendarViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /**
-     * All events in [currentMonth], used to render indicator dots on the
-     * calendar grid (so you can see at a glance which days have events).
-     */
+    /** Events for the selected date, filtered by source and category. */
+    val eventsForSelectedDate: StateFlow<List<CalendarEvent>> = combine(
+        rawEventsForSelectedDate,
+        _sourceFilter,
+        _selectedCategories,
+    ) { events, source, selected ->
+        events.filter { event ->
+            val matchesSource = when (source) {
+                EventSourceFilter.ALL -> true
+                EventSourceFilter.CAMPUS -> event.source == EventSource.ICAL_FEED
+                EventSourceFilter.PERSONAL -> event.source != EventSource.ICAL_FEED
+            }
+            val matchesCategory = selected.isEmpty() ||
+                    event.categories.any { it in selected }
+            matchesSource && matchesCategory
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Categories available in the source-filtered events for the selected date. */
+    val availableCategories: StateFlow<List<EventCategory>> = combine(
+        rawEventsForSelectedDate,
+        _sourceFilter,
+    ) { events, source ->
+        events
+            .filter { event ->
+                when (source) {
+                    EventSourceFilter.ALL -> true
+                    EventSourceFilter.CAMPUS -> event.source == EventSource.ICAL_FEED
+                    EventSourceFilter.PERSONAL -> event.source != EventSource.ICAL_FEED
+                }
+            }
+            .flatMap { it.categories }
+            .distinct()
+            .sortedBy { it.ordinal }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** All events in the month (unfiltered, for calendar dot indicators). */
     val eventsForMonth: StateFlow<List<CalendarEvent>> = _currentMonth
         .flatMapLatest { month ->
             val zone = ZoneId.systemDefault()
@@ -89,16 +117,30 @@ class CalendarViewModel @Inject constructor(
         _currentMonth.value = month
     }
 
+    fun setSourceFilter(filter: EventSourceFilter) {
+        _sourceFilter.value = filter
+        _selectedCategories.value = emptySet()
+    }
+
+    fun toggleCategory(category: EventCategory) {
+        val current = _selectedCategories.value
+        _selectedCategories.value = if (category in current) {
+            current - category
+        } else {
+            current + category
+        }
+    }
+
+    fun clearCategories() {
+        _selectedCategories.value = emptySet()
+    }
+
     fun toggleBookmark(eventId: String) {
         viewModelScope.launch {
             repository.toggleBookmark(eventId)
         }
     }
-    /**
-     * Enqueues a one-time WorkManager sync. The actual network call happens
-     * in CalendarSyncWorker on a background thread — this just drops the
-     * request into WorkManager's queue and returns immediately.
-     */
+
     fun refresh() {
         SyncInitializer.requestImmediateSync(appContext, FEED_URL)
     }

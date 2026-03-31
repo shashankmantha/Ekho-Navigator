@@ -1,14 +1,25 @@
 package com.ekhonavigator.feature.calendar
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -29,7 +40,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ekhonavigator.core.designsystem.component.EkhoEventCard
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import androidx.compose.ui.draw.clip
+import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSource
+import com.ekhonavigator.core.model.EventSourceFilter
 import com.ekhonavigator.feature.calendar.component.CalendarTitle
 import com.ekhonavigator.feature.calendar.component.DayContent
 import com.kizitonwose.calendar.compose.HorizontalCalendar
@@ -52,6 +66,9 @@ fun CalendarScreen(
     val selectedDate by viewModel.selectedDate.collectAsStateWithLifecycle()
     val eventsForSelectedDate by viewModel.eventsForSelectedDate.collectAsStateWithLifecycle()
     val eventsForMonth by viewModel.eventsForMonth.collectAsStateWithLifecycle()
+    val sourceFilter by viewModel.sourceFilter.collectAsStateWithLifecycle()
+    val selectedCategories by viewModel.selectedCategories.collectAsStateWithLifecycle()
+    val availableCategories by viewModel.availableCategories.collectAsStateWithLifecycle()
 
     val today = remember { LocalDate.now() }
     val daysOfWeek = remember { daysOfWeek() }
@@ -132,6 +149,100 @@ fun CalendarScreen(
             modifier = Modifier.padding(vertical = 8.dp),
             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
         )
+
+        // Source filter row
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            EventSourceFilter.entries.forEach { filter ->
+                FilterChip(
+                    selected = filter == sourceFilter,
+                    onClick = { viewModel.setSourceFilter(filter) },
+                    label = {
+                        Text(
+                            text = when (filter) {
+                                EventSourceFilter.ALL -> "All"
+                                EventSourceFilter.CAMPUS -> "Campus"
+                                EventSourceFilter.PERSONAL -> "My Events"
+                            },
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
+                    border = null,
+                )
+            }
+        }
+
+        // Reactive category filter
+        if (availableCategories.isNotEmpty()) {
+            Spacer(Modifier.height(4.dp))
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                item {
+                    FilterChip(
+                        selected = selectedCategories.isEmpty(),
+                        onClick = viewModel::clearCategories,
+                        label = { Text("All", style = MaterialTheme.typography.labelSmall) },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
+                        border = null,
+                    )
+                }
+                items(availableCategories) { category ->
+                    val isSelected = category in selectedCategories
+                    val categoryColor = Color(category.color)
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { viewModel.toggleCategory(category) },
+                        leadingIcon = {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(categoryColor)
+                                    .then(
+                                        if (isSelected) Modifier.border(1.dp, Color.White.copy(alpha = 0.5f), CircleShape)
+                                        else Modifier
+                                    )
+                            )
+                        },
+                        label = { Text(category.displayName, style = MaterialTheme.typography.labelSmall) },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = FilterChipDefaults.filterChipColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            selectedContainerColor = categoryColor.copy(alpha = 0.15f),
+                            selectedLabelColor = categoryColor,
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = isSelected,
+                            borderColor = Color.Transparent,
+                            selectedBorderColor = categoryColor.copy(alpha = 0.3f),
+                            borderWidth = 1.dp,
+                            selectedBorderWidth = 1.dp,
+                        ),
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(4.dp))
 
         if (eventsForSelectedDate.isEmpty()) {
             Box(

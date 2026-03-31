@@ -48,6 +48,7 @@ import com.ekhonavigator.core.designsystem.component.EkhoSectionHeader
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSource
+import com.ekhonavigator.core.model.EventSourceFilter
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -62,7 +63,9 @@ fun EventsScreen(
 ) {
     val events by viewModel.events.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val sourceFilter by viewModel.sourceFilter.collectAsStateWithLifecycle()
     val selectedCategories by viewModel.selectedCategories.collectAsStateWithLifecycle()
+    val availableCategories by viewModel.availableCategories.collectAsStateWithLifecycle()
 
     Scaffold(
         modifier = modifier,
@@ -103,12 +106,23 @@ fun EventsScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            CategoryFilterRow(
-                selectedCategories = selectedCategories,
-                onToggleCategory = viewModel::toggleCategory,
-                onClearAll = viewModel::clearCategories,
+            SourceFilterRow(
+                selected = sourceFilter,
+                onSelect = viewModel::setSourceFilter,
                 modifier = Modifier.fillMaxWidth(),
             )
+
+            if (availableCategories.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+
+                CategoryFilterRow(
+                    availableCategories = availableCategories,
+                    selectedCategories = selectedCategories,
+                    onToggleCategory = viewModel::toggleCategory,
+                    onClearAll = viewModel::clearCategories,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
 
         // ---- Event list ----
@@ -225,7 +239,46 @@ private fun EventSearchBar(
 }
 
 @Composable
+private fun SourceFilterRow(
+    selected: EventSourceFilter,
+    onSelect: (EventSourceFilter) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        EventSourceFilter.entries.forEach { filter ->
+            val isSelected = filter == selected
+            FilterChip(
+                selected = isSelected,
+                onClick = { onSelect(filter) },
+                label = {
+                    Text(
+                        text = when (filter) {
+                            EventSourceFilter.ALL -> "All"
+                            EventSourceFilter.CAMPUS -> "Campus"
+                            EventSourceFilter.PERSONAL -> "My Events"
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                },
+                shape = RoundedCornerShape(12.dp),
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+                border = null,
+            )
+        }
+    }
+}
+
+@Composable
 private fun CategoryFilterRow(
+    availableCategories: List<EventCategory>,
     selectedCategories: Set<EventCategory>,
     onToggleCategory: (EventCategory) -> Unit,
     onClearAll: () -> Unit,
@@ -240,8 +293,8 @@ private fun CategoryFilterRow(
             FilterChip(
                 selected = selectedCategories.isEmpty(),
                 onClick = onClearAll,
-                label = { 
-                    Text("All", style = MaterialTheme.typography.labelSmall) 
+                label = {
+                    Text("All", style = MaterialTheme.typography.labelSmall)
                 },
                 shape = RoundedCornerShape(12.dp),
                 colors = FilterChipDefaults.filterChipColors(
@@ -254,7 +307,7 @@ private fun CategoryFilterRow(
             )
         }
 
-        items(EventCategory.entries.toList()) { category ->
+        items(availableCategories) { category ->
             val isSelected = category in selectedCategories
             val categoryColor = Color(category.color)
             

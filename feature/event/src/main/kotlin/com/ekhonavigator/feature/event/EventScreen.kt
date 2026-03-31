@@ -21,6 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -29,10 +30,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,6 +62,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun EventScreen(
     eventId: String,
+    onBack: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: EventDetailViewModel = hiltViewModel(
         checkNotNull(
@@ -67,9 +72,12 @@ fun EventScreen(
         }, null
     ),
 ) {
-    // Tell the ViewModel which event to observe
     LaunchedEffect(eventId) {
         viewModel.setEventId(eventId)
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.navigateBack.collect { onBack() }
     }
 
     val event by viewModel.event.collectAsStateWithLifecycle()
@@ -85,6 +93,8 @@ fun EventScreen(
         EventDetailContent(
             event = event!!,
             onBookmarkClick = viewModel::toggleBookmark,
+            canDelete = viewModel.canDelete,
+            onDeleteClick = viewModel::deleteEvent,
             modifier = modifier,
         )
     }
@@ -95,12 +105,15 @@ fun EventScreen(
 private fun EventDetailContent(
     event: CalendarEvent,
     onBookmarkClick: () -> Unit,
+    canDelete: Boolean = false,
+    onDeleteClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val dateFormatter = remember { DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy") }
     val timeFormatter = remember { DateTimeFormatter.ofPattern("h:mm a") }
     val zone = remember { ZoneId.systemDefault() }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -121,20 +134,7 @@ private fun EventDetailContent(
                 modifier = Modifier.weight(1f),
             )
 
-            if (event.source == EventSource.ICAL_FEED) {
-                IconButton(onClick = onBookmarkClick) {
-                    Icon(
-                        imageVector = if (event.isBookmarked) EkhoIcons.Bookmark else EkhoIcons.BookmarkBorder,
-                        contentDescription = if (event.isBookmarked) "Remove bookmark" else "Bookmark",
-                        tint = if (event.isBookmarked) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                    )
-                }
-            }
-
+            // Share always first (leftmost action)
             IconButton(onClick = {
                 val shareText = buildString {
                     append(event.title)
@@ -162,6 +162,31 @@ private fun EventDetailContent(
                     imageVector = EkhoIcons.Share,
                     contentDescription = "Share",
                 )
+            }
+
+            // Rightmost position: bookmark (campus) or delete (owned custom)
+            if (event.source == EventSource.ICAL_FEED) {
+                IconButton(onClick = onBookmarkClick) {
+                    Icon(
+                        imageVector = if (event.isBookmarked) EkhoIcons.Bookmark else EkhoIcons.BookmarkBorder,
+                        contentDescription = if (event.isBookmarked) "Remove bookmark" else "Bookmark",
+                        tint = if (event.isBookmarked) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                }
+            }
+
+            if (canDelete) {
+                IconButton(onClick = { showDeleteConfirmation = true }) {
+                    Icon(
+                        imageVector = EkhoIcons.Close,
+                        contentDescription = "Delete event",
+                        tint = MaterialTheme.colorScheme.error,
+                    )
+                }
             }
         }
 
@@ -284,6 +309,29 @@ private fun EventDetailContent(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+    }
+
+    if (showDeleteConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            title = { Text("Delete Event") },
+            text = { Text("Are you sure you want to delete \"${event.title}\"? This can't be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteConfirmation = false
+                        onDeleteClick()
+                    },
+                ) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmation = false }) {
+                    Text("Cancel")
+                }
+            },
+        )
     }
 }
 
