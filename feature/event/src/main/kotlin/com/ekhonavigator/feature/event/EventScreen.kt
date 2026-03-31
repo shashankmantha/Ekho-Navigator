@@ -24,6 +24,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -51,7 +53,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.CalendarEvent
+import com.ekhonavigator.core.model.EventAttendee
 import com.ekhonavigator.core.model.EventSource
+import com.ekhonavigator.core.model.RsvpStatus
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
@@ -81,6 +85,8 @@ fun EventScreen(
     }
 
     val event by viewModel.event.collectAsStateWithLifecycle()
+    val attendees by viewModel.attendees.collectAsStateWithLifecycle()
+    val currentUserRsvp by viewModel.currentUserRsvp.collectAsStateWithLifecycle()
 
     if (event == null) {
         Box(
@@ -95,6 +101,12 @@ fun EventScreen(
             onBookmarkClick = viewModel::toggleBookmark,
             canDelete = viewModel.canDelete,
             onDeleteClick = viewModel::deleteEvent,
+            hasAttendees = viewModel.hasAttendees,
+            canRsvp = viewModel.canRsvp,
+            isOwner = viewModel.isOwner,
+            currentUserRsvp = currentUserRsvp,
+            attendees = attendees,
+            onRsvp = viewModel::rsvp,
             modifier = modifier,
         )
     }
@@ -107,6 +119,12 @@ private fun EventDetailContent(
     onBookmarkClick: () -> Unit,
     canDelete: Boolean = false,
     onDeleteClick: () -> Unit = {},
+    hasAttendees: Boolean = false,
+    canRsvp: Boolean = false,
+    isOwner: Boolean = false,
+    currentUserRsvp: RsvpStatus? = null,
+    attendees: List<EventAttendee> = emptyList(),
+    onRsvp: (RsvpStatus) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -289,6 +307,142 @@ private fun EventDetailContent(
                         .replaceFirstChar { it.uppercase() },
                     style = MaterialTheme.typography.bodyLarge,
                 )
+            }
+        }
+
+        // ---- RSVP / Attendees section ----
+        if (hasAttendees) {
+            HorizontalDivider()
+
+            // Sharing context
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Icon(
+                    imageVector = EkhoIcons.Person,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+                Text(
+                    text = if (isOwner) {
+                        val count = attendees.size
+                        if (count == 1) "You shared this with 1 person"
+                        else "You shared this with $count people"
+                    } else {
+                        "Shared event"
+                    },
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+
+            if (canRsvp) {
+                Text(
+                    text = "Your Response",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+
+                Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Button(
+                    onClick = { onRsvp(RsvpStatus.GOING) },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (currentUserRsvp == RsvpStatus.GOING) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainerHigh
+                        },
+                        contentColor = if (currentUserRsvp == RsvpStatus.GOING) {
+                            MaterialTheme.colorScheme.onPrimary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                ) {
+                    Icon(
+                        imageVector = EkhoIcons.Check,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.size(6.dp))
+                    Text("Going")
+                }
+
+                Button(
+                    onClick = { onRsvp(RsvpStatus.NOT_GOING) },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (currentUserRsvp == RsvpStatus.NOT_GOING) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainerHigh
+                        },
+                        contentColor = if (currentUserRsvp == RsvpStatus.NOT_GOING) {
+                            MaterialTheme.colorScheme.onError
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                ) {
+                    Icon(
+                        imageVector = EkhoIcons.Close,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.size(6.dp))
+                    Text("Not Going")
+                }
+            }
+            } // canRsvp
+
+            // Attendee list
+            if (attendees.isNotEmpty()) {
+                Text(
+                    text = "Attendees",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+
+                attendees.forEach { attendee ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Icon(
+                            imageVector = EkhoIcons.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = attendee.displayName.ifBlank { attendee.userId.take(8) },
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Text(
+                            text = when (attendee.rsvpStatus) {
+                                RsvpStatus.GOING -> "Going"
+                                RsvpStatus.NOT_GOING -> "Not Going"
+                                RsvpStatus.PENDING -> "Pending"
+                            },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = when (attendee.rsvpStatus) {
+                                RsvpStatus.GOING -> MaterialTheme.colorScheme.primary
+                                RsvpStatus.NOT_GOING -> MaterialTheme.colorScheme.error
+                                RsvpStatus.PENDING -> MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
+                    }
+                }
             }
         }
 
