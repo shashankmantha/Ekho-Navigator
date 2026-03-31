@@ -20,8 +20,9 @@ interface CustomEventRepository {
     /** Observe attendees for a specific event. */
     fun observeAttendees(eventId: String): Flow<List<EventAttendee>>
 
-    /** Create a new custom event. Writes to Room immediately, then best-effort to Firestore. */
-    suspend fun createEvent(event: CalendarEvent): String
+    /** Create a new custom event. Writes to Room immediately, then best-effort to Firestore.
+     *  [sharedWithUids] are friend UIDs to add as participants with PENDING RSVP status. */
+    suspend fun createEvent(event: CalendarEvent, sharedWithUids: Set<String> = emptySet()): String
 
     /** Update an existing custom event. */
     suspend fun updateEvent(event: CalendarEvent)

@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ekhonavigator.core.data.auth.AuthRepository
 import com.ekhonavigator.core.data.repository.CustomEventRepository
+import com.ekhonavigator.core.data.social.FriendUser
+import com.ekhonavigator.core.data.social.SocialRepository
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSource
@@ -27,6 +29,8 @@ data class CreateEventUiState(
     val startTime: LocalTime? = null,
     val endTime: LocalTime? = null,
     val category: EventCategory = EventCategory.GENERAL,
+    val friends: List<FriendUser> = emptyList(),
+    val selectedFriendUids: Set<String> = emptySet(),
     val isSaving: Boolean = false,
     val isSaved: Boolean = false,
 ) {
@@ -38,10 +42,27 @@ data class CreateEventUiState(
 class CreateEventViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val customEventRepository: CustomEventRepository,
+    private val socialRepository: SocialRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CreateEventUiState())
     val uiState: StateFlow<CreateEventUiState> = _uiState.asStateFlow()
+
+    init {
+        loadFriends()
+    }
+
+    private fun loadFriends() {
+        val uid = authRepository.getCurrentUserUid() ?: return
+        viewModelScope.launch {
+            try {
+                val friends = socialRepository.getFriends(uid)
+                _uiState.update { it.copy(friends = friends) }
+            } catch (_: Exception) {
+                // Friends list unavailable — sharing section just won't show
+            }
+        }
+    }
 
     fun setTitle(value: String) {
         _uiState.update { it.copy(title = value) }
@@ -69,6 +90,15 @@ class CreateEventViewModel @Inject constructor(
 
     fun setCategory(value: EventCategory) {
         _uiState.update { it.copy(category = value) }
+    }
+
+    fun toggleFriend(uid: String) {
+        _uiState.update { state ->
+            val current = state.selectedFriendUids
+            state.copy(
+                selectedFriendUids = if (uid in current) current - uid else current + uid,
+            )
+        }
     }
 
     fun save() {
@@ -99,7 +129,7 @@ class CreateEventViewModel @Inject constructor(
         _uiState.update { it.copy(isSaving = true) }
 
         viewModelScope.launch {
-            customEventRepository.createEvent(event)
+            customEventRepository.createEvent(event, state.selectedFriendUids)
             _uiState.update { it.copy(isSaving = false, isSaved = true) }
         }
     }

@@ -39,13 +39,37 @@ class DefaultCustomEventRepository @Inject constructor(
             entities.map { it.toDomainModel() }
         }
 
-    override suspend fun createEvent(event: CalendarEvent): String {
+    override suspend fun createEvent(event: CalendarEvent, sharedWithUids: Set<String>): String {
         val eventId = "custom_${UUID.randomUUID()}"
         val entity = event.toCustomEventEntity(eventId)
         calendarEventDao.upsertEvent(entity)
 
+        // Write attendee entities to Room for each shared friend
+        for (uid in sharedWithUids) {
+            eventAttendeeDao.upsertAttendee(
+                EventAttendeeEntity(
+                    eventId = eventId,
+                    userId = uid,
+                    displayName = "",
+                    rsvpStatus = RsvpStatus.PENDING,
+                ),
+            )
+        }
+
         try {
-            pushEventToFirestore(eventId, event)
+            val allParticipants = listOfNotNull(event.ownerUid) + sharedWithUids
+            pushEventToFirestore(eventId, event, allParticipants)
+
+            // Create attendee docs in Firestore for each shared friend
+            for (uid in sharedWithUids) {
+                firestore.collection("events")
+                    .document(eventId)
+                    .collection("attendees")
+                    .document(uid)
+                    .set(mapOf("rsvpStatus" to RsvpStatus.PENDING.name))
+                    .await()
+            }
+
             calendarEventDao.updatePendingSync(eventId, false)
         } catch (_: Exception) {
             // Stays pendingSync = true, will be retried by pushPendingEvents()
@@ -117,7 +141,11 @@ class DefaultCustomEventRepository @Inject constructor(
         }
     }
 
-    private suspend fun pushEventToFirestore(eventId: String, event: CalendarEvent) {
+    private suspend fun pushEventToFirestore(
+        eventId: String,
+        event: CalendarEvent,
+        participants: List<String> = listOfNotNull(event.ownerUid),
+    ) {
         val data = mapOf(
             "ownerUid" to event.ownerUid,
             "title" to event.title,
@@ -126,7 +154,7 @@ class DefaultCustomEventRepository @Inject constructor(
             "startTime" to event.startTime.toEpochMilli(),
             "endTime" to event.endTime.toEpochMilli(),
             "categories" to event.categories.map { it.name },
-            "participants" to listOfNotNull(event.ownerUid),
+            "participants" to participants,
             "source" to event.source.name,
             "createdAt" to com.google.firebase.Timestamp.now(),
         )
