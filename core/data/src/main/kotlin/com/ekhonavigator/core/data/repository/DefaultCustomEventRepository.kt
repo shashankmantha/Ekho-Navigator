@@ -44,34 +44,37 @@ class DefaultCustomEventRepository @Inject constructor(
             entities.map { it.toDomainModel() }
         }
 
-    override suspend fun createEvent(event: CalendarEvent, sharedWithUids: Set<String>): String {
+    override suspend fun createEvent(event: CalendarEvent, sharedWith: Map<String, String>): String {
         val eventId = "custom_${UUID.randomUUID()}"
         val entity = event.toCustomEventEntity(eventId)
         calendarEventDao.upsertEvent(entity)
 
         // Write attendee entities to Room for each shared friend
-        for (uid in sharedWithUids) {
+        for ((uid, displayName) in sharedWith) {
             eventAttendeeDao.upsertAttendee(
                 EventAttendeeEntity(
                     eventId = eventId,
                     userId = uid,
-                    displayName = "",
+                    displayName = displayName,
                     rsvpStatus = RsvpStatus.PENDING,
                 ),
             )
         }
 
         try {
-            val allParticipants = listOfNotNull(event.ownerUid) + sharedWithUids
+            val allParticipants = listOfNotNull(event.ownerUid) + sharedWith.keys
             pushEventToFirestore(eventId, event, allParticipants)
 
             // Create attendee docs in Firestore for each shared friend
-            for (uid in sharedWithUids) {
+            for ((uid, displayName) in sharedWith) {
                 firestore.collection("events")
                     .document(eventId)
                     .collection("attendees")
                     .document(uid)
-                    .set(mapOf("rsvpStatus" to RsvpStatus.PENDING.name))
+                    .set(mapOf(
+                        "displayName" to displayName,
+                        "rsvpStatus" to RsvpStatus.PENDING.name,
+                    ))
                     .await()
             }
 
@@ -95,22 +98,30 @@ class DefaultCustomEventRepository @Inject constructor(
     }
 
     override suspend fun deleteEvent(eventId: String) {
-        calendarEventDao.deleteEvent(eventId)
+        android.util.Log.d("CustomEventRepo", "deleteEvent called with id: $eventId")
+        // Track deletion so the listener doesn't re-add it during the race window
+        sharedEventSyncService.pendingDeletes.add(eventId)
         try {
-            // Delete attendee subcollection first (Firestore doesn't cascade)
+            // Delete from Firestore first — listener will receive REMOVED change
             val attendeeDocs = firestore.collection("events")
                 .document(eventId)
                 .collection("attendees")
                 .get()
                 .await()
+            android.util.Log.d("CustomEventRepo", "Deleting ${attendeeDocs.size()} attendee docs")
             for (doc in attendeeDocs.documents) {
                 doc.reference.delete().await()
             }
-            // Then delete the event document itself
+            android.util.Log.d("CustomEventRepo", "Deleting event doc from Firestore")
             firestore.collection("events").document(eventId).delete().await()
-        } catch (_: Exception) {
-            // Event is already gone from Room
+            android.util.Log.d("CustomEventRepo", "Firestore delete complete")
+        } catch (e: Exception) {
+            android.util.Log.e("CustomEventRepo", "Firestore delete failed", e)
         }
+        // Then clean up Room
+        calendarEventDao.deleteEvent(eventId)
+        sharedEventSyncService.pendingDeletes.remove(eventId)
+        android.util.Log.d("CustomEventRepo", "Room delete complete")
     }
 
     override suspend fun rsvp(

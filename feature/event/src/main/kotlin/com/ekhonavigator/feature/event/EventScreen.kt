@@ -80,13 +80,17 @@ fun EventScreen(
         viewModel.setEventId(eventId)
     }
 
-    LaunchedEffect(Unit) {
-        viewModel.navigateBack.collect { onBack() }
-    }
-
     val event by viewModel.event.collectAsStateWithLifecycle()
     val attendees by viewModel.attendees.collectAsStateWithLifecycle()
     val currentUserRsvp by viewModel.currentUserRsvp.collectAsStateWithLifecycle()
+
+    // Track whether we ever loaded an event — if it disappears after loading,
+    // the event was deleted (by owner, by self, or by remote sync) and we navigate back.
+    var hadEvent by remember { mutableStateOf(false) }
+    if (event != null) hadEvent = true
+    LaunchedEffect(event, hadEvent) {
+        if (hadEvent && event == null) onBack()
+    }
 
     if (event == null) {
         Box(

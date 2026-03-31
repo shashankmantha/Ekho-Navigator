@@ -11,12 +11,9 @@ import com.ekhonavigator.core.model.EventSource
 import com.ekhonavigator.core.model.RsvpStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -33,9 +30,6 @@ class EventDetailViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _eventId = MutableStateFlow("")
-
-    private val _navigateBack = MutableSharedFlow<Unit>()
-    val navigateBack = _navigateBack.asSharedFlow()
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val event: StateFlow<CalendarEvent?> = _eventId
@@ -116,7 +110,8 @@ class EventDetailViewModel @Inject constructor(
         if (id.isNotEmpty()) {
             viewModelScope.launch {
                 customEventRepository.deleteEvent(id)
-                _navigateBack.emit(Unit)
+                // No explicit navigation — the Room Flow emits null after delete,
+                // which the screen's hadEvent detection catches and calls onBack()
             }
         }
     }

@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.flowOf
  */
 class TestCustomEventRepository : CustomEventRepository {
 
-    val createdEvents = mutableListOf<Pair<CalendarEvent, Set<String>>>()
+    val createdEvents = mutableListOf<Pair<CalendarEvent, Map<String, String>>>()
     val deletedEventIds = mutableListOf<String>()
 
     override fun observeMyEvents(ownerUid: String): Flow<List<CalendarEvent>> = flowOf(emptyList())
@@ -26,8 +26,8 @@ class TestCustomEventRepository : CustomEventRepository {
 
     override fun observeAttendees(eventId: String): Flow<List<EventAttendee>> = flowOf(emptyList())
 
-    override suspend fun createEvent(event: CalendarEvent, sharedWithUids: Set<String>): String {
-        createdEvents += event to sharedWithUids
+    override suspend fun createEvent(event: CalendarEvent, sharedWith: Map<String, String>): String {
+        createdEvents += event to sharedWith
         return "test-event-id"
     }
 

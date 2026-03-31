@@ -128,8 +128,13 @@ class CreateEventViewModel @Inject constructor(
 
         _uiState.update { it.copy(isSaving = true) }
 
+        // Build uid → displayName map from selected friends
+        val sharedWith = state.friends
+            .filter { it.uid in state.selectedFriendUids }
+            .associate { it.uid to it.displayName }
+
         viewModelScope.launch {
-            customEventRepository.createEvent(event, state.selectedFriendUids)
+            customEventRepository.createEvent(event, sharedWith)
             _uiState.update { it.copy(isSaving = false, isSaved = true) }
         }
     }

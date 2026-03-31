@@ -28,6 +28,9 @@ class SharedEventSyncService @Inject constructor(
     private var listenerRegistration: ListenerRegistration? = null
     private var initialSyncDone = false
 
+    /** Event IDs currently being deleted — listener skips these to avoid race conditions. */
+    val pendingDeletes = mutableSetOf<String>()
+
     fun startListening(scope: CoroutineScope) {
         val uid = authRepository.getCurrentUserUid() ?: return
         stopListening()
@@ -57,6 +60,7 @@ class SharedEventSyncService @Inject constructor(
 
                     for (change in snapshots.documentChanges) {
                         val doc = change.document
+                        if (doc.id in pendingDeletes) continue
 
                         when (change.type) {
                             DocumentChange.Type.REMOVED -> {
