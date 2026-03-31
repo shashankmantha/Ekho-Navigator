@@ -4,6 +4,7 @@ import com.ekhonavigator.core.data.repository.CustomEventRepository
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventAttendee
 import com.ekhonavigator.core.model.RsvpStatus
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flowOf
@@ -38,5 +39,11 @@ class TestCustomEventRepository : CustomEventRepository {
 
     override suspend fun rsvp(eventId: String, userId: String, displayName: String, status: RsvpStatus) {}
 
+    override suspend fun syncAttendees(eventId: String) {}
+
     override suspend fun pushPendingEvents() {}
+
+    override fun startSync(scope: CoroutineScope) {}
+
+    override fun stopSync() {}
 }

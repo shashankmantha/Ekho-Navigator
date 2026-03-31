@@ -2,8 +2,10 @@ package com.ekhonavigator.core.data.model
 
 import com.ekhonavigator.core.database.model.CalendarEventEntity
 import com.ekhonavigator.core.model.CalendarEvent
+import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSource
 import com.ekhonavigator.core.network.model.NetworkCalendarEvent
+import com.google.firebase.firestore.DocumentSnapshot
 import java.time.Instant
 
 /**
@@ -50,3 +52,44 @@ fun CalendarEvent.toCustomEventEntity(
     ownerUid = ownerUid,
     pendingSync = true,
 )
+
+/**
+ * Maps a Firestore event document to a [CalendarEventEntity].
+ * [source] defaults to [EventSource.SHARED] but can be overridden for owned events
+ * syncing to a second device.
+ * Returns null if required fields are missing.
+ */
+fun firestoreDocToEntity(
+    doc: DocumentSnapshot,
+    source: EventSource = EventSource.SHARED,
+): CalendarEventEntity? {
+    val title = doc.getString("title") ?: return null
+    val startMillis = doc.getLong("startTime") ?: return null
+    val endMillis = doc.getLong("endTime") ?: return null
+
+    val categoryNames = doc.get("categories") as? List<*> ?: emptyList<String>()
+    val categories = categoryNames.mapNotNull { name ->
+        try {
+            EventCategory.valueOf(name as String)
+        } catch (_: Exception) {
+            null
+        }
+    }.ifEmpty { listOf(EventCategory.GENERAL) }
+
+    return CalendarEventEntity(
+        uid = doc.id,
+        title = title,
+        description = doc.getString("description") ?: "",
+        location = doc.getString("location") ?: "",
+        startTime = Instant.ofEpochMilli(startMillis),
+        endTime = Instant.ofEpochMilli(endMillis),
+        categories = categories,
+        url = "",
+        status = "CONFIRMED",
+        isBookmarked = true,
+        lastSyncedAt = Instant.now(),
+        source = source,
+        ownerUid = doc.getString("ownerUid"),
+        pendingSync = false,
+    )
+}

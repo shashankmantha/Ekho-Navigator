@@ -3,6 +3,7 @@ package com.ekhonavigator.core.data.repository
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventAttendee
 import com.ekhonavigator.core.model.RsvpStatus
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -33,6 +34,15 @@ interface CustomEventRepository {
     /** RSVP to an event. */
     suspend fun rsvp(eventId: String, userId: String, displayName: String, status: RsvpStatus)
 
+    /** Pull latest attendees from Firestore into Room for a specific event. */
+    suspend fun syncAttendees(eventId: String)
+
     /** Push all pendingSync events to Firestore. Called by a sync worker or on-demand. */
     suspend fun pushPendingEvents()
+
+    /** Start listening for shared events from Firestore. Call on sign-in. */
+    fun startSync(scope: CoroutineScope)
+
+    /** Stop listening. Call on sign-out or app teardown. */
+    fun stopSync()
 }

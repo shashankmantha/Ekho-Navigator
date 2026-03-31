@@ -4,7 +4,9 @@ import android.annotation.SuppressLint
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ekhonavigator.core.data.auth.AuthRepository
 import com.ekhonavigator.core.data.repository.CalendarRepository
+import com.ekhonavigator.core.data.repository.CustomEventRepository
 import com.ekhonavigator.core.model.CalendarEvent
 import com.google.android.gms.location.LocationServices
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -32,7 +34,15 @@ import kotlin.math.roundToInt
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val repository: CalendarRepository,
+    private val authRepository: AuthRepository,
+    private val customEventRepository: CustomEventRepository,
 ) : ViewModel() {
+
+    init {
+        if (authRepository.getCurrentUserUid() != null) {
+            customEventRepository.startSync(viewModelScope)
+        }
+    }
 
     // ---- Event filter state ----
 

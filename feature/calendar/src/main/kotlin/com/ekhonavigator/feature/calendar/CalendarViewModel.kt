@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import com.ekhonavigator.core.data.auth.AuthRepository
 import com.ekhonavigator.core.data.repository.CalendarRepository
+import com.ekhonavigator.core.data.repository.CustomEventRepository
 import com.ekhonavigator.core.data.sync.SyncInitializer
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventCategory
@@ -31,11 +32,18 @@ import kotlinx.coroutines.launch
 class CalendarViewModel @Inject constructor(
     private val repository: CalendarRepository,
     private val authRepository: AuthRepository,
+    private val customEventRepository: CustomEventRepository,
     @param:ApplicationContext private val appContext: Context,
 ) : ViewModel() {
 
     val isSignedIn: Boolean
         get() = authRepository.getCurrentUserUid() != null
+
+    init {
+        if (isSignedIn) {
+            customEventRepository.startSync(viewModelScope)
+        }
+    }
 
     // ---- User-driven state ----
 

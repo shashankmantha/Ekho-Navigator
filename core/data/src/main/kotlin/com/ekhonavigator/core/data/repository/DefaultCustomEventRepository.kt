@@ -1,6 +1,8 @@
 package com.ekhonavigator.core.data.repository
 
+import com.ekhonavigator.core.data.auth.AuthRepository
 import com.ekhonavigator.core.data.model.toCustomEventEntity
+import com.ekhonavigator.core.data.sync.SharedEventSyncService
 import com.ekhonavigator.core.database.dao.CalendarEventDao
 import com.ekhonavigator.core.database.dao.EventAttendeeDao
 import com.ekhonavigator.core.database.model.EventAttendeeEntity
@@ -9,6 +11,7 @@ import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventAttendee
 import com.ekhonavigator.core.model.RsvpStatus
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
@@ -20,6 +23,8 @@ import javax.inject.Singleton
 class DefaultCustomEventRepository @Inject constructor(
     private val calendarEventDao: CalendarEventDao,
     private val eventAttendeeDao: EventAttendeeDao,
+    private val sharedEventSyncService: SharedEventSyncService,
+    private val authRepository: AuthRepository,
 ) : CustomEventRepository {
 
     private val firestore = FirebaseFirestore.getInstance()
@@ -92,6 +97,16 @@ class DefaultCustomEventRepository @Inject constructor(
     override suspend fun deleteEvent(eventId: String) {
         calendarEventDao.deleteEvent(eventId)
         try {
+            // Delete attendee subcollection first (Firestore doesn't cascade)
+            val attendeeDocs = firestore.collection("events")
+                .document(eventId)
+                .collection("attendees")
+                .get()
+                .await()
+            for (doc in attendeeDocs.documents) {
+                doc.reference.delete().await()
+            }
+            // Then delete the event document itself
             firestore.collection("events").document(eventId).delete().await()
         } catch (_: Exception) {
             // Event is already gone from Room
@@ -129,6 +144,36 @@ class DefaultCustomEventRepository @Inject constructor(
         }
     }
 
+    override suspend fun syncAttendees(eventId: String) {
+        try {
+            val docs = firestore.collection("events")
+                .document(eventId)
+                .collection("attendees")
+                .get()
+                .await()
+
+            for (doc in docs.documents) {
+                val rsvpName = doc.getString("rsvpStatus") ?: RsvpStatus.PENDING.name
+                val status = try {
+                    RsvpStatus.valueOf(rsvpName)
+                } catch (_: Exception) {
+                    RsvpStatus.PENDING
+                }
+
+                eventAttendeeDao.upsertAttendee(
+                    EventAttendeeEntity(
+                        eventId = eventId,
+                        userId = doc.id,
+                        displayName = doc.getString("displayName") ?: "",
+                        rsvpStatus = status,
+                    ),
+                )
+            }
+        } catch (_: Exception) {
+            // Offline — Room has whatever was last synced
+        }
+    }
+
     override suspend fun pushPendingEvents() {
         val pending = calendarEventDao.getPendingSyncEvents()
         for (entity in pending) {
@@ -148,6 +193,7 @@ class DefaultCustomEventRepository @Inject constructor(
     ) {
         val data = mapOf(
             "ownerUid" to event.ownerUid,
+            "ownerDisplayName" to (authRepository.getCurrentUserDisplayName() ?: ""),
             "title" to event.title,
             "description" to event.description,
             "location" to event.location,
@@ -159,5 +205,13 @@ class DefaultCustomEventRepository @Inject constructor(
             "createdAt" to com.google.firebase.Timestamp.now(),
         )
         firestore.collection("events").document(eventId).set(data).await()
+    }
+
+    override fun startSync(scope: CoroutineScope) {
+        sharedEventSyncService.startListening(scope)
+    }
+
+    override fun stopSync() {
+        sharedEventSyncService.stopListening()
     }
 }
