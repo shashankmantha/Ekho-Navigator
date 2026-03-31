@@ -35,10 +35,10 @@ internal val DolphinCyan = Color(0xFF00E3FD)
 internal val DolphinCyanDark = Color(0xFF00363D)
 internal val DolphinCyanContainer = Color(0xFF00E3FD)
 
-// ── Accent: Cyber Lime (The Engagement Spark) ──────────────
-internal val CyberLime = Color(0xFFD4FF00)
-internal val CyberLimeDark = Color(0xFF2D3600)
-internal val CyberLimeContainer = Color(0xFFD4FF00)
+// ── Accent: Campus Amber (The Campus Pulse) ────────────────
+internal val CampusAmber = Color(0xFFE8813D)
+internal val CampusAmberDark = Color(0xFF4A2200)
+internal val CampusAmberContainer = Color(0xFFE8813D)
 
 // ── Error & Validation ──────────────────────────────────────
 internal val ErrorRed = Color(0xFFFF4D4D)
