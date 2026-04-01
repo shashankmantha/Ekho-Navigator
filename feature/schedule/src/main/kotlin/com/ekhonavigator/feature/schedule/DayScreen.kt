@@ -45,6 +45,7 @@ import com.ekhonavigator.core.designsystem.component.EkhoEventCard
 import com.ekhonavigator.core.designsystem.component.sourceAccentColor
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.EventCategory
+import com.ekhonavigator.feature.schedule.component.CategoryFilterButton
 import com.ekhonavigator.core.model.EventSource
 import com.ekhonavigator.core.model.ScheduleSourceType
 import java.time.LocalDate
