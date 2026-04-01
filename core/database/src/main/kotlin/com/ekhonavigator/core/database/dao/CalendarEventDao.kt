@@ -66,4 +66,7 @@ interface CalendarEventDao {
 
     @Query("DELETE FROM calendar_events WHERE source != 'ICAL_FEED'")
     suspend fun deleteAllUserEvents()
+
+    @Query("UPDATE calendar_events SET isBookmarked = 0 WHERE isBookmarked = 1")
+    suspend fun clearAllBookmarks()
 }
