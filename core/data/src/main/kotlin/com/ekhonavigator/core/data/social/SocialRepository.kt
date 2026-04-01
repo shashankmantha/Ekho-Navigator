@@ -232,4 +232,25 @@ class SocialRepository @Inject constructor() {
         batch.delete(outgoingRef)
         batch.commit().await()
     }
+
+    suspend fun removeFriend(currentUserId: String, friendUserId: String) {
+        if (currentUserId == friendUserId) return
+
+        val batch = firestore.batch()
+
+        val currentFriendRef = firestore.collection("users")
+            .document(currentUserId)
+            .collection("friends")
+            .document(friendUserId)
+
+        val friendSideRef = firestore.collection("users")
+            .document(friendUserId)
+            .collection("friends")
+            .document(currentUserId)
+
+        batch.delete(currentFriendRef)
+        batch.delete(friendSideRef)
+        batch.commit().await()
+    }
+
 }

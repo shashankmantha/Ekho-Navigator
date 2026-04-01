@@ -22,7 +22,9 @@ internal object DatabaseModule {
             context,
             EkhoDatabase::class.java,
             "ekho-database",
-        ).build()
+        )
+            .fallbackToDestructiveMigration()
+            .build()
 
     @Provides
     fun provideCalendarEventDao(db: EkhoDatabase): CalendarEventDao =
