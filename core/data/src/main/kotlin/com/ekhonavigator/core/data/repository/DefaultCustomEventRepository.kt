@@ -212,7 +212,6 @@ class DefaultCustomEventRepository @Inject constructor(
             "endTime" to event.endTime.toEpochMilli(),
             "categories" to event.categories.map { it.name },
             "participants" to participants,
-            "source" to event.source.name,
             "createdAt" to com.google.firebase.Timestamp.now(),
         )
         firestore.collection("events").document(eventId).set(data).await()
