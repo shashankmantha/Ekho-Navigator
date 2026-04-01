@@ -1,4 +1,4 @@
-package com.ekhonavigator.feature.events.navigation
+package com.ekhonavigator.feature.schedule.navigation
 
 import androidx.navigation3.runtime.NavKey
 import com.ekhonavigator.core.navigation.Navigator

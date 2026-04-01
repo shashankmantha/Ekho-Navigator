@@ -1,8 +1,7 @@
-package com.ekhonavigator.feature.events
+package com.ekhonavigator.feature.schedule
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,6 +38,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -65,7 +65,7 @@ fun CreateEventScreen(
 
     LaunchedEffect(initialEpochDay) {
         if (initialEpochDay != null) {
-            viewModel.setDate(java.time.LocalDate.ofEpochDay(initialEpochDay))
+            viewModel.setDate(LocalDate.ofEpochDay(initialEpochDay))
         }
     }
 
@@ -88,7 +88,6 @@ fun CreateEventScreen(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        // Title
         OutlinedTextField(
             value = uiState.title,
             onValueChange = viewModel::setTitle,
@@ -99,7 +98,6 @@ fun CreateEventScreen(
             shape = RoundedCornerShape(12.dp),
         )
 
-        // Date — read-only field with clickable overlay to open picker
         PickerField(
             value = uiState.date?.format(dateFormatter) ?: "",
             label = "Date",
@@ -107,7 +105,6 @@ fun CreateEventScreen(
             onClick = { showDatePicker = true },
         )
 
-        // Start / End time row
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -128,7 +125,6 @@ fun CreateEventScreen(
             )
         }
 
-        // Location
         OutlinedTextField(
             value = uiState.location,
             onValueChange = viewModel::setLocation,
@@ -139,7 +135,6 @@ fun CreateEventScreen(
             shape = RoundedCornerShape(12.dp),
         )
 
-        // Description
         OutlinedTextField(
             value = uiState.description,
             onValueChange = viewModel::setDescription,
@@ -151,7 +146,6 @@ fun CreateEventScreen(
             shape = RoundedCornerShape(12.dp),
         )
 
-        // Category
         Text(
             text = "Category",
             style = MaterialTheme.typography.labelLarge,
@@ -189,7 +183,6 @@ fun CreateEventScreen(
             }
         }
 
-        // Share with friends
         if (uiState.friends.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
 
@@ -222,7 +215,7 @@ fun CreateEventScreen(
                                         .size(16.dp)
                                         .clip(CircleShape)
                                         .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-                                    contentAlignment = androidx.compose.ui.Alignment.Center,
+                                    contentAlignment = Alignment.Center,
                                 ) {
                                     Icon(
                                         imageVector = EkhoIcons.Person,
@@ -258,7 +251,6 @@ fun CreateEventScreen(
 
         Spacer(Modifier.height(8.dp))
 
-        // Save button
         Button(
             onClick = viewModel::save,
             enabled = uiState.canSave && !uiState.isSaving,
@@ -271,7 +263,6 @@ fun CreateEventScreen(
         Spacer(Modifier.height(16.dp))
     }
 
-    // Date picker dialog
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState()
         DatePickerDialog(
@@ -297,7 +288,6 @@ fun CreateEventScreen(
         }
     }
 
-    // Start time picker dialog
     if (showStartTimePicker) {
         TimePickerDialog(
             onDismiss = { showStartTimePicker = false },
@@ -308,7 +298,6 @@ fun CreateEventScreen(
         )
     }
 
-    // End time picker dialog
     if (showEndTimePicker) {
         TimePickerDialog(
             onDismiss = { showEndTimePicker = false },
@@ -320,10 +309,6 @@ fun CreateEventScreen(
     }
 }
 
-/**
- * Read-only OutlinedTextField with a transparent clickable overlay.
- * Tapping anywhere on the field triggers [onClick] (e.g. to open a picker dialog).
- */
 @Composable
 private fun PickerField(
     value: String,
@@ -344,7 +329,6 @@ private fun PickerField(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
         )
-        // Transparent overlay captures taps since the disabled TextField ignores them
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -353,10 +337,6 @@ private fun PickerField(
     }
 }
 
-/**
- * Material3 doesn't ship a TimePickerDialog composable (only the TimePicker itself),
- * so we wrap it in an AlertDialog. This is the standard approach from the M3 docs.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TimePickerDialog(

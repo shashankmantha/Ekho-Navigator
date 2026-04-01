@@ -39,9 +39,9 @@ import com.ekhonavigator.feature.account.AccountScreen
 import com.ekhonavigator.feature.account.navigation.AccountNavKey
 import com.ekhonavigator.feature.social.SocialScreen
 import com.ekhonavigator.feature.social.navigation.SocialNavKey
-import com.ekhonavigator.feature.events.CreateEventScreen
-import com.ekhonavigator.feature.events.navigation.CreateEventNavKey
-import com.ekhonavigator.feature.events.navigation.navigateToCreateEvent
+import com.ekhonavigator.feature.schedule.CreateEventScreen
+import com.ekhonavigator.feature.schedule.navigation.CreateEventNavKey
+import com.ekhonavigator.feature.schedule.navigation.navigateToCreateEvent
 import com.ekhonavigator.feature.event.EventScreen
 import com.ekhonavigator.feature.event.navigation.EventNavKey
 import com.ekhonavigator.feature.event.navigation.navigateToEvent
