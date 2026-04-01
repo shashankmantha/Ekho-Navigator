@@ -101,8 +101,9 @@ fun ScheduleScreen(
         pageCount = { tabs.size },
     )
     val scope = rememberCoroutineScope()
-    var snapToTodayTrigger by remember { mutableStateOf(0) }
-    var daySnapToTodayTrigger by remember { mutableStateOf(0) }
+    var monthSnapTrigger by remember { mutableStateOf(0) }
+    var daySnapTrigger by remember { mutableStateOf(0) }
+    var discoverSnapTrigger by remember { mutableStateOf(0) }
 
     Scaffold(
         modifier = modifier,
@@ -111,26 +112,22 @@ fun ScheduleScreen(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                if (pagerState.currentPage == ScheduleTab.MONTH.ordinal ||
-                    pagerState.currentPage == ScheduleTab.DAY.ordinal
+                SmallFloatingActionButton(
+                    onClick = {
+                        when (pagerState.currentPage) {
+                            ScheduleTab.DAY.ordinal -> daySnapTrigger++
+                            ScheduleTab.MONTH.ordinal -> monthSnapTrigger++
+                            ScheduleTab.DISCOVER.ordinal -> discoverSnapTrigger++
+                        }
+                    },
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 ) {
-                    SmallFloatingActionButton(
-                        onClick = {
-                            if (pagerState.currentPage == ScheduleTab.MONTH.ordinal) {
-                                snapToTodayTrigger++
-                            } else {
-                                daySnapToTodayTrigger++
-                            }
-                        },
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    ) {
-                        Icon(
-                            imageVector = EkhoIcons.CalendarFilled,
-                            contentDescription = "Jump to today",
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
+                    Icon(
+                        imageVector = EkhoIcons.CalendarFilled,
+                        contentDescription = "Jump to today",
+                        modifier = Modifier.size(20.dp),
+                    )
                 }
 
                 if (viewModel.isSignedIn) {
@@ -191,6 +188,34 @@ fun ScheduleScreen(
                 }
             }
 
+            // Shared filter chip row — always visible, identical across tabs
+            val activeSourceTypes by viewModel.activeSourceTypes.collectAsStateWithLifecycle()
+            val selectedCategories by viewModel.selectedCategories.collectAsStateWithLifecycle()
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ScheduleSourceFilterRow(
+                    activeTypes = activeSourceTypes,
+                    onToggle = viewModel::toggleSourceType,
+                    modifier = Modifier.weight(1f),
+                )
+
+                CategoryFilterButton(
+                    selectedCategories = selectedCategories,
+                    onToggleCategory = viewModel::toggleCategory,
+                    onClearAll = viewModel::clearCategories,
+                )
+            }
+
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+            )
+
             // Pager content — tap-only tab switching, no swipe
             HorizontalPager(
                 state = pagerState,
@@ -202,16 +227,17 @@ fun ScheduleScreen(
                     ScheduleTab.DAY -> DayTab(
                         viewModel = viewModel,
                         onEventClick = onEventClick,
-                        snapToTodayTrigger = daySnapToTodayTrigger,
+                        snapToTodayTrigger = daySnapTrigger,
                     )
                     ScheduleTab.MONTH -> MonthTab(
                         viewModel = viewModel,
                         onDayClick = onDayClick,
-                        snapToTodayTrigger = snapToTodayTrigger,
+                        snapToTodayTrigger = monthSnapTrigger,
                     )
                     ScheduleTab.DISCOVER -> DiscoverTab(
                         viewModel = viewModel,
                         onEventClick = onEventClick,
+                        snapToTodayTrigger = discoverSnapTrigger,
                     )
                 }
             }
@@ -248,8 +274,6 @@ private fun MonthTab(
     snapToTodayTrigger: Int = 0,
 ) {
     val eventsForMonth by viewModel.eventsForMonth.collectAsStateWithLifecycle()
-    val activeSourceTypes by viewModel.activeSourceTypes.collectAsStateWithLifecycle()
-    val selectedCategories by viewModel.selectedCategories.collectAsStateWithLifecycle()
 
     val today = remember { LocalDate.now() }
     val daysOfWeek = remember { daysOfWeek() }
@@ -286,30 +310,11 @@ private fun MonthTab(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Source filter chips + category filter
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                ScheduleSourceFilterRow(
-                    activeTypes = activeSourceTypes,
-                    onToggle = viewModel::toggleSourceType,
-                    modifier = Modifier.weight(1f),
-                )
-
-                // Category filter inline
-                CategoryFilterButton(
-                    selectedCategories = selectedCategories,
-                    onToggleCategory = viewModel::toggleCategory,
-                    onClearAll = viewModel::clearCategories,
-                )
-            }
-
             // Pinned day-of-week header (doesn't scroll)
-            DaysOfWeekHeader(daysOfWeek = daysOfWeek)
+            DaysOfWeekHeader(
+                daysOfWeek = daysOfWeek,
+                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+            )
 
             // Vertically scrolling calendar grid — horizontal swipe jumps months
             VerticalCalendar(
@@ -382,11 +387,18 @@ private fun MonthTab(
 private fun DiscoverTab(
     viewModel: ScheduleViewModel,
     onEventClick: (String) -> Unit,
+    snapToTodayTrigger: Int = 0,
 ) {
     val events by viewModel.discoverEvents.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
-    val activeSourceTypes by viewModel.activeSourceTypes.collectAsStateWithLifecycle()
     val selectedCategories by viewModel.selectedCategories.collectAsStateWithLifecycle()
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+
+    LaunchedEffect(snapToTodayTrigger) {
+        if (snapToTodayTrigger > 0) {
+            listState.animateScrollToItem(0)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -399,31 +411,8 @@ private fun DiscoverTab(
             onQueryChange = viewModel::setSearchQuery,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
         )
-
-        // Source filter chips + category filter (shared with Month tab)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            ScheduleSourceFilterRow(
-                activeTypes = activeSourceTypes,
-                onToggle = viewModel::toggleSourceType,
-                modifier = Modifier.weight(1f),
-            )
-
-            CategoryFilterButton(
-                selectedCategories = selectedCategories,
-                onToggleCategory = viewModel::toggleCategory,
-                onClearAll = viewModel::clearCategories,
-            )
-        }
-
-        Spacer(Modifier.height(4.dp))
 
         // Event list
         if (events.isEmpty()) {
@@ -456,6 +445,7 @@ private fun DiscoverTab(
             val tomorrow = remember { today.plusDays(1) }
 
             LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 88.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -547,7 +537,7 @@ private fun EventSearchBar(
 // ══════════════════════════════════════════════════
 
 @Composable
-private fun CategoryFilterButton(
+internal fun CategoryFilterButton(
     selectedCategories: Set<EventCategory>,
     onToggleCategory: (EventCategory) -> Unit,
     onClearAll: () -> Unit,

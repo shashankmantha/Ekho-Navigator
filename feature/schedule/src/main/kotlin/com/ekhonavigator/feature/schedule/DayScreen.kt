@@ -44,6 +44,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ekhonavigator.core.designsystem.component.EkhoEventCard
 import com.ekhonavigator.core.designsystem.component.sourceAccentColor
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSource
 import com.ekhonavigator.core.model.ScheduleSourceType
 import java.time.LocalDate
@@ -100,13 +101,43 @@ fun DayScreen(
             }
         },
     ) { innerPadding ->
-        DayPager(
-            initialDate = initialDate,
-            viewModel = viewModel,
-            onEventClick = onEventClick,
-            snapToTodayTrigger = snapToTodayTrigger,
-            modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()),
-        )
+        val activeSourceTypes by viewModel.activeSourceTypes.collectAsStateWithLifecycle()
+        val selectedCategories by viewModel.selectedCategories.collectAsStateWithLifecycle()
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = innerPadding.calculateBottomPadding()),
+        ) {
+            // Filter chips — matches ScheduleScreen layout
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ScheduleSourceFilterRow(
+                    activeTypes = activeSourceTypes,
+                    onToggle = viewModel::toggleSourceType,
+                    modifier = Modifier.weight(1f),
+                )
+
+                CategoryFilterButton(
+                    selectedCategories = selectedCategories,
+                    onToggleCategory = viewModel::toggleCategory,
+                    onClearAll = viewModel::clearCategories,
+                )
+            }
+
+            DayPager(
+                initialDate = initialDate,
+                viewModel = viewModel,
+                onEventClick = onEventClick,
+                snapToTodayTrigger = snapToTodayTrigger,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
     }
 }
 
@@ -125,7 +156,6 @@ fun DayPager(
     modifier: Modifier = Modifier,
     snapToTodayTrigger: Int = 0,
 ) {
-    val activeSourceTypes by viewModel.activeSourceTypes.collectAsStateWithLifecycle()
     val eventsForDay by viewModel.eventsForSelectedDate.collectAsStateWithLifecycle()
 
     val today = remember { LocalDate.now() }
@@ -176,17 +206,8 @@ fun DayPager(
             } else {
                 MaterialTheme.colorScheme.onSurface
             },
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         )
-
-        // Color-coded source filter row
-        ScheduleSourceFilterRow(
-            activeTypes = activeSourceTypes,
-            onToggle = viewModel::toggleSourceType,
-            modifier = Modifier.padding(horizontal = 16.dp),
-        )
-
-        Spacer(Modifier.height(12.dp))
 
         // Swipeable day pages
         HorizontalPager(
