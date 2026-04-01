@@ -3,6 +3,8 @@ package com.ekhonavigator.feature.schedule
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -189,10 +191,11 @@ fun ScheduleScreen(
                 }
             }
 
-            // Pager content
+            // Pager content — tap-only tab switching, no swipe
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize(),
+                userScrollEnabled = false,
                 beyondViewportPageCount = 1,
             ) { page ->
                 when (tabs[page]) {
@@ -308,9 +311,34 @@ private fun MonthTab(
             // Pinned day-of-week header (doesn't scroll)
             DaysOfWeekHeader(daysOfWeek = daysOfWeek)
 
-            // Vertically scrolling calendar grid
+            // Vertically scrolling calendar grid — horizontal swipe jumps months
             VerticalCalendar(
                 state = calendarState,
+                modifier = Modifier.pointerInput(Unit) {
+                    var accumulator = 0f
+                    detectHorizontalDragGestures(
+                        onDragStart = { accumulator = 0f },
+                        onHorizontalDrag = { _, dragAmount ->
+                            accumulator += dragAmount
+                        },
+                        onDragEnd = {
+                            val threshold = 100f
+                            if (accumulator > threshold) {
+                                scope.launch {
+                                    calendarState.animateScrollToMonth(
+                                        calendarState.firstVisibleMonth.yearMonth.minusMonths(1),
+                                    )
+                                }
+                            } else if (accumulator < -threshold) {
+                                scope.launch {
+                                    calendarState.animateScrollToMonth(
+                                        calendarState.firstVisibleMonth.yearMonth.plusMonths(1),
+                                    )
+                                }
+                            }
+                        },
+                    )
+                },
                 monthHeader = { month ->
                     CalendarTitle(
                         month = month.yearMonth,
