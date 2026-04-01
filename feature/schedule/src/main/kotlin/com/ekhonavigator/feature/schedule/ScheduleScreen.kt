@@ -79,7 +79,7 @@ import java.time.format.DateTimeFormatter
  * Internal tab indices for the Schedule screen pager.
  */
 private enum class ScheduleTab(val title: String) {
-    WEEK("Week"),
+    DAY("Day"),
     MONTH("Month"),
     DISCOVER("Discover"),
 }
@@ -89,17 +89,18 @@ private enum class ScheduleTab(val title: String) {
 fun ScheduleScreen(
     onEventClick: (String) -> Unit,
     onDayClick: (Long) -> Unit,
-    onCreateEventClick: () -> Unit = {},
+    onCreateEventClick: (Long?) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ScheduleViewModel = hiltViewModel(),
 ) {
     val tabs = remember { ScheduleTab.entries }
     val pagerState = rememberPagerState(
-        initialPage = ScheduleTab.WEEK.ordinal,
+        initialPage = ScheduleTab.DAY.ordinal,
         pageCount = { tabs.size },
     )
     val scope = rememberCoroutineScope()
     var snapToTodayTrigger by remember { mutableStateOf(0) }
+    var daySnapToTodayTrigger by remember { mutableStateOf(0) }
 
     Scaffold(
         modifier = modifier,
@@ -108,9 +109,17 @@ fun ScheduleScreen(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                if (pagerState.currentPage == ScheduleTab.MONTH.ordinal) {
+                if (pagerState.currentPage == ScheduleTab.MONTH.ordinal ||
+                    pagerState.currentPage == ScheduleTab.DAY.ordinal
+                ) {
                     SmallFloatingActionButton(
-                        onClick = { snapToTodayTrigger++ },
+                        onClick = {
+                            if (pagerState.currentPage == ScheduleTab.MONTH.ordinal) {
+                                snapToTodayTrigger++
+                            } else {
+                                daySnapToTodayTrigger++
+                            }
+                        },
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
                         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     ) {
@@ -123,8 +132,16 @@ fun ScheduleScreen(
                 }
 
                 if (viewModel.isSignedIn) {
+                    val selectedDate by viewModel.selectedDate.collectAsStateWithLifecycle()
                     FloatingActionButton(
-                        onClick = onCreateEventClick,
+                        onClick = {
+                            val epochDay = if (pagerState.currentPage == ScheduleTab.DAY.ordinal) {
+                                selectedDate.toEpochDay()
+                            } else {
+                                null
+                            }
+                            onCreateEventClick(epochDay)
+                        },
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
                         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     ) {
@@ -179,7 +196,11 @@ fun ScheduleScreen(
                 beyondViewportPageCount = 1,
             ) { page ->
                 when (tabs[page]) {
-                    ScheduleTab.WEEK -> WeekTab()
+                    ScheduleTab.DAY -> DayTab(
+                        viewModel = viewModel,
+                        onEventClick = onEventClick,
+                        snapToTodayTrigger = daySnapToTodayTrigger,
+                    )
                     ScheduleTab.MONTH -> MonthTab(
                         viewModel = viewModel,
                         onDayClick = onDayClick,
@@ -196,21 +217,21 @@ fun ScheduleScreen(
 }
 
 // ══════════════════════════════════════════════════
-// Week Tab — placeholder, next phase
+// Day Tab — swipeable day view with events
 // ══════════════════════════════════════════════════
 
 @Composable
-private fun WeekTab() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = "Timetable coming soon",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
+private fun DayTab(
+    viewModel: ScheduleViewModel,
+    onEventClick: (String) -> Unit,
+    snapToTodayTrigger: Int = 0,
+) {
+    DayPager(
+        initialDate = LocalDate.now(),
+        viewModel = viewModel,
+        onEventClick = onEventClick,
+        snapToTodayTrigger = snapToTodayTrigger,
+    )
 }
 
 // ══════════════════════════════════════════════════

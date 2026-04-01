@@ -57,10 +57,17 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun CreateEventScreen(
     onBack: () -> Unit,
+    initialEpochDay: Long? = null,
     modifier: Modifier = Modifier,
     viewModel: CreateEventViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(initialEpochDay) {
+        if (initialEpochDay != null) {
+            viewModel.setDate(java.time.LocalDate.ofEpochDay(initialEpochDay))
+        }
+    }
 
     LaunchedEffect(uiState.isSaved) {
         if (uiState.isSaved) onBack()

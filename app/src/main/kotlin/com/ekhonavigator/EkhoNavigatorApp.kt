@@ -134,7 +134,9 @@ fun EkhoNavigatorApp(
                             ScheduleScreen(
                                 onEventClick = navigator::navigateToEvent,
                                 onDayClick = navigator::navigateToDay,
-                                onCreateEventClick = navigator::navigateToCreateEvent,
+                                onCreateEventClick = { epochDay ->
+                                    navigator.navigateToCreateEvent(epochDay)
+                                },
                             )
                         }
                     }
@@ -144,13 +146,19 @@ fun EkhoNavigatorApp(
                             DayScreen(
                                 epochDay = key.epochDay,
                                 onEventClick = navigator::navigateToEvent,
+                                onCreateEventClick = { epochDay ->
+                                    navigator.navigateToCreateEvent(epochDay)
+                                },
                             )
                         }
                     }
 
                     is CreateEventNavKey -> {
                         NavEntry(key) {
-                            CreateEventScreen(onBack = navigator::goBack)
+                            CreateEventScreen(
+                                onBack = navigator::goBack,
+                                initialEpochDay = key.initialEpochDay,
+                            )
                         }
                     }
 
