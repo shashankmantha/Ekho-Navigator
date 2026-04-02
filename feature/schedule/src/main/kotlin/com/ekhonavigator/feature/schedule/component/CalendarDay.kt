@@ -52,14 +52,15 @@ fun DayContent(
 ) {
     val isCurrentMonth = day.position == DayPosition.MonthDate
 
+    val todayBg = MaterialTheme.colorScheme.onSurface
+    val selectedBg = MaterialTheme.colorScheme.surfaceContainerHighest
+
     val textColor = when {
-        isSelected -> MaterialTheme.colorScheme.onPrimary
+        isToday && isCurrentMonth -> MaterialTheme.colorScheme.onPrimary
+        isSelected -> MaterialTheme.colorScheme.onSurface
         !isCurrentMonth -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
         else -> MaterialTheme.colorScheme.onSurface
     }
-
-    val selectedColor = MaterialTheme.colorScheme.primary
-    val todayColor = MaterialTheme.colorScheme.primaryContainer
 
     // Source-type pill colors from the theme
     val schedulePillColor = MaterialTheme.colorScheme.primary
@@ -82,9 +83,9 @@ fun DayContent(
             .clip(RoundedCornerShape(6.dp))
             .background(cellColor)
             .drawBehind {
-                if (isSelected) {
+                if (isSelected && !(isToday && isCurrentMonth)) {
                     drawRoundRect(
-                        color = selectedColor.copy(alpha = 0.12f),
+                        color = selectedBg.copy(alpha = 0.5f),
                         cornerRadius = androidx.compose.ui.geometry.CornerRadius(6.dp.toPx()),
                     )
                 }
@@ -93,20 +94,16 @@ fun DayContent(
             .padding(horizontal = 2.dp, vertical = 2.dp),
         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
     ) {
-        // Date number with today highlight
+        // Date number with today/selected highlight
         Text(
             text = day.date.dayOfMonth.toString(),
             style = MaterialTheme.typography.labelSmall,
-            color = if (isToday && isCurrentMonth) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                textColor
-            },
+            color = textColor,
             modifier = if (isToday && isCurrentMonth) {
                 Modifier
                     .drawBehind {
                         drawCircle(
-                            color = todayColor,
+                            color = todayBg,
                             radius = size.maxDimension / 2 + 2.dp.toPx(),
                         )
                     }
