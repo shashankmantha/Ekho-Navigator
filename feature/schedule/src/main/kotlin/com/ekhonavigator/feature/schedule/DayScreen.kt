@@ -1,11 +1,17 @@
 package com.ekhonavigator.feature.schedule
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,10 +29,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -34,6 +42,8 @@ import com.ekhonavigator.core.designsystem.component.EkhoEventCard
 import com.ekhonavigator.core.designsystem.component.sourceAccentColor
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.EventSource
+import com.ekhonavigator.feature.schedule.component.MiniMonthCalendar
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -116,6 +126,8 @@ fun DayPager(
     snapToTodayTrigger: Int = 0,
 ) {
     val eventsForDay by viewModel.eventsForSelectedDate.collectAsStateWithLifecycle()
+    val selectedDate by viewModel.selectedDate.collectAsStateWithLifecycle()
+    val miniCalendarDaySourceTypes by viewModel.miniCalendarDaySourceTypes.collectAsStateWithLifecycle()
 
     val today = remember { LocalDate.now() }
     val initialOffset = remember(initialDate) {
@@ -126,6 +138,7 @@ fun DayPager(
         initialPage = DAY_PAGE_RANGE + initialOffset,
         pageCount = { DAY_PAGE_RANGE * 2 + 1 },
     )
+    val scope = rememberCoroutineScope()
 
     // Update ViewModel when page changes (swipe or initial)
     LaunchedEffect(pagerState) {
@@ -146,27 +159,65 @@ fun DayPager(
     val timeFormatter = remember { DateTimeFormatter.ofPattern("h:mm a") }
     val dayFormatter = remember { DateTimeFormatter.ofPattern("EEEE, MMMM d") }
 
+    // Mini-month expand/collapse state — shown by default
+    var miniMonthExpanded by remember { mutableStateOf(false) }
+
     Column(modifier = modifier.fillMaxSize()) {
-        // Day header — updates based on current page
+        // Day header with chevron toggle for mini-month
         val currentDate = remember(pagerState.currentPage) {
             today.plusDays((pagerState.currentPage - DAY_PAGE_RANGE).toLong())
         }
 
-        Text(
-            text = when (currentDate) {
-                today -> "Today"
-                today.plusDays(1) -> "Tomorrow"
-                today.minusDays(1) -> "Yesterday"
-                else -> currentDate.format(dayFormatter)
-            },
-            style = MaterialTheme.typography.headlineSmall,
-            color = if (currentDate == today) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.onSurface
-            },
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { miniMonthExpanded = !miniMonthExpanded }
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = when (currentDate) {
+                    today -> "Today"
+                    today.plusDays(1) -> "Tomorrow"
+                    today.minusDays(1) -> "Yesterday"
+                    else -> currentDate.format(dayFormatter)
+                },
+                style = MaterialTheme.typography.headlineSmall,
+                color = if (currentDate == today) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+            )
+
+            Icon(
+                imageVector = EkhoIcons.ChevronRight,
+                contentDescription = if (miniMonthExpanded) "Collapse calendar" else "Expand calendar",
+                modifier = Modifier
+                    .size(24.dp)
+                    .rotate(if (miniMonthExpanded) 270f else 90f),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        // Collapsible mini-month calendar
+        AnimatedVisibility(
+            visible = miniMonthExpanded,
+            enter = expandVertically(),
+            exit = shrinkVertically(),
+        ) {
+            MiniMonthCalendar(
+                selectedDate = selectedDate,
+                daySourceTypes = miniCalendarDaySourceTypes,
+                onDayClick = { date ->
+                    val page = DAY_PAGE_RANGE + (date.toEpochDay() - today.toEpochDay()).toInt()
+                    scope.launch { pagerState.animateScrollToPage(page) }
+                },
+                onMonthChanged = viewModel::setMiniCalendarMonth,
+                modifier = Modifier.padding(horizontal = 8.dp),
+            )
+        }
 
         // Swipeable day pages
         HorizontalPager(

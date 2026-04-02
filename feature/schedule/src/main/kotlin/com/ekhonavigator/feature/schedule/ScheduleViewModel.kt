@@ -108,6 +108,34 @@ class ScheduleViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     // ══════════════════════════════════════════════════
+    // Mini-calendar state (Day tab / Week tab dot indicators)
+    // ══════════════════════════════════════════════════
+
+    private val _miniCalendarMonth = MutableStateFlow(YearMonth.now())
+
+    /** Source types per date in the mini-calendar's visible month, for colored dot indicators. */
+    val miniCalendarDaySourceTypes: StateFlow<Map<LocalDate, Set<ScheduleSourceType>>> =
+        _miniCalendarMonth
+            .flatMapLatest { month ->
+                val zone = ZoneId.systemDefault()
+                val start = month.atDay(1).atStartOfDay(zone).toInstant()
+                val end = month.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant()
+                combine(
+                    repository.observeEventsByDateRange(start, end),
+                    _activeSourceTypes,
+                    _selectedCategories,
+                ) { events, activeTypes, categories ->
+                    events
+                        .filter { it.matchesSourceTypes(activeTypes) && it.matchesCategories(categories) }
+                        .groupBy { it.startTime.atZone(zone).toLocalDate() }
+                        .mapValues { (_, dayEvents) ->
+                            dayEvents.map { it.toSourceType() }.toSet()
+                        }
+                }
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    // ══════════════════════════════════════════════════
     // Discover tab state (search is Discover-specific, filters are shared)
     // ══════════════════════════════════════════════════
 
@@ -148,6 +176,10 @@ class ScheduleViewModel @Inject constructor(
 
     fun setVisibleMonthRange(first: YearMonth, last: YearMonth) {
         _visibleMonthRange.value = first to last
+    }
+
+    fun setMiniCalendarMonth(month: YearMonth) {
+        _miniCalendarMonth.value = month
     }
 
     fun toggleCategory(category: EventCategory) {
@@ -232,3 +264,11 @@ private fun CalendarEvent.matchesSourceTypes(activeTypes: Set<ScheduleSourceType
  */
 private fun CalendarEvent.matchesCategories(selected: Set<EventCategory>): Boolean =
     selected.isEmpty() || categories.any { it in selected }
+
+/** Map a [CalendarEvent] to its display [ScheduleSourceType] for dot coloring. */
+private fun CalendarEvent.toSourceType(): ScheduleSourceType = when {
+    source == EventSource.ICAL_FEED && isBookmarked -> ScheduleSourceType.BOOKMARKED
+    source == EventSource.ICAL_FEED -> ScheduleSourceType.CAMPUS
+    source == EventSource.USER_CREATED || source == EventSource.SHARED -> ScheduleSourceType.CUSTOM
+    else -> ScheduleSourceType.SCHEDULE
+}
