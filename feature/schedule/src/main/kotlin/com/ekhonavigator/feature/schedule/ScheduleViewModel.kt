@@ -55,7 +55,10 @@ class ScheduleViewModel @Inject constructor(
     val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
 
     /** Multi-select source filter: all types active by default. */
-    private val _activeSourceTypes = MutableStateFlow(ScheduleSourceType.entries.toSet())
+    // SCHEDULE excluded until class schedule import is implemented
+    private val _activeSourceTypes = MutableStateFlow(
+        ScheduleSourceType.entries.toSet() - ScheduleSourceType.SCHEDULE,
+    )
     val activeSourceTypes: StateFlow<Set<ScheduleSourceType>> = _activeSourceTypes.asStateFlow()
 
     /** Multi-select category filter: empty = show all categories. */

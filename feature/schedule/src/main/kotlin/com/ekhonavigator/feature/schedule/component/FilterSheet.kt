@@ -73,7 +73,10 @@ fun FilterSheetContent(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            ScheduleSourceType.entries.forEach { type ->
+            // SCHEDULE excluded until class schedule import is implemented
+            ScheduleSourceType.entries
+                .filter { it != ScheduleSourceType.SCHEDULE }
+                .forEach { type ->
                 val isActive = type in activeSourceTypes
                 val (accentColor, _) = sourceTypeThemeColors(type, colors)
 
