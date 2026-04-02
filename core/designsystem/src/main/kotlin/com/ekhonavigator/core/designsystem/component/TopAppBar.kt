@@ -30,8 +30,36 @@ fun EkhoTopAppBar(
     onActionClick: () -> Unit = {},
     scrollBehavior: TopAppBarScrollBehavior? = null,
 ) {
+    EkhoTopAppBar(
+        title = stringResource(id = titleRes),
+        modifier = modifier,
+        navigationIcon = navigationIcon,
+        navigationIconContentDescription = navigationIconContentDescription,
+        actionIcon = actionIcon,
+        actionIconContentDescription = actionIconContentDescription,
+        colors = colors,
+        onNavigationClick = onNavigationClick,
+        onActionClick = onActionClick,
+        scrollBehavior = scrollBehavior,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EkhoTopAppBar(
+    title: String,
+    modifier: Modifier = Modifier,
+    navigationIcon: ImageVector? = null,
+    navigationIconContentDescription: String? = null,
+    actionIcon: ImageVector? = null,
+    actionIconContentDescription: String? = null,
+    colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(),
+    onNavigationClick: () -> Unit = {},
+    onActionClick: () -> Unit = {},
+    scrollBehavior: TopAppBarScrollBehavior? = null,
+) {
     CenterAlignedTopAppBar(
-        title = { Text(text = stringResource(id = titleRes)) },
+        title = { Text(text = title) },
         navigationIcon = {
             if (navigationIcon != null) {
                 IconButton(onClick = onNavigationClick) {

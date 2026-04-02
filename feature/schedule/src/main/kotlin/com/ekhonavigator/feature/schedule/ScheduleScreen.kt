@@ -1,26 +1,33 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.ekhonavigator.feature.schedule
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.TabRowDefaults.SecondaryIndicator
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,7 +40,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
-import com.ekhonavigator.feature.schedule.component.CategoryFilterButton
+import com.ekhonavigator.core.model.ScheduleSourceType
+import com.ekhonavigator.feature.schedule.component.FilterSheetContent
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
@@ -64,6 +72,12 @@ fun ScheduleScreen(
     var monthSnapTrigger by remember { mutableStateOf(0) }
     var daySnapTrigger by remember { mutableStateOf(0) }
     var discoverSnapTrigger by remember { mutableStateOf(0) }
+
+    // Filter bottom sheet state
+    var showFilterSheet by remember { mutableStateOf(false) }
+    val filterSheetState = rememberModalBottomSheetState()
+    val activeSourceTypes by viewModel.activeSourceTypes.collectAsStateWithLifecycle()
+    val selectedCategories by viewModel.selectedCategories.collectAsStateWithLifecycle()
 
     Scaffold(
         modifier = modifier,
@@ -118,58 +132,60 @@ fun ScheduleScreen(
                 .fillMaxSize()
                 .padding(bottom = innerPadding.calculateBottomPadding()),
         ) {
-            // Tab row
-            TabRow(
-                selectedTabIndex = pagerState.currentPage,
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-                indicator = { tabPositions ->
-                    if (pagerState.currentPage < tabPositions.size) {
-                        SecondaryIndicator(
-                            modifier = Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage]),
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                },
-            ) {
-                tabs.forEach { tab ->
-                    Tab(
-                        selected = pagerState.currentPage == tab.ordinal,
-                        onClick = {
-                            scope.launch { pagerState.animateScrollToPage(tab.ordinal) }
-                        },
-                        text = {
-                            Text(
-                                text = tab.title,
-                                style = MaterialTheme.typography.labelMedium,
-                            )
-                        },
-                    )
-                }
-            }
-
-            // Shared filter chip row — always visible, identical across tabs
-            val activeSourceTypes by viewModel.activeSourceTypes.collectAsStateWithLifecycle()
-            val selectedCategories by viewModel.selectedCategories.collectAsStateWithLifecycle()
-
+            // Segmented button row with filter icon
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                ScheduleSourceFilterRow(
-                    activeTypes = activeSourceTypes,
-                    onToggle = viewModel::toggleSourceType,
+                SingleChoiceSegmentedButtonRow(
                     modifier = Modifier.weight(1f),
-                )
+                ) {
+                    tabs.forEachIndexed { index, tab ->
+                        SegmentedButton(
+                            selected = pagerState.currentPage == index,
+                            onClick = {
+                                scope.launch { pagerState.animateScrollToPage(index) }
+                            },
+                            shape = SegmentedButtonDefaults.itemShape(
+                                index = index,
+                                count = tabs.size,
+                            ),
+                            icon = { /* no checkmark */ },
+                            colors = SegmentedButtonDefaults.colors(
+                                activeContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                activeContentColor = MaterialTheme.colorScheme.onSurface,
+                                inactiveContainerColor = MaterialTheme.colorScheme.surface,
+                                inactiveContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            ),
+                            label = {
+                                Text(
+                                    text = tab.title,
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
+                            },
+                        )
+                    }
+                }
 
-                CategoryFilterButton(
-                    selectedCategories = selectedCategories,
-                    onToggleCategory = viewModel::toggleCategory,
-                    onClearAll = viewModel::clearCategories,
-                )
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Filter icon — opens bottom sheet
+                // Highlight when any non-default filter is active
+                val allSourcesActive = activeSourceTypes.size == ScheduleSourceType.entries.size
+                val hasActiveFilters = selectedCategories.isNotEmpty() || !allSourcesActive
+                IconButton(onClick = { showFilterSheet = true }) {
+                    Icon(
+                        imageVector = EkhoIcons.Tune,
+                        contentDescription = "Filters",
+                        tint = if (hasActiveFilters) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                }
             }
 
             HorizontalDivider(
@@ -201,6 +217,23 @@ fun ScheduleScreen(
                     )
                 }
             }
+        }
+    }
+
+    // Filter bottom sheet
+    if (showFilterSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showFilterSheet = false },
+            sheetState = filterSheetState,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ) {
+            FilterSheetContent(
+                activeSourceTypes = activeSourceTypes,
+                selectedCategories = selectedCategories,
+                onToggleSourceType = viewModel::toggleSourceType,
+                onToggleCategory = viewModel::toggleCategory,
+                onClearCategories = viewModel::clearCategories,
+            )
         }
     }
 }
