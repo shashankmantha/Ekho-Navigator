@@ -43,13 +43,13 @@ import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.ScheduleSourceType
 import com.ekhonavigator.feature.schedule.component.FilterSheetContent
 import kotlinx.coroutines.launch
-import java.time.LocalDate
 
 /**
  * Internal tab indices for the Schedule screen pager.
  */
 private enum class ScheduleTab(val title: String) {
     DAY("Day"),
+    WEEK("Week"),
     MONTH("Month"),
     DISCOVER("Discover"),
 }
@@ -69,8 +69,9 @@ fun ScheduleScreen(
         pageCount = { tabs.size },
     )
     val scope = rememberCoroutineScope()
-    var monthSnapTrigger by remember { mutableStateOf(0) }
     var daySnapTrigger by remember { mutableStateOf(0) }
+    var weekSnapTrigger by remember { mutableStateOf(0) }
+    var monthSnapTrigger by remember { mutableStateOf(0) }
     var discoverSnapTrigger by remember { mutableStateOf(0) }
 
     // Filter bottom sheet state
@@ -90,6 +91,7 @@ fun ScheduleScreen(
                     onClick = {
                         when (pagerState.currentPage) {
                             ScheduleTab.DAY.ordinal -> daySnapTrigger++
+                            ScheduleTab.WEEK.ordinal -> weekSnapTrigger++
                             ScheduleTab.MONTH.ordinal -> monthSnapTrigger++
                             ScheduleTab.DISCOVER.ordinal -> discoverSnapTrigger++
                         }
@@ -205,6 +207,12 @@ fun ScheduleScreen(
                         onEventClick = onEventClick,
                         snapToTodayTrigger = daySnapTrigger,
                     )
+                    ScheduleTab.WEEK -> WeekTab(
+                        viewModel = viewModel,
+                        onEventClick = onEventClick,
+                        onDayClick = onDayClick,
+                        snapToTodayTrigger = weekSnapTrigger,
+                    )
                     ScheduleTab.MONTH -> MonthTab(
                         viewModel = viewModel,
                         onDayClick = onDayClick,
@@ -244,8 +252,7 @@ private fun DayTab(
     onEventClick: (String) -> Unit,
     snapToTodayTrigger: Int = 0,
 ) {
-    DayPager(
-        initialDate = LocalDate.now(),
+    DayTimelineContent(
         viewModel = viewModel,
         onEventClick = onEventClick,
         snapToTodayTrigger = snapToTodayTrigger,

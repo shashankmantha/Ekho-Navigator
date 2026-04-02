@@ -22,9 +22,11 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
+import java.time.temporal.TemporalAdjusters
 import javax.inject.Inject
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -108,6 +110,30 @@ class ScheduleViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     // ══════════════════════════════════════════════════
+    // Week tab state
+    // ══════════════════════════════════════════════════
+
+    private val _selectedWeekStart = MutableStateFlow(weekStartFor(LocalDate.now()))
+
+    val selectedWeekStart: StateFlow<LocalDate> = _selectedWeekStart.asStateFlow()
+
+    /** Events for the selected week (Sunday–Saturday), filtered. */
+    val eventsForWeek: StateFlow<List<CalendarEvent>> = _selectedWeekStart
+        .flatMapLatest { weekStart ->
+            val zone = ZoneId.systemDefault()
+            val start = weekStart.atStartOfDay(zone).toInstant()
+            val end = weekStart.plusDays(7).atStartOfDay(zone).toInstant()
+            combine(
+                repository.observeEventsByDateRange(start, end),
+                _activeSourceTypes,
+                _selectedCategories,
+            ) { events, activeTypes, categories ->
+                events.filter { it.matchesSourceTypes(activeTypes) && it.matchesCategories(categories) }
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    // ══════════════════════════════════════════════════
     // Mini-calendar state (Day tab / Week tab dot indicators)
     // ══════════════════════════════════════════════════
 
@@ -176,6 +202,10 @@ class ScheduleViewModel @Inject constructor(
 
     fun setVisibleMonthRange(first: YearMonth, last: YearMonth) {
         _visibleMonthRange.value = first to last
+    }
+
+    fun selectWeek(dateInWeek: LocalDate) {
+        _selectedWeekStart.value = weekStartFor(dateInWeek)
     }
 
     fun setMiniCalendarMonth(month: YearMonth) {
@@ -272,3 +302,7 @@ private fun CalendarEvent.toSourceType(): ScheduleSourceType = when {
     source == EventSource.USER_CREATED || source == EventSource.SHARED -> ScheduleSourceType.CUSTOM
     else -> ScheduleSourceType.SCHEDULE
 }
+
+/** Get the Sunday that starts the week containing [date]. */
+internal fun weekStartFor(date: LocalDate): LocalDate =
+    date.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))

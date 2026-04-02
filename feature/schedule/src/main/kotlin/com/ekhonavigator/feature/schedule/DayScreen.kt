@@ -8,14 +8,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.FloatingActionButton
@@ -38,19 +35,16 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.ekhonavigator.core.designsystem.component.EkhoEventCard
-import com.ekhonavigator.core.designsystem.component.sourceAccentColor
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
-import com.ekhonavigator.core.model.EventSource
 import com.ekhonavigator.feature.schedule.component.MiniMonthCalendar
+import com.ekhonavigator.feature.schedule.component.TimelineGrid
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 /**
- * Navigational DayScreen — wraps [DayPager] for use as a routed screen
- * (e.g. from month day cell click). Supports system back gesture.
+ * Navigational DayScreen — shows a single day timeline for a specific date.
+ * Reached from month day cell click or week view "+N" overflow tap.
  */
 @Composable
 fun DayScreen(
@@ -62,7 +56,6 @@ fun DayScreen(
 ) {
     val initialDate = remember(epochDay) { LocalDate.ofEpochDay(epochDay) }
     val selectedDate by viewModel.selectedDate.collectAsStateWithLifecycle()
-    var snapToTodayTrigger by remember { mutableStateOf(0) }
 
     Scaffold(
         modifier = modifier,
@@ -72,7 +65,7 @@ fun DayScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 SmallFloatingActionButton(
-                    onClick = { snapToTodayTrigger++ },
+                    onClick = { viewModel.selectDate(LocalDate.now()) },
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 ) {
@@ -98,11 +91,10 @@ fun DayScreen(
             }
         },
     ) { innerPadding ->
-        DayPager(
+        DayTimelineContent(
             initialDate = initialDate,
             viewModel = viewModel,
             onEventClick = onEventClick,
-            snapToTodayTrigger = snapToTodayTrigger,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(bottom = innerPadding.calculateBottomPadding()),
@@ -111,18 +103,18 @@ fun DayScreen(
 }
 
 /**
- * Shared swipeable day pager used by both the Day tab and the routed DayScreen.
- * Swipe left/right to navigate between days.
+ * Day timeline content — used by both the Day tab and the routed DayScreen.
+ * Shows a date header with collapsible mini-month and a swipeable single-column timeline.
  */
 private const val DAY_PAGE_RANGE = 365
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun DayPager(
-    initialDate: LocalDate,
+fun DayTimelineContent(
     viewModel: ScheduleViewModel,
     onEventClick: (String) -> Unit,
     modifier: Modifier = Modifier,
+    initialDate: LocalDate = LocalDate.now(),
     snapToTodayTrigger: Int = 0,
 ) {
     val eventsForDay by viewModel.eventsForSelectedDate.collectAsStateWithLifecycle()
@@ -130,6 +122,8 @@ fun DayPager(
     val miniCalendarDaySourceTypes by viewModel.miniCalendarDaySourceTypes.collectAsStateWithLifecycle()
 
     val today = remember { LocalDate.now() }
+    val dayFormatter = remember { DateTimeFormatter.ofPattern("EEEE, MMMM d") }
+
     val initialOffset = remember(initialDate) {
         (initialDate.toEpochDay() - today.toEpochDay()).toInt()
     }
@@ -140,7 +134,7 @@ fun DayPager(
     )
     val scope = rememberCoroutineScope()
 
-    // Update ViewModel when page changes (swipe or initial)
+    // Update ViewModel when page changes (swipe)
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.currentPage }.collect { page ->
             val offset = page - DAY_PAGE_RANGE
@@ -155,11 +149,7 @@ fun DayPager(
         }
     }
 
-    val zone = remember { ZoneId.systemDefault() }
-    val timeFormatter = remember { DateTimeFormatter.ofPattern("h:mm a") }
-    val dayFormatter = remember { DateTimeFormatter.ofPattern("EEEE, MMMM d") }
-
-    // Mini-month expand/collapse state — shown by default
+    // Mini-month expand/collapse state
     var miniMonthExpanded by remember { mutableStateOf(false) }
 
     Column(modifier = modifier.fillMaxSize()) {
@@ -219,65 +209,24 @@ fun DayPager(
             )
         }
 
-        // Swipeable day pages
+        // Swipeable day pages — single-column timeline
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxSize(),
         ) { page ->
             if (page == pagerState.currentPage) {
-                DayPageContent(
+                val pageDate = remember(page) {
+                    today.plusDays((page - DAY_PAGE_RANGE).toLong())
+                }
+                TimelineGrid(
+                    columnCount = 1,
+                    columnDates = listOf(pageDate),
                     events = eventsForDay,
-                    zone = zone,
-                    timeFormatter = timeFormatter,
                     onEventClick = onEventClick,
-                    onBookmarkClick = viewModel::toggleBookmark,
+                    modifier = Modifier.fillMaxSize(),
                 )
             } else {
                 Box(Modifier.fillMaxSize())
-            }
-        }
-    }
-}
-
-@Composable
-private fun DayPageContent(
-    events: List<com.ekhonavigator.core.model.CalendarEvent>,
-    zone: ZoneId,
-    timeFormatter: DateTimeFormatter,
-    onEventClick: (String) -> Unit,
-    onBookmarkClick: (String) -> Unit,
-) {
-    if (events.isEmpty()) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = "Free as a dolphin",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    } else {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            items(events, key = { it.id }) { event ->
-                val startTime = event.startTime.atZone(zone).format(timeFormatter)
-                val endTime = event.endTime.atZone(zone).format(timeFormatter)
-
-                EkhoEventCard(
-                    title = event.title,
-                    timeRange = "$startTime – $endTime",
-                    location = event.location,
-                    accentColor = sourceAccentColor(event.source.name, event.isBookmarked),
-                    isBookmarked = event.isBookmarked,
-                    showBookmark = event.source == EventSource.ICAL_FEED,
-                    onBookmarkClick = { onBookmarkClick(event.id) },
-                    onClick = { onEventClick(event.id) },
-                )
             }
         }
     }
