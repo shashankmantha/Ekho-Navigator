@@ -50,7 +50,7 @@ internal fun MonthTab(
         endMonth = YearMonth.now().plusMonths(12),
         firstVisibleMonth = YearMonth.now(),
         firstDayOfWeek = daysOfWeek.first(),
-        outDateStyle = OutDateStyle.EndOfRow,
+        outDateStyle = OutDateStyle.EndOfGrid,
     )
 
     LaunchedEffect(calendarState) {
@@ -105,23 +105,7 @@ internal fun MonthTab(
                     )
                 },
                 monthHeader = { month ->
-                    CalendarTitle(
-                        month = month.yearMonth,
-                        onPreviousMonth = {
-                            scope.launch {
-                                calendarState.animateScrollToMonth(
-                                    month.yearMonth.minusMonths(1),
-                                )
-                            }
-                        },
-                        onNextMonth = {
-                            scope.launch {
-                                calendarState.animateScrollToMonth(
-                                    month.yearMonth.plusMonths(1),
-                                )
-                            }
-                        },
-                    )
+                    CalendarTitle(month = month.yearMonth)
                 },
                 dayContent = { day ->
                     DayContent(
