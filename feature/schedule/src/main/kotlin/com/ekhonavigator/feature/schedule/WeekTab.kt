@@ -23,6 +23,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -35,6 +36,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.feature.schedule.component.MiniMonthCalendar
 import com.ekhonavigator.feature.schedule.component.TimelineGrid
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
@@ -75,6 +77,8 @@ internal fun WeekTab(
             pagerState.animateScrollToPage(WEEK_PAGE_RANGE)
         }
     }
+
+    val scope = rememberCoroutineScope()
 
     // Mini-month state
     var miniMonthExpanded by remember { mutableStateOf(false) }
@@ -137,6 +141,9 @@ internal fun WeekTab(
                 onDayClick = { date ->
                     viewModel.selectWeek(date)
                     viewModel.setMiniCalendarMonth(java.time.YearMonth.from(date))
+                    val targetWeekStart = weekStartFor(date)
+                    val weekOffset = ((targetWeekStart.toEpochDay() - todayWeekStart.toEpochDay()) / 7).toInt()
+                    scope.launch { pagerState.animateScrollToPage(WEEK_PAGE_RANGE + weekOffset) }
                 },
                 onMonthChanged = viewModel::setMiniCalendarMonth,
                 modifier = Modifier.padding(horizontal = 8.dp),
