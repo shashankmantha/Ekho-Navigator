@@ -36,6 +36,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import com.ekhonavigator.core.model.EventCategory
+import com.ekhonavigator.core.model.ScheduleSourceType
 import com.ekhonavigator.feature.schedule.component.MiniMonthCalendar
 import com.ekhonavigator.feature.schedule.component.TimelineGrid
 import kotlinx.coroutines.launch
@@ -51,11 +53,24 @@ fun DayScreen(
     epochDay: Long,
     onEventClick: (String) -> Unit,
     onCreateEventClick: (Long?) -> Unit = {},
+    sourceTypeNames: List<String> = emptyList(),
+    categoryNames: List<String> = emptyList(),
     modifier: Modifier = Modifier,
     viewModel: ScheduleViewModel = hiltViewModel(),
 ) {
     val initialDate = remember(epochDay) { LocalDate.ofEpochDay(epochDay) }
     val selectedDate by viewModel.selectedDate.collectAsStateWithLifecycle()
+
+    // Initialize filters from the parent schedule screen's active selections (one-shot)
+    LaunchedEffect(Unit) {
+        val sourceTypes = sourceTypeNames.mapNotNull { name ->
+            ScheduleSourceType.entries.find { it.name == name }
+        }.toSet()
+        val categories = categoryNames.mapNotNull { name ->
+            EventCategory.entries.find { it.name == name }
+        }.toSet()
+        viewModel.initializeFilters(sourceTypes, categories)
+    }
 
     Scaffold(
         modifier = modifier,

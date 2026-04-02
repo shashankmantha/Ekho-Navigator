@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.ScheduleSourceType
 import com.ekhonavigator.feature.schedule.component.FilterSheetContent
 import kotlinx.coroutines.launch
@@ -58,7 +59,7 @@ private enum class ScheduleTab(val title: String) {
 @Composable
 fun ScheduleScreen(
     onEventClick: (String) -> Unit,
-    onDayClick: (Long) -> Unit,
+    onDayClick: (Long, Set<ScheduleSourceType>, Set<EventCategory>) -> Unit,
     onCreateEventClick: (Long?) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ScheduleViewModel = hiltViewModel(),
@@ -79,6 +80,11 @@ fun ScheduleScreen(
     val filterSheetState = rememberModalBottomSheetState()
     val activeSourceTypes by viewModel.activeSourceTypes.collectAsStateWithLifecycle()
     val selectedCategories by viewModel.selectedCategories.collectAsStateWithLifecycle()
+
+    // Wrap onDayClick to forward current filter state to the DayScreen
+    val onDayClickWithFilters: (Long) -> Unit = { epochDay ->
+        onDayClick(epochDay, activeSourceTypes, selectedCategories)
+    }
 
     Scaffold(
         modifier = modifier,
@@ -210,12 +216,12 @@ fun ScheduleScreen(
                     ScheduleTab.WEEK -> WeekTab(
                         viewModel = viewModel,
                         onEventClick = onEventClick,
-                        onDayClick = onDayClick,
+                        onDayClick = onDayClickWithFilters,
                         snapToTodayTrigger = weekSnapTrigger,
                     )
                     ScheduleTab.MONTH -> MonthTab(
                         viewModel = viewModel,
-                        onDayClick = onDayClick,
+                        onDayClick = onDayClickWithFilters,
                         snapToTodayTrigger = monthSnapTrigger,
                     )
                     ScheduleTab.DISCOVER -> DiscoverTab(

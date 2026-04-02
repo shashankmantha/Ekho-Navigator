@@ -149,6 +149,8 @@ fun EkhoNavigatorApp(
                                 onCreateEventClick = { epochDay ->
                                     navigator.navigateToCreateEvent(epochDay)
                                 },
+                                sourceTypeNames = key.sourceTypes,
+                                categoryNames = key.categories,
                             )
                         }
                     }

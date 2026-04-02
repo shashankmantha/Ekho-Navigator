@@ -228,6 +228,23 @@ class ScheduleViewModel @Inject constructor(
         _selectedCategories.value = emptySet()
     }
 
+    /**
+     * One-shot initializer: sets the source-type and category filters to match
+     * the parent schedule screen's active selections. Called when the DayScreen
+     * is first composed with filter params from the nav key.
+     */
+    fun initializeFilters(
+        sourceTypes: Set<ScheduleSourceType>,
+        categories: Set<EventCategory>,
+    ) {
+        if (sourceTypes.isNotEmpty()) {
+            _activeSourceTypes.value = sourceTypes
+        }
+        // Empty categories = show all, which is already the default,
+        // so we always apply what was passed.
+        _selectedCategories.value = categories
+    }
+
     fun toggleSourceType(type: ScheduleSourceType) {
         val current = _activeSourceTypes.value
         // Don't allow deselecting all — at least one must stay active
