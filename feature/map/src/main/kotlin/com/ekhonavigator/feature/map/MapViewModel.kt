@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ekhonavigator.core.data.auth.AuthRepository
 import com.ekhonavigator.core.data.markers.MarkerRepository
-import com.ekhonavigator.core.data.markers.UserDroppedMapMarker
+import com.ekhonavigator.core.data.markers.UserDroppedMarker
 import com.google.android.gms.maps.model.LatLng
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
@@ -17,87 +17,74 @@ class MapViewModel @Inject constructor(
     private val markerRepository: MarkerRepository
 ) : ViewModel() {
 
-    // list of markers the map will draw on screen.
-    // here so the markers won't disappear if phone rotates.
     val droppedMarkers = mutableStateListOf<UserMarker>()
 
-    // figures out who is signed in now using the Auth logic.
-    private val currentAuthenticatedUserId: String?
+    private val currentUserId: String?
         get() = authRepository.getCurrentUserUid()
 
     init {
-        // as soon as the Map starts up, tries to load markers from Firebase.
-        loadMarkersFromFirebase()
+        loadUserMarkers()
     }
 
-    // Grabs all markers the current user has saved and puts them on the map.
-    private fun loadMarkersFromFirebase() {
-        val activeUserFirebaseUid = currentAuthenticatedUserId ?: return
+    private fun loadUserMarkers() {
+        val userId = currentUserId ?: return
         viewModelScope.launch {
-            val markersFetchedFromFirestore = markerRepository.getUserMarkers(activeUserFirebaseUid)
+            val remoteMarkers = markerRepository.getUserMarkers(userId)
 
-                 // Clears the local list and fills it with the ones from the database
             droppedMarkers.clear()
-            droppedMarkers.addAll(markersFetchedFromFirestore.map { firestoreMarker -> firestoreMarker.toUserMarker() })
+            droppedMarkers.addAll(remoteMarkers.map { remoteMarker -> remoteMarker.toUserMarker() })
         }
     }
 
-    // called when a user long-presses the map, which adds dropped marker to map and saves to Firebase.
-    fun addMarker(droppedMarkerLocation: LatLng) {
-        val activeUserFirebaseUid = currentAuthenticatedUserId ?: return
-        val newGeneratedMarkerId = System.currentTimeMillis().toString()
+    fun addMarker(newMarkerLocation: LatLng) {
+        val userId = currentUserId ?: return
+        val newMarkerId = System.currentTimeMillis().toString()
 
-        val newCreatedMapMarker = UserDroppedMapMarker(
-            id = newGeneratedMarkerId,
-            latitude = droppedMarkerLocation.latitude,
-            longitude = droppedMarkerLocation.longitude,
+        val newDroppedMarker = UserDroppedMarker(
+            id = newMarkerId,
+            latitude = newMarkerLocation.latitude,
+            longitude = newMarkerLocation.longitude,
             comment = ""
         )
 
-        // shows dropped marker on the map immediately
-        droppedMarkers.add(newCreatedMapMarker.toUserMarker())
+        droppedMarkers.add(newDroppedMarker.toUserMarker())
 
-        // saves dropped marker in the background.
         viewModelScope.launch {
-            markerRepository.saveMarker(activeUserFirebaseUid, newCreatedMapMarker)
+            markerRepository.saveMarker(userId, newDroppedMarker)
         }
     }
 
-    // called when user updates the label/comment, and syncs the change to Firebase.
-    fun updateMarkerLabel(targetMarkerUniqueId: Long, updatedMarkerLabelComment: String) {
-        val activeUserFirebaseUid = currentAuthenticatedUserId ?: return
-        val targetMarkerListIndex = droppedMarkers.indexOfFirst { existingMarker -> existingMarker.id == targetMarkerUniqueId }
+    fun updateMarkerLabel(markerIdToUpdate: Long, newMarkerCommentText: String) {
+        val userId = currentUserId ?: return
+        val markerIndexToUpdate = droppedMarkers.indexOfFirst { currentMarker -> currentMarker.id == markerIdToUpdate }
 
-        if (targetMarkerListIndex != -1) {
-            val updatedMarker = droppedMarkers[targetMarkerListIndex].copy(markerLabelComment = updatedMarkerLabelComment)
-            droppedMarkers[targetMarkerListIndex] = updatedMarker
+        if (markerIndexToUpdate != -1) {
+            val updatedMarker = droppedMarkers[markerIndexToUpdate].copy(markerLabelComment = newMarkerCommentText)
+            droppedMarkers[markerIndexToUpdate] = updatedMarker
 
-            // Updates record in the database
             viewModelScope.launch {
-                markerRepository.saveMarker(activeUserFirebaseUid, updatedMarker.toFirestoreMarker())
+                markerRepository.saveMarker(userId, updatedMarker.toRemoteMarker())
             }
         }
     }
 
-    // removes a marker from the map and wipes it from database.
-    fun removeMarker(markerSelectedForRemoval: UserMarker) {
-        val activeUserFirebaseUid = currentAuthenticatedUserId ?: return
+    fun removeMarker(markerForRemoval: UserMarker) {
+        val userId = currentUserId ?: return
 
-        droppedMarkers.remove(markerSelectedForRemoval)
+        droppedMarkers.remove(markerForRemoval)
 
         viewModelScope.launch {
-            markerRepository.deleteMarker(activeUserFirebaseUid, markerSelectedForRemoval.id.toString())
+            markerRepository.deleteMarker(userId, markerForRemoval.id.toString())
         }
     }
 
-    // These convert between UI data and Database data.
-    private fun UserDroppedMapMarker.toUserMarker() = UserMarker(
+    private fun UserDroppedMarker.toUserMarker() = UserMarker(
         id = id.toLongOrNull() ?: 0L,
         droppedMarkerLocation = LatLng(latitude, longitude),
         markerLabelComment = comment
     )
 
-    private fun UserMarker.toFirestoreMarker() = UserDroppedMapMarker(
+    private fun UserMarker.toRemoteMarker() = UserDroppedMarker(
         id = id.toString(),
         latitude = droppedMarkerLocation.latitude,
         longitude = droppedMarkerLocation.longitude,
