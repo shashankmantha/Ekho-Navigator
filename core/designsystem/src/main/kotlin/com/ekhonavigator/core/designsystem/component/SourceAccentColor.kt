@@ -18,13 +18,15 @@ import androidx.compose.ui.graphics.Color
  */
 @Composable
 @ReadOnlyComposable
-fun sourceAccentColor(sourceName: String, isBookmarked: Boolean = false): Color = when (sourceName) {
-    "ICAL_FEED" -> if (isBookmarked) {
-        MaterialTheme.colorScheme.tertiary
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
+fun sourceAccentColor(sourceName: String, isBookmarked: Boolean = false): Color =
+    when (sourceName) {
+        "ICAL_FEED" -> if (isBookmarked) {
+            MaterialTheme.colorScheme.tertiary
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        }
+
+        "USER_CREATED", "SHARED" -> MaterialTheme.colorScheme.secondary
+        "CLASS_SCHEDULE" -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
-    "USER_CREATED", "SHARED" -> MaterialTheme.colorScheme.secondary
-    "CLASS_SCHEDULE" -> MaterialTheme.colorScheme.primary
-    else -> MaterialTheme.colorScheme.onSurfaceVariant
-}

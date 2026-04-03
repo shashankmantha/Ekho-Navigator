@@ -85,7 +85,11 @@ fun MiniMonthCalendar(
 
     val scope = rememberCoroutineScope()
 
-    Column(modifier = modifier.fillMaxWidth().padding(top = 4.dp)) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp)
+    ) {
         // Calendar grid — day-of-week header is inside monthHeader so columns align
         HorizontalCalendar(
             state = calendarState,

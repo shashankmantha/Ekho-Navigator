@@ -143,7 +143,8 @@ internal fun WeekTab(
                     viewModel.selectWeek(date)
                     viewModel.setMiniCalendarMonth(java.time.YearMonth.from(date))
                     val targetWeekStart = weekStartFor(date)
-                    val weekOffset = ((targetWeekStart.toEpochDay() - todayWeekStart.toEpochDay()) / 7).toInt()
+                    val weekOffset =
+                        ((targetWeekStart.toEpochDay() - todayWeekStart.toEpochDay()) / 7).toInt()
                     scope.launch { pagerState.animateScrollToPage(WEEK_PAGE_RANGE + weekOffset) }
                 },
                 onMonthChanged = viewModel::setMiniCalendarMonth,

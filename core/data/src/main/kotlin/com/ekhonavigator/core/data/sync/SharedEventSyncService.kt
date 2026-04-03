@@ -70,6 +70,7 @@ class SharedEventSyncService @Inject constructor(
                             DocumentChange.Type.REMOVED -> {
                                 calendarEventDao.deleteEvent(doc.id)
                             }
+
                             DocumentChange.Type.ADDED,
                             DocumentChange.Type.MODIFIED -> {
                                 val ownerUid = doc.getString("ownerUid") ?: continue
@@ -79,7 +80,8 @@ class SharedEventSyncService @Inject constructor(
                                     if (existing != null) continue
                                 }
 
-                                val source = if (ownerUid == uid) EventSource.USER_CREATED else EventSource.SHARED
+                                val source =
+                                    if (ownerUid == uid) EventSource.USER_CREATED else EventSource.SHARED
                                 val entity = firestoreDocToEntity(doc, source) ?: continue
                                 calendarEventDao.upsertEvent(entity)
                             }

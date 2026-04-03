@@ -8,7 +8,7 @@ import androidx.compose.ui.graphics.Color
  */
 
 // ── Dark Theme Foundation (Vibrant Noir) ───────────────────
-internal val DarkSurface = Color(0xFF0E0E0E) 
+internal val DarkSurface = Color(0xFF0E0E0E)
 internal val DarkSurfaceContainerLow = Color(0xFF161616)
 internal val DarkSurfaceContainerHigh = Color(0xFF202020)
 internal val DarkSurfaceContainerHighest = Color(0xFF2A2A2A)

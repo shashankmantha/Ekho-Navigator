@@ -203,10 +203,13 @@ private fun TimelineEventBlock(
     val (bgColor, textColor) = when {
         event.source == EventSource.ICAL_FEED && event.isBookmarked ->
             colors.tertiaryContainer to colors.onTertiaryContainer
+
         event.source == EventSource.ICAL_FEED ->
             colors.surfaceContainerHighest to colors.onSurfaceVariant
+
         event.source == EventSource.USER_CREATED || event.source == EventSource.SHARED ->
             colors.secondaryContainer to colors.onSecondaryContainer
+
         else -> colors.primaryContainer to colors.onPrimaryContainer
     }
 

@@ -192,8 +192,10 @@ private fun eventPillColors(
 ): Pair<Color, Color> = when {
     event.source == EventSource.ICAL_FEED && event.isBookmarked ->
         campusBookmarkedPill to onCampusBookmarked
+
     event.source == EventSource.ICAL_FEED ->
         campusMutedPill to onCampusMuted
+
     event.source == EventSource.USER_CREATED || event.source == EventSource.SHARED ->
         customPill to onCustom
     // CLASS_SCHEDULE (future) falls through to schedule accent

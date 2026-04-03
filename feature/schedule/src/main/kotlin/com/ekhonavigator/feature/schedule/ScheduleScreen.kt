@@ -211,17 +211,20 @@ fun ScheduleScreen(
                         onEventClick = onEventClick,
                         snapToTodayTrigger = daySnapTrigger,
                     )
+
                     ScheduleTab.WEEK -> WeekTab(
                         viewModel = viewModel,
                         onEventClick = onEventClick,
                         onDayClick = onDayClickWithFilters,
                         snapToTodayTrigger = weekSnapTrigger,
                     )
+
                     ScheduleTab.MONTH -> MonthTab(
                         viewModel = viewModel,
                         onDayClick = onDayClickWithFilters,
                         snapToTodayTrigger = monthSnapTrigger,
                     )
+
                     ScheduleTab.DISCOVER -> DiscoverTab(
                         viewModel = viewModel,
                         onEventClick = onEventClick,

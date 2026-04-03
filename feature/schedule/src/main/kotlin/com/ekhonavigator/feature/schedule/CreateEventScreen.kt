@@ -163,7 +163,12 @@ fun CreateEventScreen(
                 FilterChip(
                     selected = isSelected,
                     onClick = { viewModel.setCategory(category) },
-                    label = { Text(category.displayName, style = MaterialTheme.typography.labelSmall) },
+                    label = {
+                        Text(
+                            category.displayName,
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    },
                     shape = RoundedCornerShape(12.dp),
                     colors = FilterChipDefaults.filterChipColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -233,7 +238,9 @@ fun CreateEventScreen(
                         colors = FilterChipDefaults.filterChipColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                             labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f),
+                            selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer.copy(
+                                alpha = 0.3f
+                            ),
                             selectedLabelColor = MaterialTheme.colorScheme.onSurface,
                         ),
                         border = FilterChipDefaults.filterChipBorder(

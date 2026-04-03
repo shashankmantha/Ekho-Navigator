@@ -107,7 +107,11 @@ class ScheduleViewModel @Inject constructor(
                 _activeSourceTypes,
                 _selectedCategories,
             ) { events, activeTypes, categories ->
-                events.filter { it.matchesSourceTypes(activeTypes) && it.matchesCategories(categories) }
+                events.filter {
+                    it.matchesSourceTypes(activeTypes) && it.matchesCategories(
+                        categories
+                    )
+                }
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -131,7 +135,11 @@ class ScheduleViewModel @Inject constructor(
                 _activeSourceTypes,
                 _selectedCategories,
             ) { events, activeTypes, categories ->
-                events.filter { it.matchesSourceTypes(activeTypes) && it.matchesCategories(categories) }
+                events.filter {
+                    it.matchesSourceTypes(activeTypes) && it.matchesCategories(
+                        categories
+                    )
+                }
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -155,7 +163,11 @@ class ScheduleViewModel @Inject constructor(
                     _selectedCategories,
                 ) { events, activeTypes, categories ->
                     events
-                        .filter { it.matchesSourceTypes(activeTypes) && it.matchesCategories(categories) }
+                        .filter {
+                            it.matchesSourceTypes(activeTypes) && it.matchesCategories(
+                                categories
+                            )
+                        }
                         .groupBy { it.startTime.atZone(zone).toLocalDate() }
                         .mapValues { (_, dayEvents) ->
                             dayEvents.map { it.toSourceType() }.toSet()
@@ -294,12 +306,15 @@ private fun CalendarEvent.matchesSourceTypes(activeTypes: Set<ScheduleSourceType
                 // CLASS_SCHEDULE source (future — not yet in EventSource)
                 // For now, no events match this type
             }
+
             ScheduleSourceType.CUSTOM -> {
                 if (source == EventSource.USER_CREATED || source == EventSource.SHARED) return true
             }
+
             ScheduleSourceType.CAMPUS -> {
                 if (source == EventSource.ICAL_FEED) return true
             }
+
             ScheduleSourceType.BOOKMARKED -> {
                 if (source == EventSource.ICAL_FEED && isBookmarked) return true
             }

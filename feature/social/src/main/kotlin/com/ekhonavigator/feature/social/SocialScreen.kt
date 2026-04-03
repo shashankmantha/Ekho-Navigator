@@ -30,7 +30,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
 
 
-
 @Composable
 
 
@@ -42,7 +41,7 @@ fun SocialScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     LaunchedEffect(Unit) {
-       viewModel.loadSocialData()
+        viewModel.loadSocialData()
     }
 
     Column(
@@ -215,7 +214,8 @@ fun SocialScreen(
 
                                 val isFriend = uiState.friends.any { it.uid == user.id }
                                 val isPending = user.id in uiState.outgoingRequestIds
-                                val hasIncomingRequest = uiState.incomingRequests.any { it.uid == user.id }
+                                val hasIncomingRequest =
+                                    uiState.incomingRequests.any { it.uid == user.id }
 
                                 when {
                                     isFriend -> {

@@ -24,7 +24,7 @@ internal object DatabaseModule {
             EkhoDatabase::class.java,
             "ekho-database",
         ).fallbackToDestructiveMigration(dropAllTables = true)
-        .build()
+            .build()
 
     @Provides
     fun provideCalendarEventDao(db: EkhoDatabase): CalendarEventDao =

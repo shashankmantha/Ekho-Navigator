@@ -76,62 +76,62 @@ fun FilterSheetContent(
             ScheduleSourceType.entries
                 .filter { it != ScheduleSourceType.SCHEDULE }
                 .forEach { type ->
-                val isActive = type in activeSourceTypes
-                val (accentColor, _) = sourceTypeThemeColors(type, colors)
+                    val isActive = type in activeSourceTypes
+                    val (accentColor, _) = sourceTypeThemeColors(type, colors)
 
-                FilterChip(
-                    selected = isActive,
-                    onClick = { onToggleSourceType(type) },
-                    leadingIcon = if (isActive && type != ScheduleSourceType.BOOKMARKED) {
-                        {
-                            Box(
-                                Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .drawBehind { drawCircle(accentColor) },
-                            )
-                        }
-                    } else {
-                        null
-                    },
-                    label = {
-                        if (type == ScheduleSourceType.BOOKMARKED) {
-                            Icon(
-                                imageVector = EkhoIcons.Bookmark,
-                                contentDescription = "Bookmarked",
-                                modifier = Modifier.size(16.dp),
-                                tint = if (isActive) accentColor else colors.onSurfaceVariant,
-                            )
-                        } else {
-                            Text(
-                                text = type.displayName,
-                                style = MaterialTheme.typography.labelSmall,
-                            )
-                        }
-                    },
-                    modifier = Modifier
-                        .then(
-                            if (type != ScheduleSourceType.BOOKMARKED) Modifier.weight(1f)
-                            else Modifier,
-                        )
-                        .height(36.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = accentColor.copy(alpha = 0.12f),
-                        selectedLabelColor = accentColor,
-                        containerColor = colors.surfaceContainerHigh,
-                        labelColor = colors.onSurfaceVariant,
-                    ),
-                    border = FilterChipDefaults.filterChipBorder(
-                        enabled = true,
+                    FilterChip(
                         selected = isActive,
-                        borderColor = Color.Transparent,
-                        selectedBorderColor = accentColor.copy(alpha = 0.3f),
-                        borderWidth = 1.dp,
-                        selectedBorderWidth = 1.dp,
-                    ),
-                )
-            }
+                        onClick = { onToggleSourceType(type) },
+                        leadingIcon = if (isActive && type != ScheduleSourceType.BOOKMARKED) {
+                            {
+                                Box(
+                                    Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .drawBehind { drawCircle(accentColor) },
+                                )
+                            }
+                        } else {
+                            null
+                        },
+                        label = {
+                            if (type == ScheduleSourceType.BOOKMARKED) {
+                                Icon(
+                                    imageVector = EkhoIcons.Bookmark,
+                                    contentDescription = "Bookmarked",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = if (isActive) accentColor else colors.onSurfaceVariant,
+                                )
+                            } else {
+                                Text(
+                                    text = type.displayName,
+                                    style = MaterialTheme.typography.labelSmall,
+                                )
+                            }
+                        },
+                        modifier = Modifier
+                            .then(
+                                if (type != ScheduleSourceType.BOOKMARKED) Modifier.weight(1f)
+                                else Modifier,
+                            )
+                            .height(36.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = accentColor.copy(alpha = 0.12f),
+                            selectedLabelColor = accentColor,
+                            containerColor = colors.surfaceContainerHigh,
+                            labelColor = colors.onSurfaceVariant,
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = isActive,
+                            borderColor = Color.Transparent,
+                            selectedBorderColor = accentColor.copy(alpha = 0.3f),
+                            borderWidth = 1.dp,
+                            selectedBorderWidth = 1.dp,
+                        ),
+                    )
+                }
         }
 
         HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.3f))

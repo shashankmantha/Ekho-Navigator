@@ -26,7 +26,10 @@ class TestCustomEventRepository : CustomEventRepository {
 
     override fun observeAttendees(eventId: String): Flow<List<EventAttendee>> = flowOf(emptyList())
 
-    override suspend fun createEvent(event: CalendarEvent, sharedWith: Map<String, String>): String {
+    override suspend fun createEvent(
+        event: CalendarEvent,
+        sharedWith: Map<String, String>
+    ): String {
         createdEvents += event to sharedWith
         return "test-event-id"
     }
@@ -37,7 +40,13 @@ class TestCustomEventRepository : CustomEventRepository {
         deletedEventIds += eventId
     }
 
-    override suspend fun rsvp(eventId: String, userId: String, displayName: String, status: RsvpStatus) {}
+    override suspend fun rsvp(
+        eventId: String,
+        userId: String,
+        displayName: String,
+        status: RsvpStatus
+    ) {
+    }
 
     override suspend fun syncAttendees(eventId: String) {}
 

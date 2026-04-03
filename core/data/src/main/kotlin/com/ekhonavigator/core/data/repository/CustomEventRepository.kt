@@ -20,7 +20,10 @@ interface CustomEventRepository {
 
     /** Create a new custom event. Writes to Room immediately, then best-effort to Firestore.
      *  [sharedWith] maps friend UIDs to display names for participants with PENDING RSVP status. */
-    suspend fun createEvent(event: CalendarEvent, sharedWith: Map<String, String> = emptyMap()): String
+    suspend fun createEvent(
+        event: CalendarEvent,
+        sharedWith: Map<String, String> = emptyMap()
+    ): String
 
     suspend fun updateEvent(event: CalendarEvent)
 

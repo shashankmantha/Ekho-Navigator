@@ -19,8 +19,11 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    @Inject lateinit var customEventRepository: CustomEventRepository
-    @Inject lateinit var calendarRepository: CalendarRepository
+    @Inject
+    lateinit var customEventRepository: CustomEventRepository
+
+    @Inject
+    lateinit var calendarRepository: CalendarRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

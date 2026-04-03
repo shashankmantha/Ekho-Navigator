@@ -44,7 +44,10 @@ class DefaultCustomEventRepository @Inject constructor(
             entities.map { it.toDomainModel() }
         }
 
-    override suspend fun createEvent(event: CalendarEvent, sharedWith: Map<String, String>): String {
+    override suspend fun createEvent(
+        event: CalendarEvent,
+        sharedWith: Map<String, String>
+    ): String {
         val eventId = "custom_${UUID.randomUUID()}"
         val entity = event.toCustomEventEntity(eventId)
         calendarEventDao.upsertEvent(entity)
@@ -69,10 +72,12 @@ class DefaultCustomEventRepository @Inject constructor(
                     .document(eventId)
                     .collection("attendees")
                     .document(uid)
-                    .set(mapOf(
-                        "displayName" to displayName,
-                        "rsvpStatus" to RsvpStatus.PENDING.name,
-                    ))
+                    .set(
+                        mapOf(
+                            "displayName" to displayName,
+                            "rsvpStatus" to RsvpStatus.PENDING.name,
+                        )
+                    )
                     .await()
             }
 

@@ -28,6 +28,7 @@ class CalendarSyncWorker @AssistedInject constructor(
                 calendarRepository.restoreBookmarks()
                 Result.success()
             }
+
             is SyncResult.Error -> {
                 if (runAttemptCount < MAX_RETRIES) Result.retry()
                 else Result.failure()

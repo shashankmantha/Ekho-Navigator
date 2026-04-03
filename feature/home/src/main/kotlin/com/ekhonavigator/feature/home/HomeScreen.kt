@@ -104,7 +104,7 @@ fun HomeScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 letterSpacing = 0.5.sp,
             )
-            
+
             FilterChip(
                 selected = !showAll,
                 onClick = { viewModel.toggleShowAll() },
@@ -178,12 +178,15 @@ fun HomeScreen(
                         dayEvents.forEach { event ->
                             val startTime = event.startTime.atZone(zone).format(timeFormatter)
                             val endTime = event.endTime.atZone(zone).format(timeFormatter)
-                            
+
                             EkhoEventCard(
                                 title = event.title,
                                 timeRange = "$startTime – $endTime",
                                 location = event.location,
-                                accentColor = sourceAccentColor(event.source.name, event.isBookmarked),
+                                accentColor = sourceAccentColor(
+                                    event.source.name,
+                                    event.isBookmarked
+                                ),
                                 isBookmarked = event.isBookmarked,
                                 showBookmark = event.source == EventSource.ICAL_FEED,
                                 onBookmarkClick = { viewModel.toggleBookmark(event.id) },
