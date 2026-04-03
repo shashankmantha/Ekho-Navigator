@@ -34,10 +34,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import com.ekhonavigator.core.model.EventSource
 import com.ekhonavigator.feature.schedule.component.MiniMonthCalendar
 import com.ekhonavigator.feature.schedule.component.TimelineGrid
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
@@ -150,6 +152,15 @@ internal fun WeekTab(
             )
         }
 
+        // Campus event counts per day (unbookmarked iCal feed events)
+        val zone = remember { ZoneId.systemDefault() }
+        val campusCountByDate = remember(eventsForWeek) {
+            eventsForWeek
+                .filter { it.source == EventSource.ICAL_FEED && !it.isBookmarked }
+                .groupBy { it.startTime.atZone(zone).toLocalDate() }
+                .mapValues { (_, events) -> events.size }
+        }
+
         // Day-of-week column headers — clickable to navigate to day view
         Row(
             modifier = Modifier
@@ -158,6 +169,7 @@ internal fun WeekTab(
         ) {
             columnDates.forEach { date ->
                 val isToday = date == today
+                val campusCount = campusCountByDate[date] ?: 0
 
                 Column(
                     modifier = Modifier
@@ -186,6 +198,14 @@ internal fun WeekTab(
                         },
                         textAlign = TextAlign.Center,
                     )
+                    if (campusCount > 0) {
+                        Text(
+                            text = "+$campusCount",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
                 }
             }
         }
@@ -196,14 +216,20 @@ internal fun WeekTab(
             modifier = Modifier.fillMaxSize(),
         ) { page ->
             if (page == pagerState.currentPage) {
+                // Exclude unbookmarked campus events — shown as +N in header instead
+                val timelineEvents = remember(eventsForWeek) {
+                    eventsForWeek.filter { event ->
+                        !(event.source == EventSource.ICAL_FEED && !event.isBookmarked)
+                    }
+                }
+
                 TimelineGrid(
                     columnCount = 7,
                     columnDates = columnDates,
-                    events = eventsForWeek,
+                    events = timelineEvents,
                     onEventClick = onEventClick,
                     onDayClick = onDayClick,
                     maxVisibleOverlaps = 2,
-                    compactCampusEvents = true,
                     modifier = Modifier.fillMaxSize(),
                 )
             } else {

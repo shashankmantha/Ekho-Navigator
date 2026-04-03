@@ -43,9 +43,6 @@ private val HourHeight: Dp = 60.dp
 /** Width of the time label column on the left. */
 private val TimeLabelWidth: Dp = 48.dp
 
-/** Width of campus event accent bars in compact mode. */
-private val CampusAccentWidth: Dp = 3.dp
-
 /** Number of hours to display (full day). */
 private const val HourCount = 24
 
@@ -56,10 +53,8 @@ private const val HourCount = 24
  * @param columnDates The date for each column
  * @param events All events for the visible date range
  * @param onEventClick Callback when an event block is tapped
- * @param onDayClick Optional callback for "+N" overflow or accent bar tap (→ day view)
+ * @param onDayClick Optional callback for "+N" overflow tap (→ day view)
  * @param maxVisibleOverlaps Max concurrent events shown side-by-side. 0 = unlimited.
- * @param compactCampusEvents When true, non-bookmarked campus events render as thin
- *   accent bars instead of full blocks and don't participate in overlap layout.
  * @param scrollToHour Initial hour to scroll to
  */
 @Composable
@@ -71,36 +66,19 @@ fun TimelineGrid(
     modifier: Modifier = Modifier,
     onDayClick: ((Long) -> Unit)? = null,
     maxVisibleOverlaps: Int = 0,
-    compactCampusEvents: Boolean = false,
     scrollToHour: Int = 7,
 ) {
     val zone = remember { ZoneId.systemDefault() }
 
-    // Separate campus events from personal events when in compact mode
-    val (personalEvents, campusEvents) = remember(events, compactCampusEvents) {
-        if (compactCampusEvents) {
-            events.partition { event ->
-                !(event.source == EventSource.ICAL_FEED && !event.isBookmarked)
-            }
-        } else {
-            events to emptyList()
-        }
+    // Group events by date
+    val eventsByDate = remember(events) {
+        events.groupBy { it.startTime.atZone(zone).toLocalDate() }
     }
 
-    // Group personal events by date
-    val personalByDate = remember(personalEvents) {
-        personalEvents.groupBy { it.startTime.atZone(zone).toLocalDate() }
-    }
-
-    // Group campus events by date (compact mode only)
-    val campusByDate = remember(campusEvents) {
-        campusEvents.groupBy { it.startTime.atZone(zone).toLocalDate() }
-    }
-
-    // Lay out overlapping personal events per column
-    val layoutsByDate = remember(personalByDate, columnDates) {
+    // Lay out overlapping events per column
+    val layoutsByDate = remember(eventsByDate, columnDates) {
         columnDates.associateWith { date ->
-            layoutEventsForDay(personalByDate[date].orEmpty(), zone)
+            layoutEventsForDay(eventsByDate[date].orEmpty(), zone)
         }
     }
 
@@ -157,46 +135,8 @@ fun TimelineGrid(
                 columnDates.forEachIndexed { colIndex, date ->
                     val xOffset = TimeLabelWidth + (columnWidth * colIndex)
 
-                    // ── Campus accent bars (compact mode) ──
-                    if (compactCampusEvents) {
-                        val campusForDay = campusByDate[date].orEmpty()
-                        campusForDay.forEach { event ->
-                            val startZoned = event.startTime.atZone(zone)
-                            val endZoned = event.endTime.atZone(zone)
-                            val startFrac = startZoned.hour + startZoned.minute / 60f
-                            val endFrac = endZoned.hour + endZoned.minute / 60f
-                            val duration = (endFrac - startFrac).coerceAtLeast(0.25f)
-
-                            CampusAccentBar(
-                                onClick = if (onDayClick != null) {
-                                    { onDayClick(date.toEpochDay()) }
-                                } else {
-                                    { onEventClick(event.id) }
-                                },
-                                modifier = Modifier
-                                    .offset(x = xOffset, y = HourHeight * startFrac)
-                                    .width(CampusAccentWidth)
-                                    .height(HourHeight * duration - 1.dp)
-                                    .zIndex(0.5f),
-                            )
-                        }
-                    }
-
-                    // ── Personal event blocks ──
                     val layouts = layoutsByDate[date].orEmpty()
                     val overflowSlots = mutableMapOf<Float, Int>()
-
-                    // Offset personal events to the right of accent bars
-                    val personalXOffset = if (compactCampusEvents && campusByDate[date]?.isNotEmpty() == true) {
-                        xOffset + CampusAccentWidth + 1.dp
-                    } else {
-                        xOffset
-                    }
-                    val personalColumnWidth = if (compactCampusEvents && campusByDate[date]?.isNotEmpty() == true) {
-                        columnWidth - CampusAccentWidth - 1.dp
-                    } else {
-                        columnWidth
-                    }
 
                     layouts.forEach { layout ->
                         val event = layout.event
@@ -223,8 +163,8 @@ fun TimelineGrid(
                             layout.totalInGroup
                         }
 
-                        val blockWidth = personalColumnWidth * (1f / effectiveTotal)
-                        val blockXOffset = personalXOffset + blockWidth * layout.indexInGroup
+                        val blockWidth = columnWidth * (1f / effectiveTotal)
+                        val blockXOffset = xOffset + blockWidth * layout.indexInGroup
 
                         TimelineEventBlock(
                             event = event,
@@ -282,14 +222,12 @@ private fun TimelineEventBlock(
             .clickable { onClick() }
             .padding(horizontal = 4.dp, vertical = 2.dp),
     ) {
-        // Text wraps naturally within the block height.
-        // The outer Box clips overflow, so no explicit maxLines needed
-        // for tall blocks. Short blocks (15min) get 1 line naturally.
         Column {
             Text(
                 text = event.title,
                 style = MaterialTheme.typography.labelSmall,
                 color = textColor,
+                maxLines = 4,
                 overflow = TextOverflow.Ellipsis,
             )
             if (event.location.isNotBlank()) {
@@ -297,28 +235,12 @@ private fun TimelineEventBlock(
                     text = event.location,
                     style = MaterialTheme.typography.labelSmall,
                     color = textColor.copy(alpha = 0.7f),
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
         }
     }
-}
-
-/**
- * Thin colored bar representing a campus event in compact mode.
- * Tap navigates to day view for full details.
- */
-@Composable
-private fun CampusAccentBar(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(1.dp))
-            .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
-            .clickable { onClick() },
-    )
 }
 
 @Composable
