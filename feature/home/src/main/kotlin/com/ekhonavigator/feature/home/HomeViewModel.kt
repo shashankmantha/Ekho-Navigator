@@ -44,8 +44,6 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    // ---- Event filter state ----
-
     /** When true (default), show every event. When false, only bookmarked. */
     private val _showAll = MutableStateFlow(true)
     val showAll: StateFlow<Boolean> = _showAll.asStateFlow()
@@ -67,8 +65,6 @@ class HomeViewModel @Inject constructor(
             repository.toggleBookmark(eventId)
         }
     }
-
-    // ---- Weather state ----
 
     private val _weatherState = MutableStateFlow(WeatherUiState())
     val weatherState: StateFlow<WeatherUiState> = _weatherState.asStateFlow()
@@ -92,8 +88,6 @@ class HomeViewModel @Inject constructor(
             errorMessage = "Allow location to load current weather.",
         )
     }
-
-    // ---- Weather data loading ----
 
     private suspend fun fetchWeatherState(context: Context): WeatherUiState {
         return try {
@@ -193,8 +187,6 @@ class HomeViewModel @Inject constructor(
     }
 }
 
-// ---- Weather UI state ----
-
 data class WeatherUiState(
     val isLoading: Boolean = true,
     val currentTemperature: String = "--°F",
@@ -212,8 +204,6 @@ data class HourlyForecastUi(
     val temperatureLabel: String,
     val conditionLabel: String,
 )
-
-// ---- Network models (private to this file) ----
 
 @Serializable
 private data class OpenMeteoResponse(
@@ -235,8 +225,6 @@ private data class HourlyWeather(
     @SerialName("temperature_2m") val temperature2m: List<Double>,
     @SerialName("weather_code") val weatherCode: List<Int>,
 )
-
-// ---- Helpers ----
 
 private fun fahrenheitLabel(value: Double): String = "${value.roundToInt()}°F"
 

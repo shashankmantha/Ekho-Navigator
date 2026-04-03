@@ -113,7 +113,6 @@ fun MiniMonthCalendar(
             },
         )
 
-        // Month tab row
         MonthTabRow(
             currentMonth = calendarState.firstVisibleMonth.yearMonth,
             startMonth = startMonth,
@@ -262,7 +261,6 @@ private fun MonthTabRow(
     }
 }
 
-/** Calculate months between two YearMonths. */
 private fun YearMonth.monthsUntil(start: YearMonth): Int {
     return ((year - start.year) * 12) + (monthValue - start.monthValue)
 }

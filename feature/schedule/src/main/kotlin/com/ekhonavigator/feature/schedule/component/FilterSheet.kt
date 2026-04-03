@@ -62,7 +62,6 @@ fun FilterSheetContent(
             .padding(bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        // Source type section
         Text(
             text = "Sources",
             style = MaterialTheme.typography.titleSmall,
@@ -137,7 +136,6 @@ fun FilterSheetContent(
 
         HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.3f))
 
-        // Category section
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,

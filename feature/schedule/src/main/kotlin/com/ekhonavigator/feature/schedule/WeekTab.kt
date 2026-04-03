@@ -82,7 +82,6 @@ internal fun WeekTab(
 
     val scope = rememberCoroutineScope()
 
-    // Mini-month state
     var miniMonthExpanded by remember { mutableStateOf(false) }
 
     // Current week's dates derived from pager position

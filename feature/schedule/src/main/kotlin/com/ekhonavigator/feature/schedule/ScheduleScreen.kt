@@ -75,7 +75,6 @@ fun ScheduleScreen(
     var monthSnapTrigger by remember { mutableStateOf(0) }
     var discoverSnapTrigger by remember { mutableStateOf(0) }
 
-    // Filter bottom sheet state
     var showFilterSheet by remember { mutableStateOf(false) }
     val filterSheetState = rememberModalBottomSheetState()
     val activeSourceTypes by viewModel.activeSourceTypes.collectAsStateWithLifecycle()
@@ -140,7 +139,6 @@ fun ScheduleScreen(
                 .fillMaxSize()
                 .padding(bottom = innerPadding.calculateBottomPadding()),
         ) {
-            // Segmented button row with filter icon
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -234,7 +232,6 @@ fun ScheduleScreen(
         }
     }
 
-    // Filter bottom sheet
     if (showFilterSheet) {
         ModalBottomSheet(
             onDismissRequest = { showFilterSheet = false },

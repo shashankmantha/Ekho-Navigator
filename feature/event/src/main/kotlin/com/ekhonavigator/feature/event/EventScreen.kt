@@ -59,10 +59,7 @@ import com.ekhonavigator.core.model.RsvpStatus
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-/**
- * Single event detail screen. Receives an event ID from navigation,
- * loads the event reactively from Room, and displays full details.
- */
+/** Loads the event reactively from Room — navigates back if the event is deleted remotely. */
 @Composable
 fun EventScreen(
     eventId: String,
@@ -150,7 +147,6 @@ private fun EventDetailContent(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // ---- Title + action buttons ----
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.Top,
@@ -218,7 +214,6 @@ private fun EventDetailContent(
             }
         }
 
-        // ---- Category chips (monochromatic) ----
         if (event.categories.isNotEmpty()) {
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -247,7 +242,6 @@ private fun EventDetailContent(
 
         HorizontalDivider()
 
-        // ---- Date & Time ----
         val startZoned = event.startTime.atZone(zone)
         val endZoned = event.endTime.atZone(zone)
 
@@ -278,7 +272,6 @@ private fun EventDetailContent(
             }
         }
 
-        // ---- Location ----
         if (event.location.isNotBlank()) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -323,11 +316,9 @@ private fun EventDetailContent(
             }
         }
 
-        // ---- RSVP / Attendees section ----
         if (hasAttendees) {
             HorizontalDivider()
 
-            // Sharing context
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -415,9 +406,8 @@ private fun EventDetailContent(
                     Text("Not Going")
                 }
             }
-            } // canRsvp
+            }
 
-            // Attendee list
             if (attendees.isNotEmpty()) {
                 Text(
                     text = "Attendees",
@@ -459,7 +449,6 @@ private fun EventDetailContent(
             }
         }
 
-        // ---- Description ----
         if (event.description.isNotBlank()) {
             HorizontalDivider()
 

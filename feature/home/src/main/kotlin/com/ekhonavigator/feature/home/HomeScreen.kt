@@ -90,7 +90,6 @@ fun HomeScreen(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         )
 
-        // ---- Header row: label + restored bordered filter chip ----
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -137,7 +136,6 @@ fun HomeScreen(
             )
         }
 
-        // ---- Event list with restored human-readable headers ----
         if (eventsByDate.isEmpty()) {
             Box(
                 modifier = Modifier

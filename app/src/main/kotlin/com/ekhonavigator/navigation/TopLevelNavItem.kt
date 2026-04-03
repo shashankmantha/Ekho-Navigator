@@ -9,17 +9,7 @@ import com.ekhonavigator.feature.social.navigation.SocialNavKey
 import com.ekhonavigator.feature.map.navigation.MapNavKey
 import com.ekhonavigator.feature.home.navigation.HomeNavKey
 
-/**
- * Type for the top level navigation items in the application. Contains UI information about the
- * current route that is used in the top app bar and common navigation UI.
- *
- * @param selectedIcon The icon to be displayed in the navigation UI when this destination is
- * selected.
- * @param unselectedIcon The icon to be displayed in the navigation UI when this destination is
- * not selected.
- * @param label Text that to be displayed in the navigation UI.
- * @param titleRes The string resource for the screen title.
- */
+/** UI metadata for a top-level navigation destination. */
 data class TopLevelNavItem(
     val selectedIcon: ImageVector,
     val unselectedIcon: ImageVector,

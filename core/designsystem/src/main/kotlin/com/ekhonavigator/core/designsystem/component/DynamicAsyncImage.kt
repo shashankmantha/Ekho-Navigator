@@ -20,15 +20,10 @@ import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-//import coil3.compose.AsyncImagePainter.State.Error
-//import coil3.compose.AsyncImagePainter.State.Loading
-//import coil3.compose.rememberAsyncImagePainter
 import com.ekhonavigator.core.designsystem.R
 import com.ekhonavigator.core.designsystem.theme.LocalTintTheme
 
-/**
- * A wrapper around [AsyncImage] which determines the colorFilter based on the theme
- */
+/** Applies the current theme's [LocalTintTheme] tint to an [AsyncImage]. */
 @Composable
 fun DynamicAsyncImage(
     imageUrl: String,
@@ -39,13 +34,6 @@ fun DynamicAsyncImage(
     val iconTint = LocalTintTheme.current.iconTint
     var isLoading by remember { mutableStateOf(true) }
     var isError by remember { mutableStateOf(false) }
-//    val imageLoader = rememberAsyncImagePainter(
-//        model = imageUrl,
-//        onState = { state ->
-//            isLoading = state is Loading
-//            isError = state is Error
-//        },
-//    )
     val isLocalInspection = LocalInspectionMode.current
     Box(
         modifier = modifier,

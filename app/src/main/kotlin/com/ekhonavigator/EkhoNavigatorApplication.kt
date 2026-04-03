@@ -22,7 +22,6 @@ class EkhoNavigatorApplication : Application(), Configuration.Provider {
         super.onCreate()
         val feedUrl = "https://25livepub.collegenet.com/calendars/csuci-calendar-of-events.ics"
 
-        // Schedule recurring sync every 2 hours
         SyncInitializer.enqueuePeriodicSync(context = this, feedUrl = feedUrl)
 
         // Fire an immediate sync on every app launch so data is fresh right away

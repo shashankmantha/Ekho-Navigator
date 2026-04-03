@@ -115,11 +115,9 @@ class DefaultCalendarRepository @Inject constructor(
 
             calendarEventDao.upsertEvents(entities)
 
-            // Remove events no longer in the feed
             val activeUids = networkEvents.map { it.uid }.toSet()
             calendarEventDao.deleteICalEventsNotIn(activeUids.toList())
 
-            // Clean up Firestore bookmark docs for events the campus removed
             cleanupStaleBookmarks(activeUids)
 
             SyncResult.Success(eventsUpdated = entities.size)

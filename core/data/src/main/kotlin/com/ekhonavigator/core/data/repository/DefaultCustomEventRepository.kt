@@ -49,7 +49,6 @@ class DefaultCustomEventRepository @Inject constructor(
         val entity = event.toCustomEventEntity(eventId)
         calendarEventDao.upsertEvent(entity)
 
-        // Write attendee entities to Room for each shared friend
         for ((uid, displayName) in sharedWith) {
             eventAttendeeDao.upsertAttendee(
                 EventAttendeeEntity(
@@ -65,7 +64,6 @@ class DefaultCustomEventRepository @Inject constructor(
             val allParticipants = listOfNotNull(event.ownerUid) + sharedWith.keys
             pushEventToFirestore(eventId, event, allParticipants)
 
-            // Create attendee docs in Firestore for each shared friend
             for ((uid, displayName) in sharedWith) {
                 firestore.collection("events")
                     .document(eventId)
@@ -93,12 +91,11 @@ class DefaultCustomEventRepository @Inject constructor(
             pushEventToFirestore(event.id, event)
             calendarEventDao.updatePendingSync(event.id, false)
         } catch (_: Exception) {
-            // Retry later
+            // Stays pendingSync = true, will be retried by pushPendingEvents()
         }
     }
 
     override suspend fun deleteEvent(eventId: String) {
-        android.util.Log.d("CustomEventRepo", "deleteEvent called with id: $eventId")
         // Track deletion so the listener doesn't re-add it during the race window
         sharedEventSyncService.pendingDeletes.add(eventId)
         try {
@@ -108,20 +105,14 @@ class DefaultCustomEventRepository @Inject constructor(
                 .collection("attendees")
                 .get()
                 .await()
-            android.util.Log.d("CustomEventRepo", "Deleting ${attendeeDocs.size()} attendee docs")
             for (doc in attendeeDocs.documents) {
                 doc.reference.delete().await()
             }
-            android.util.Log.d("CustomEventRepo", "Deleting event doc from Firestore")
             firestore.collection("events").document(eventId).delete().await()
-            android.util.Log.d("CustomEventRepo", "Firestore delete complete")
-        } catch (e: Exception) {
-            android.util.Log.e("CustomEventRepo", "Firestore delete failed", e)
+        } catch (_: Exception) {
         }
-        // Then clean up Room
         calendarEventDao.deleteEvent(eventId)
         sharedEventSyncService.pendingDeletes.remove(eventId)
-        android.util.Log.d("CustomEventRepo", "Room delete complete")
     }
 
     override suspend fun rsvp(

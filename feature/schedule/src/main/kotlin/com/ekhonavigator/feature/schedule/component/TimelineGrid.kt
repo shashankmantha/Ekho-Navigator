@@ -49,13 +49,8 @@ private const val HourCount = 24
 /**
  * Reusable timeline grid for day and week views.
  *
- * @param columnCount Number of day columns (1 for day view, 7 for week view)
- * @param columnDates The date for each column
- * @param events All events for the visible date range
- * @param onEventClick Callback when an event block is tapped
- * @param onDayClick Optional callback for "+N" overflow tap (→ day view)
+ * @param columnCount 1 for day view, 7 for week view
  * @param maxVisibleOverlaps Max concurrent events shown side-by-side. 0 = unlimited.
- * @param scrollToHour Initial hour to scroll to
  */
 @Composable
 fun TimelineGrid(
