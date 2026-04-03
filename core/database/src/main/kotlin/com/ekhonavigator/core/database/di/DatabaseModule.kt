@@ -23,9 +23,7 @@ internal object DatabaseModule {
             context,
             EkhoDatabase::class.java,
             "ekho-database",
-        )
-        // TODO: Replace with proper migration before release
-        .fallbackToDestructiveMigration(dropAllTables = true)
+        ).fallbackToDestructiveMigration(dropAllTables = true)
         .build()
 
     @Provides
