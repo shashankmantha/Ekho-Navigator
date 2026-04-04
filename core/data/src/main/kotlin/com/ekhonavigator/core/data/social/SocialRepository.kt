@@ -46,7 +46,15 @@ class SocialRepository @Inject constructor() {
 
         Log.d(
             "SocialSearch",
-            "docs=${snapshot.documents.map { "${it.id}:${it.getString("displayNameLower")}:${it.getBoolean("searchable")}" }}"
+            "docs=${
+                snapshot.documents.map {
+                    "${it.id}:${it.getString("displayNameLower")}:${
+                        it.getBoolean(
+                            "searchable"
+                        )
+                    }"
+                }
+            }"
         )
 
         return snapshot.documents.mapNotNull { doc ->

@@ -14,6 +14,9 @@ data class CalendarEvent(
     val status: String,
     val isBookmarked: Boolean,
     val lastSyncedAt: Instant,
+    val source: EventSource = EventSource.ICAL_FEED,
+    val ownerUid: String? = null,
+    val pendingSync: Boolean = false,
 ) {
     val primaryCategory: EventCategory
         get() = categories.firstOrNull() ?: EventCategory.GENERAL

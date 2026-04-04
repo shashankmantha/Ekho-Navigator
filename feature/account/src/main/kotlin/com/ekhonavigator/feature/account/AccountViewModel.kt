@@ -41,7 +41,8 @@ class AccountViewModel(
 
                 _uiState.value = AccountUiState.SignedIn(
                     email = email,
-                    displayName = profile?.displayName?.ifBlank { displayName ?: "" } ?: (displayName ?: ""),
+                    displayName = profile?.displayName?.ifBlank { displayName ?: "" }
+                        ?: (displayName ?: ""),
                     major = profile?.major ?: "",
                     description = profile?.description ?: "",
                     links = profile?.links ?: "",

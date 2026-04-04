@@ -40,9 +40,33 @@ interface CalendarEventDao {
     @Query("UPDATE calendar_events SET isBookmarked = :bookmarked WHERE uid = :id")
     suspend fun updateBookmark(id: String, bookmarked: Boolean)
 
-    @Query("DELETE FROM calendar_events WHERE uid NOT IN (:activeUids)")
-    suspend fun deleteEventsNotIn(activeUids: List<String>)
+    @Upsert
+    suspend fun upsertEvent(event: CalendarEventEntity)
+
+    @Query("DELETE FROM calendar_events WHERE source = 'ICAL_FEED' AND uid NOT IN (:activeUids)")
+    suspend fun deleteICalEventsNotIn(activeUids: List<String>)
 
     @Query("DELETE FROM calendar_events WHERE endTime < :cutoff AND isBookmarked = 0")
     suspend fun deleteOldEvents(cutoff: Instant)
+
+    @Query("SELECT * FROM calendar_events WHERE source = 'USER_CREATED' AND ownerUid = :ownerUid ORDER BY startTime ASC")
+    fun observeMyEvents(ownerUid: String): Flow<List<CalendarEventEntity>>
+
+    @Query("SELECT * FROM calendar_events WHERE source = 'SHARED' ORDER BY startTime ASC")
+    fun observeSharedEvents(): Flow<List<CalendarEventEntity>>
+
+    @Query("SELECT * FROM calendar_events WHERE pendingSync = 1")
+    suspend fun getPendingSyncEvents(): List<CalendarEventEntity>
+
+    @Query("UPDATE calendar_events SET pendingSync = :pending WHERE uid = :id")
+    suspend fun updatePendingSync(id: String, pending: Boolean)
+
+    @Query("DELETE FROM calendar_events WHERE uid = :id")
+    suspend fun deleteEvent(id: String)
+
+    @Query("DELETE FROM calendar_events WHERE source != 'ICAL_FEED'")
+    suspend fun deleteAllUserEvents()
+
+    @Query("UPDATE calendar_events SET isBookmarked = 0 WHERE isBookmarked = 1")
+    suspend fun clearAllBookmarks()
 }

@@ -28,12 +28,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ekhonavigator.core.designsystem.component.EkhoEventCard
+import com.ekhonavigator.core.designsystem.component.sourceAccentColor
 import com.ekhonavigator.core.designsystem.component.EkhoSectionHeader
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.CalendarEvent
+import com.ekhonavigator.core.model.EventSource
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -88,7 +90,6 @@ fun HomeScreen(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         )
 
-        // ---- Header row: label + restored bordered filter chip ----
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -103,7 +104,7 @@ fun HomeScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 letterSpacing = 0.5.sp,
             )
-            
+
             FilterChip(
                 selected = !showAll,
                 onClick = { viewModel.toggleShowAll() },
@@ -119,15 +120,15 @@ fun HomeScreen(
                     containerColor = Color.Transparent,
                     labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.1f),
-                    selectedLabelColor = MaterialTheme.colorScheme.secondary,
-                    selectedLeadingIconColor = MaterialTheme.colorScheme.secondary,
+                    selectedContainerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.1f),
+                    selectedLabelColor = MaterialTheme.colorScheme.tertiary,
+                    selectedLeadingIconColor = MaterialTheme.colorScheme.tertiary,
                 ),
                 border = FilterChipDefaults.filterChipBorder(
                     enabled = true,
                     selected = !showAll,
                     borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                    selectedBorderColor = MaterialTheme.colorScheme.secondary,
+                    selectedBorderColor = MaterialTheme.colorScheme.tertiary,
                     borderWidth = 1.dp,
                     selectedBorderWidth = 1.dp
                 ),
@@ -135,7 +136,6 @@ fun HomeScreen(
             )
         }
 
-        // ---- Event list with restored human-readable headers ----
         if (eventsByDate.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -178,13 +178,17 @@ fun HomeScreen(
                         dayEvents.forEach { event ->
                             val startTime = event.startTime.atZone(zone).format(timeFormatter)
                             val endTime = event.endTime.atZone(zone).format(timeFormatter)
-                            
+
                             EkhoEventCard(
                                 title = event.title,
                                 timeRange = "$startTime – $endTime",
                                 location = event.location,
-                                categoryColors = event.categories.map { Color(it.color) },
+                                accentColor = sourceAccentColor(
+                                    event.source.name,
+                                    event.isBookmarked
+                                ),
                                 isBookmarked = event.isBookmarked,
+                                showBookmark = event.source == EventSource.ICAL_FEED,
                                 onBookmarkClick = { viewModel.toggleBookmark(event.id) },
                                 onClick = { onEventClick(event.id) },
                                 modifier = Modifier.padding(horizontal = 16.dp)

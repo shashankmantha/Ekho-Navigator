@@ -85,6 +85,14 @@ class TestCalendarRepository : CalendarRepository {
         toggledBookmarkIds += eventId
     }
 
+    override suspend fun restoreBookmarks() {
+        // No-op in tests
+    }
+
+    override suspend fun onSignOut() {
+        // No-op in tests
+    }
+
     override suspend fun sync(feedUrl: String): SyncResult =
         SyncResult.Success(eventsUpdated = 0)
 }

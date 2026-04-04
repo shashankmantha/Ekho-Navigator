@@ -7,6 +7,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.ekhonavigator.core.database.EkhoDatabase
 import com.ekhonavigator.core.database.model.CalendarEventEntity
 import com.ekhonavigator.core.model.EventCategory
+import com.ekhonavigator.core.model.EventSource
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -198,21 +199,25 @@ class CalendarEventDaoTest {
     }
 
     @Test
-    fun deleteEventsNotIn() = runTest {
+    fun deleteICalEventsNotInOnlyDeletesICalEvents() = runTest {
         dao.upsertEvents(
             listOf(
-                testEntity(uid = "keep-1"),
-                testEntity(uid = "keep-2"),
-                testEntity(uid = "remove"),
-            )
+                testEntity(uid = "ical-keep"),
+                testEntity(uid = "ical-remove"),
+                testEntity(uid = "custom-1").copy(
+                    source = EventSource.USER_CREATED,
+                    ownerUid = "user-1",
+                ),
+            ),
         )
 
-        // Delete events NOT in the active list
-        dao.deleteEventsNotIn(listOf("keep-1", "keep-2"))
+        // Delete iCal events NOT in the active list — custom events must survive
+        dao.deleteICalEventsNotIn(listOf("ical-keep"))
 
         val remaining = dao.observeAllEvents().first()
         assertEquals(2, remaining.size)
-        assertTrue(remaining.all { it.uid.startsWith("keep") })
+        assertTrue(remaining.any { it.uid == "ical-keep" })
+        assertTrue(remaining.any { it.uid == "custom-1" })
     }
 
     @Test

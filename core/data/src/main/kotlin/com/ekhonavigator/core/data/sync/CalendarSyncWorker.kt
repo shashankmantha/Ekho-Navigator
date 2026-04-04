@@ -24,7 +24,11 @@ class CalendarSyncWorker @AssistedInject constructor(
         val feedUrl = inputData.getString(KEY_FEED_URL) ?: return Result.failure()
 
         return when (val result = calendarRepository.sync(feedUrl)) {
-            is SyncResult.Success -> Result.success()
+            is SyncResult.Success -> {
+                calendarRepository.restoreBookmarks()
+                Result.success()
+            }
+
             is SyncResult.Error -> {
                 if (runAttemptCount < MAX_RETRIES) Result.retry()
                 else Result.failure()

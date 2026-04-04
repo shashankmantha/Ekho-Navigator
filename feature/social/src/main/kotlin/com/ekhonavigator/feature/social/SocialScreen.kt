@@ -21,14 +21,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
-
 
 
 @Composable
@@ -42,7 +41,7 @@ fun SocialScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     LaunchedEffect(Unit) {
-       viewModel.loadSocialData()
+        viewModel.loadSocialData()
     }
 
     Column(
@@ -215,7 +214,8 @@ fun SocialScreen(
 
                                 val isFriend = uiState.friends.any { it.uid == user.id }
                                 val isPending = user.id in uiState.outgoingRequestIds
-                                val hasIncomingRequest = uiState.incomingRequests.any { it.uid == user.id }
+                                val hasIncomingRequest =
+                                    uiState.incomingRequests.any { it.uid == user.id }
 
                                 when {
                                     isFriend -> {
