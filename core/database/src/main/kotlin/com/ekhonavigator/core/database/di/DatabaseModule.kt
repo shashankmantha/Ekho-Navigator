@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.ekhonavigator.core.database.EkhoDatabase
 import com.ekhonavigator.core.database.dao.CalendarEventDao
+import com.ekhonavigator.core.database.dao.EventAttendeeDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -22,11 +23,14 @@ internal object DatabaseModule {
             context,
             EkhoDatabase::class.java,
             "ekho-database",
-        )
-            .fallbackToDestructiveMigration()
+        ).fallbackToDestructiveMigration(dropAllTables = true)
             .build()
 
     @Provides
     fun provideCalendarEventDao(db: EkhoDatabase): CalendarEventDao =
         db.calendarEventDao()
+
+    @Provides
+    fun provideEventAttendeeDao(db: EkhoDatabase): EventAttendeeDao =
+        db.eventAttendeeDao()
 }

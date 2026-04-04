@@ -15,5 +15,7 @@ interface CalendarRepository {
     fun observeEventsByDateRange(start: Instant, end: Instant): Flow<List<CalendarEvent>>
     fun observeEventById(id: String): Flow<CalendarEvent?>
     suspend fun toggleBookmark(eventId: String)
+    suspend fun restoreBookmarks()
+    suspend fun onSignOut()
     suspend fun sync(feedUrl: String): SyncResult
 }

@@ -69,6 +69,7 @@ class SocialViewModel @Inject constructor(
         _uiState.update { it.copy(searchQuery = query) }
         queryFlow.value = query
     }
+
     fun loadSocialData() {
         val currentUserId = authRepository.getCurrentUserUid() ?: return
 
@@ -168,7 +169,6 @@ class SocialViewModel @Inject constructor(
             }
         }
     }
-
 
 
     private fun searchUsers(query: String) {
