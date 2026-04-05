@@ -23,7 +23,15 @@ class MapViewModel @Inject constructor(
         get() = authRepository.getCurrentUserUid()
 
     init {
-        loadUserMarkers()
+        viewModelScope.launch {
+            authRepository.userFlow().collect { userId ->
+                if (userId != null) {
+                    loadUserMarkers()
+                } else {
+                    droppedMarkers.clear()
+                }
+            }
+        }
     }
 
     private fun loadUserMarkers() {
