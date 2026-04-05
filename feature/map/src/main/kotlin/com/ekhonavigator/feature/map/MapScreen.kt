@@ -50,6 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.android.gms.location.LocationServices
@@ -186,7 +187,7 @@ fun MapScreen(
 
     // Hides the tip automatically after 10 seconds
     LaunchedEffect(Unit) {
-        delay(10000)
+        delay(20000)
         showFilterTip = false
     }
 
@@ -378,11 +379,23 @@ fun MapScreen(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "Zoom in to see points of interest. Click filters to see even more.",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Zoom in to see points of interest. Click filters to see even more.",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.5.sp),
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                textAlign = TextAlign.Center
+                            )
+                            Text(
+                                text = "Hold anywhere on the map to drop a custom marker.",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.5.sp),
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                         Spacer(modifier = Modifier.size(8.dp))
                         Text("✕", style = MaterialTheme.typography.labelSmall)
                     }
