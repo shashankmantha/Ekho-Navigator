@@ -41,7 +41,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -52,6 +51,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
@@ -83,8 +83,8 @@ data class CampusPlace(
 
 data class UserMarker(
     val id: Long,
-    val position: LatLng,
-    val comment: String = ""
+    val droppedMarkerLocation: LatLng,
+    val markerLabelComment: String = ""
 )
 
 // - MAP CONTROLS
@@ -150,7 +150,8 @@ fun MapLocationControls(
 @Composable
 fun MapScreen(
     onEventClick: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: MapViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val csuciCenter = LatLng(34.162134342787105, -119.04400892418893)
@@ -184,7 +185,7 @@ fun MapScreen(
         }
     }
 
-    val droppedMarkers = remember { mutableStateListOf<UserMarker>() }
+    val droppedMarkers = viewModel.droppedMarkers
 
     // for campus location markers in CampusPlacesData.kt
     val campusPlaces = remember { CampusPlacesData.places }
@@ -234,7 +235,7 @@ fun MapScreen(
                 zoomControlsEnabled = true
             ),
             onMapLongClick = { latLng ->
-                droppedMarkers.add(UserMarker(id = System.currentTimeMillis(), position = latLng))
+                viewModel.addMarker(latLng)
             }
         ) {
             key("csuci-main") {
@@ -263,7 +264,7 @@ fun MapScreen(
             droppedMarkers.forEach { droppedMarker ->
                 key("user-marker-${droppedMarker.id}") {
                     MarkerInfoWindowContent(
-                        state = rememberMarkerState(position = droppedMarker.position),
+                        state = rememberMarkerState(position = droppedMarker.droppedMarkerLocation),
                         icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE),
                         onInfoWindowClick = {
                             selectedDroppedMarkerForOptions = droppedMarker
@@ -281,7 +282,7 @@ fun MapScreen(
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Text(
-                                    text = droppedMarker.comment.ifBlank { "Dropped Marker" },
+                                    text = droppedMarker.markerLabelComment.ifBlank { "Dropped Marker" },
                                     textAlign = TextAlign.Center,
                                     style = MaterialTheme.typography.labelLarge
                                 )
@@ -407,11 +408,11 @@ fun MapScreen(
                 title = { Text("Marker options") },
                 text = {
                     Column {
-                        Text(text = selectedMarker.comment.ifBlank { "Details: (none)" })
+                        Text(text = selectedMarker.markerLabelComment.ifBlank { "Details: (none)" })
                         TextButton(onClick = {
                             selectedDroppedMarkerForOptions = null
                             markerBeingEdited = selectedMarker
-                            editLabelText = selectedMarker.comment
+                            editLabelText = selectedMarker.markerLabelComment
                         }) { Text("Edit label") }
                         TextButton(onClick = {
                             selectedDroppedMarkerForOptions = null
@@ -441,9 +442,9 @@ fun MapScreen(
                 },
                 confirmButton = {
                     TextButton(onClick = {
-                        val index = droppedMarkers.indexOfFirst { it.id == markerBeingEdited?.id }
-                        if (index != -1) droppedMarkers[index] =
-                            droppedMarkers[index].copy(comment = editLabelText.trim())
+                        markerBeingEdited?.let { marker ->        // ViewModel handles the update and the Firebase sync
+                            viewModel.updateMarkerLabel(marker.id, editLabelText.trim())
+                        }
                         markerBeingEdited = null
                     }) { Text("Save") }
                 }
@@ -457,7 +458,9 @@ fun MapScreen(
                 text = { Text("Do you want to remove this dropped marker?") },
                 confirmButton = {
                     TextButton(onClick = {
-                        droppedMarkers.remove(markerPendingRemoval)
+                        markerPendingRemoval?.let { marker ->
+                            viewModel.removeMarker(marker)           // removes marker from the screen AND Firebase
+                        }
                         markerPendingRemoval = null
                     }) { Text("Confirm") }
                 },
