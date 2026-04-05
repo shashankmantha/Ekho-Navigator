@@ -68,19 +68,6 @@ import com.google.maps.android.compose.rememberMarkerState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-// --- MODELS ---
-enum class PlaceCategory(val label: String) {
-    ALL("All"), PARKING("Parking"), BUILDINGS("Buildings"),
-    FOOD("Food"), HOUSING("Housing"), SERVICES("Services")
-}
-
-data class CampusPlace(
-    val name: String,
-    val position: LatLng,
-    val category: PlaceCategory,
-    val details: String
-)
-
 data class UserMarker(
     val id: Long,
     val droppedMarkerLocation: LatLng,
@@ -159,6 +146,8 @@ fun MapScreen(
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(csuciCenter, 15f)
     }
+
+    var selectedCampusPlace by remember { mutableStateOf<CampusPlace?>(null) }
 
     // Permission state
     var hasLocationPermission by remember {
@@ -249,14 +238,15 @@ fun MapScreen(
             if (zoomRevealsCampusMarkers || searchText.isNotBlank()) {
                 visiblePlaces.forEach { place ->
                     key("campus-place-${place.name}") {
-                        Marker(
+                        MarkerInfoWindowContent(
                             state = rememberMarkerState(position = place.position),
-                            title = place.name,
-                            snippet = "${place.category.label} • ${place.details}",
                             onInfoWindowClick = {
 
+                                selectedCampusPlace = place
                             }
-                        )
+                        ) {
+                            CampusPlacePreviewCard(place = place)
+                        }
                     }
                 }
             }
@@ -467,6 +457,12 @@ fun MapScreen(
                 dismissButton = {
                     TextButton(onClick = { markerPendingRemoval = null }) { Text("Cancel") }
                 }
+            )
+        }
+        selectedCampusPlace?.let { place ->
+            CampusPlaceDetailCard(
+                place = place,
+                onDismiss = { selectedCampusPlace = null }
             )
         }
     }
