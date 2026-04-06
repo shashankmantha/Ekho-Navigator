@@ -11,12 +11,40 @@ data class SocialUser(
     val email: String = "",
     val major: String = "",
     val description: String = "",
+    val links: String = "",
     val avatarId: String = "avatar_default",
+    val majorVisible: Boolean = false,
+    val descriptionVisible: Boolean = false,
+    val linksVisible: Boolean = false,
 )
 
 class SocialRepository @Inject constructor() {
 
     private val firestore = FirebaseFirestore.getInstance()
+
+    suspend fun getUserById(userId: String): SocialUser? {
+        val doc = firestore.collection("users")
+            .document(userId)
+            .get()
+            .await()
+
+        if (!doc.exists()) return null
+
+        val displayName = doc.getString("displayName") ?: return null
+
+        return SocialUser(
+            id = doc.id,
+            displayName = displayName,
+            email = doc.getString("email") ?: "",
+            major = doc.getString("major") ?: "",
+            description = doc.getString("description") ?: "",
+            links = doc.getString("links") ?: "",
+            avatarId = doc.getString("avatarId") ?: "avatar_default",
+            majorVisible = doc.getBoolean("majorVisible") ?: false,
+            descriptionVisible = doc.getBoolean("descriptionVisible") ?: false,
+            linksVisible = doc.getBoolean("linksVisible") ?: false,
+        )
+    }
 
     suspend fun getOutgoingRequestIds(currentUserId: String): Set<String> {
         val snapshot = firestore.collection("users")
@@ -48,11 +76,7 @@ class SocialRepository @Inject constructor() {
             "SocialSearch",
             "docs=${
                 snapshot.documents.map {
-                    "${it.id}:${it.getString("displayNameLower")}:${
-                        it.getBoolean(
-                            "searchable"
-                        )
-                    }"
+                    "${it.id}:${it.getString("displayNameLower")}:${it.getBoolean("searchable")}"
                 }
             }"
         )
@@ -69,7 +93,11 @@ class SocialRepository @Inject constructor() {
                 email = doc.getString("email") ?: "",
                 major = doc.getString("major") ?: "",
                 description = doc.getString("description") ?: "",
+                links = doc.getString("links") ?: "",
                 avatarId = doc.getString("avatarId") ?: "avatar_default",
+                majorVisible = doc.getBoolean("majorVisible") ?: false,
+                descriptionVisible = doc.getBoolean("descriptionVisible") ?: false,
+                linksVisible = doc.getBoolean("linksVisible") ?: false,
             )
         }.filter { it.id != currentUserId }
     }
@@ -260,5 +288,4 @@ class SocialRepository @Inject constructor() {
         batch.delete(friendSideRef)
         batch.commit().await()
     }
-
 }

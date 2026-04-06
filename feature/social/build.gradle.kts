@@ -38,6 +38,7 @@ dependencies {
     api(projects.core.navigation)
     api(projects.feature.event)
     implementation(projects.core.model)
+    implementation(projects.core.designsystem)
     implementation(projects.core.data)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

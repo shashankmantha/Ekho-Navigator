@@ -29,12 +29,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
 
-
 @Composable
-
-
 fun SocialScreen(
-    onEventClick: (String) -> Unit,
+    onProfileClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SocialViewModel = hiltViewModel(),
 ) {
@@ -84,10 +81,11 @@ fun SocialScreen(
                     )
                 }
 
-
-
                 items(uiState.incomingRequests, key = { "request_${it.uid}" }) { request ->
                     ListItem(
+                        modifier = Modifier.clickable {
+                            onProfileClick(request.uid)
+                        },
                         headlineContent = {
                             Text(request.displayName)
                         },
@@ -112,8 +110,6 @@ fun SocialScreen(
                                     Text("Deny")
                                 }
                             }
-
-
                         },
                     )
                     HorizontalDivider()
@@ -130,6 +126,9 @@ fun SocialScreen(
 
                 items(uiState.friends, key = { "friend_${it.uid}" }) { friend ->
                     ListItem(
+                        modifier = Modifier.clickable {
+                            onProfileClick(friend.uid)
+                        },
                         headlineContent = {
                             Text(friend.displayName)
                         },
@@ -194,6 +193,9 @@ fun SocialScreen(
                 else -> {
                     items(uiState.users, key = { "user_${it.id}" }) { user ->
                         ListItem(
+                            modifier = Modifier.clickable {
+                                onProfileClick(user.id)
+                            },
                             headlineContent = {
                                 Text(user.displayName)
                             },
@@ -211,7 +213,6 @@ fun SocialScreen(
                                 }
                             },
                             trailingContent = {
-
                                 val isFriend = uiState.friends.any { it.uid == user.id }
                                 val isPending = user.id in uiState.outgoingRequestIds
                                 val hasIncomingRequest =
