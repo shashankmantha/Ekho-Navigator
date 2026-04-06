@@ -2,6 +2,7 @@ package com.ekhonavigator.core.data.repository
 
 import com.ekhonavigator.core.data.auth.AuthRepository
 import com.ekhonavigator.core.data.model.toEntity
+import com.ekhonavigator.core.data.sync.DailyEventNotificationManager
 import com.ekhonavigator.core.data.util.SyncResult
 import com.ekhonavigator.core.database.dao.CalendarEventDao
 import com.ekhonavigator.core.database.model.toDomainModel
@@ -23,6 +24,7 @@ class DefaultCalendarRepository @Inject constructor(
     private val calendarEventDao: CalendarEventDao,
     private val iCalFeedDataSource: ICalFeedDataSource,
     private val authRepository: AuthRepository,
+    private val dailyEventNotificationManager: DailyEventNotificationManager,
 ) : CalendarRepository {
 
     private val firestore = FirebaseFirestore.getInstance()
@@ -52,6 +54,10 @@ class DefaultCalendarRepository @Inject constructor(
         val event = calendarEventDao.getEventById(eventId) ?: return
         val nowBookmarked = !event.isBookmarked
         calendarEventDao.updateBookmark(eventId, nowBookmarked)
+
+        if (nowBookmarked) {
+            dailyEventNotificationManager.notifyEventBookmarked(eventId)
+        }
 
         // Fire-and-forget sync to Firestore for push notification readiness
         val uid = authRepository.getCurrentUserUid() ?: return
