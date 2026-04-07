@@ -38,7 +38,9 @@ import com.ekhonavigator.feature.account.navigation.navigateToAccount
 import com.ekhonavigator.feature.account.AccountScreen
 import com.ekhonavigator.feature.account.navigation.AccountNavKey
 import com.ekhonavigator.feature.social.SocialScreen
+import com.ekhonavigator.feature.social.UserProfileScreen
 import com.ekhonavigator.feature.social.navigation.SocialNavKey
+import com.ekhonavigator.feature.social.navigation.UserProfileNavKey
 import com.ekhonavigator.feature.schedule.CreateEventScreen
 import com.ekhonavigator.feature.schedule.navigation.CreateEventNavKey
 import com.ekhonavigator.feature.schedule.navigation.navigateToCreateEvent
@@ -172,7 +174,19 @@ fun EkhoNavigatorApp(
 
                     is SocialNavKey -> {
                         NavEntry(key) {
-                            SocialScreen(onEventClick = navigator::navigateToEvent)
+                            SocialScreen(
+                                onProfileClick = { userId ->
+                                    navigator.navigate(UserProfileNavKey(userId))
+                                },
+                            )
+                        }
+                    }
+
+                    is UserProfileNavKey -> {
+                        NavEntry(key) {
+                            UserProfileScreen(
+                                userId = key.userId,
+                            )
                         }
                     }
 

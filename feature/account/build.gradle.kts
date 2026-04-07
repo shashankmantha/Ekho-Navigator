@@ -36,6 +36,7 @@ dependencies {
     implementation(libs.firebase.storage)
 
     api(projects.core.navigation)
+    implementation(projects.core.designsystem)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.tooling.preview)
