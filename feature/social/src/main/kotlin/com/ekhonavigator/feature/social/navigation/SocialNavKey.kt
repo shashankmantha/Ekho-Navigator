@@ -5,15 +5,28 @@ import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 import com.ekhonavigator.core.navigation.Navigator
 import com.ekhonavigator.feature.social.SocialScreen
-import com.ekhonavigator.feature.event.navigation.navigateToEvent
+import com.ekhonavigator.feature.social.UserProfileScreen
 
 @Serializable
 object SocialNavKey : NavKey
 
+@Serializable
+data class UserProfileNavKey(
+    val userId: String,
+) : NavKey
+
 fun EntryProviderScope<NavKey>.socialEntry(navigator: Navigator) {
     entry<SocialNavKey> {
         SocialScreen(
-            onEventClick = navigator::navigateToEvent,
+            onProfileClick = { userId ->
+                navigator.navigate(UserProfileNavKey(userId))
+            },
+        )
+    }
+
+    entry<UserProfileNavKey> { key ->
+        UserProfileScreen(
+            userId = key.userId,
         )
     }
 }
