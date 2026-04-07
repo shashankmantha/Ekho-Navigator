@@ -18,6 +18,7 @@ class CalendarSyncWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted params: WorkerParameters,
     private val calendarRepository: CalendarRepository,
+    private val dailyEventNotificationManager: DailyEventNotificationManager,
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
@@ -26,9 +27,12 @@ class CalendarSyncWorker @AssistedInject constructor(
         return when (val result = calendarRepository.sync(feedUrl)) {
             is SyncResult.Success -> {
                 calendarRepository.restoreBookmarks()
+                runCatching {
+                    dailyEventNotificationManager.notifyTodaysEventsIfNeeded()
+                    dailyEventNotificationManager.notifyBookmarkedEventsIfNeeded()
+                }
                 Result.success()
             }
-
             is SyncResult.Error -> {
                 if (runAttemptCount < MAX_RETRIES) Result.retry()
                 else Result.failure()
