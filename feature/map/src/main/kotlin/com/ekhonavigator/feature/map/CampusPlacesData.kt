@@ -28,15 +28,15 @@ object CampusPlacesData {
             campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            name = "Sage Hall/Enrollment Center",  //There is conflicting info on the campus sites, saying one service was moved elsewhere, but another page says it's still in sage hall. holding for now
+            name = "Sage Hall/Enrollment Center",
             position = LatLng(34.16409704291065, -119.04221707938154),
             category = PlaceCategory.BUILDINGS,
-            fullLocationDescription = "Student services",
-            quickPreviewSummary = "[Add one-line preview here]",
-            studentVisitReasons = "[Add reasons here]",
-            keyServicesOffered = "[Add services here]",
-            studentProTip = "[Add tip here]",
-            campusOfficePhoneNumber = "[Add phone number here or null]"
+            fullLocationDescription = "Enrollment Center building still used on current CSUCI Registrar pages",
+            quickPreviewSummary = "Registrar, records, enrollment help",
+            studentVisitReasons = "Students may go here for registration, records, transcripts, transfer credit questions, or other Registrar-related help.",
+            keyServicesOffered = "Enrollment Center front-counter support, Registrar help, records and registration assistance, and transfer credit support.",
+            studentProTip = "Check the exact department page before going, since some current CSUCI pages now send admissions, financial aid, and billing to Gateway Hall or Marin Hall instead.",
+            campusOfficePhoneNumber = "Contact: 805-437-8500"
         ),
         CampusPlace(
             name = "Gateway Hall",
@@ -196,12 +196,12 @@ object CampusPlacesData {
             name = "Chaparral Hall",
             position = LatLng(34.162099441347955, -119.04566142665234),
             category = PlaceCategory.BUILDINGS,
-            fullLocationDescription = "Academic building",
-            quickPreviewSummary = "[Add one-line preview here]",
-            studentVisitReasons = "[Add reasons here]",
-            keyServicesOffered = "[Add services here]",
-            studentProTip = "[Add tip here]",
-            campusOfficePhoneNumber = "[Add phone number here or null]"
+            fullLocationDescription = "Support and storage building",
+            quickPreviewSummary = "Support space, limited access",
+            studentVisitReasons = "Students would usually go here only for approved program, lab, or support-related work.",
+            keyServicesOffered = "Support and storage space referenced on current CSUCI facilities and operations pages.",
+            studentProTip = "Not a general-use destination, so it is best to go only if your class, lab, or program specifically sends you there.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
             name = "Aliso Hall",
@@ -218,12 +218,12 @@ object CampusPlacesData {
             name = "Aliso Annex",
             position = LatLng(34.16112751725973, -119.04571329582699),
             category = PlaceCategory.BUILDINGS,
-            fullLocationDescription = "Academic building",
-            quickPreviewSummary = "[Add one-line preview here]",
-            studentVisitReasons = "[Add reasons here]",
-            keyServicesOffered = "[Add services here]",
-            studentProTip = "[Add tip here]",
-            campusOfficePhoneNumber = "[Add phone number here or null]"
+            fullLocationDescription = "Lab and research-use building near Aliso Hall",
+            quickPreviewSummary = "Labs, research work, limited access",
+            studentVisitReasons = "Students would usually go here for scheduled lab, research, or other program-related work.",
+            keyServicesOffered = "Specialized lab space for academic work.",
+            studentProTip = "Not a general-use destination, so it is best to go only if your class, lab, or program specifically sends you there.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
             name = "Trinity Hall",
@@ -291,7 +291,7 @@ object CampusPlacesData {
             studentVisitReasons = "Students may go here to live on campus, buy bookstore items, or grab food from Town Center dining spots.",
             keyServicesOffered = "Student apartments, The Cove Bookstore, and dining options.",
             studentProTip = "Useful stop on the east side of campus for food or bookstore needs.",
-            campusOfficePhoneNumber = null
+            campusOfficePhoneNumber = "Town Center Office Contact: 805-437-8965"
         ),
         CampusPlace(
             name = "Grand Salon",
@@ -308,12 +308,12 @@ object CampusPlacesData {
             name = "Conference Center",
             position = LatLng(34.163783533053795, -119.04353131875963),
             category = PlaceCategory.SERVICES,
-            fullLocationDescription = "Event space",
-            quickPreviewSummary = "[Add one-line preview here]",
-            studentVisitReasons = "[Add reasons here]",
-            keyServicesOffered = "[Add services here]",
-            studentProTip = "[Add tip here]",
-            campusOfficePhoneNumber = "[Add phone number here or null]"
+            fullLocationDescription = "Campus meeting and event space in the North Quad area",
+            quickPreviewSummary = "Meetings, events, North Quad",
+            studentVisitReasons = "Students would usually go here for a scheduled meeting, program, or campus event.",
+            keyServicesOffered = "Conference and meeting space near Grand Salon, Petit Salon, and other North Quad event areas.",
+            studentProTip = "Not a regular everyday stop, so it is best to go only if your class, program, or event specifically sends you there.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
             name = "Petit Salon",
@@ -385,12 +385,12 @@ object CampusPlacesData {
             name = "Sage Hall/Enrollment Center",
             position = LatLng(34.16409704291065, -119.04221707938154),
             category = PlaceCategory.SERVICES,
-            fullLocationDescription = "Student services",
-            quickPreviewSummary = "[Add one-line preview here]",
-            studentVisitReasons = "[Add reasons here]",
-            keyServicesOffered = "[Add services here]",
-            studentProTip = "[Add tip here]",
-            campusOfficePhoneNumber = "[Add phone number here or null]"
+            fullLocationDescription = "Enrollment Center building still used on current CSUCI Registrar pages",
+            quickPreviewSummary = "Registrar, records, enrollment help",
+            studentVisitReasons = "Students may go here for registration, records, transcripts, transfer credit questions, or other Registrar-related help.",
+            keyServicesOffered = "Enrollment Center front-counter support, Registrar help, records and registration assistance, and transfer credit support.",
+            studentProTip = "Check the exact department page before going, since some current CSUCI pages now send admissions, financial aid, and billing to Gateway Hall or Marin Hall instead.",
+            campusOfficePhoneNumber = "Contact: 805-437-8500"
         ),
         CampusPlace(
             name = "Yuba Hall/Student Health Services",
@@ -480,7 +480,7 @@ object CampusPlacesData {
             studentVisitReasons = "Students may go here for on-campus housing or for help from the Housing & Residential Education main office.",
             keyServicesOffered = "Residential housing and the Housing & Residential Education main office.",
             studentProTip = "Good building to know if you need housing help, check-in support, or other residential services.",
-            campusOfficePhoneNumber = "Santa Cruz Village E Contact: 805-437-2733"
+            campusOfficePhoneNumber = "Main Housing Office Contact: 805-437-2733"
         ),
         CampusPlace(
             name = "Santa Cruz Village F",
