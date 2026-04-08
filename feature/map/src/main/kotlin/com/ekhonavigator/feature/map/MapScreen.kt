@@ -14,6 +14,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -50,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.android.gms.location.LocationServices
@@ -67,19 +69,6 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-// --- MODELS ---
-enum class PlaceCategory(val label: String) {
-    ALL("All"), PARKING("Parking"), BUILDINGS("Buildings"),
-    FOOD("Food"), HOUSING("Housing"), SERVICES("Services")
-}
-
-data class CampusPlace(
-    val name: String,
-    val position: LatLng,
-    val category: PlaceCategory,
-    val details: String
-)
 
 data class UserMarker(
     val id: Long,
@@ -160,6 +149,8 @@ fun MapScreen(
         position = CameraPosition.fromLatLngZoom(csuciCenter, 15f)
     }
 
+    var selectedCampusPlace by remember { mutableStateOf<CampusPlace?>(null) }
+
     // Permission state
     var hasLocationPermission by remember {
         mutableStateOf(
@@ -195,9 +186,27 @@ fun MapScreen(
     var isPanelExpanded by remember { mutableStateOf(true) }
     var showFilterTip by remember { mutableStateOf(true) }
 
-    // Hides the tip automatically after 10 seconds
+    val mapPaddingForInfoCards by remember(isPanelExpanded, showFilterTip, selectedCategory) {
+        derivedStateOf {
+            val isFilterTipVisible = showFilterTip && selectedCategory == PlaceCategory.BUILDINGS
+
+            val collapsedFilterHeight = 80.dp
+            val expandedFilterHeight = 220.dp
+            val expandedFilterWithTipHeight = 300.dp
+
+            val totalTopPadding = when {
+                isPanelExpanded && isFilterTipVisible -> expandedFilterWithTipHeight
+                isPanelExpanded -> expandedFilterHeight
+                else -> collapsedFilterHeight
+            }
+
+            PaddingValues(top = totalTopPadding)
+        }
+    }
+
+    // Hides the tip automatically after 20 seconds
     LaunchedEffect(Unit) {
-        delay(10000)
+        delay(20000)
         showFilterTip = false
     }
 
@@ -229,6 +238,7 @@ fun MapScreen(
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
+            contentPadding = mapPaddingForInfoCards,
             properties = MapProperties(isMyLocationEnabled = hasLocationPermission),
             uiSettings = MapUiSettings(
                 myLocationButtonEnabled = false, // hide default to use custom square one
@@ -249,14 +259,15 @@ fun MapScreen(
             if (zoomRevealsCampusMarkers || searchText.isNotBlank()) {
                 visiblePlaces.forEach { place ->
                     key("campus-place-${place.name}") {
-                        Marker(
+                        MarkerInfoWindowContent(
                             state = rememberMarkerState(position = place.position),
-                            title = place.name,
-                            snippet = "${place.category.label} • ${place.details}",
                             onInfoWindowClick = {
 
+                                selectedCampusPlace = place
                             }
-                        )
+                        ) {
+                            CampusPlacePreviewCard(place = place)
+                        }
                     }
                 }
             }
@@ -388,11 +399,23 @@ fun MapScreen(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "Zoom in to see points of interest. Click filters to see even more.",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Zoom in to see points of interest. Click filters to see even more.",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.5.sp),
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                textAlign = TextAlign.Center
+                            )
+                            Text(
+                                text = "Hold anywhere on the map to drop a custom marker.",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.5.sp),
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                         Spacer(modifier = Modifier.size(8.dp))
                         Text("✕", style = MaterialTheme.typography.labelSmall)
                     }
@@ -467,6 +490,12 @@ fun MapScreen(
                 dismissButton = {
                     TextButton(onClick = { markerPendingRemoval = null }) { Text("Cancel") }
                 }
+            )
+        }
+        selectedCampusPlace?.let { place ->
+            CampusPlaceDetailCard(
+                place = place,
+                onDismiss = { selectedCampusPlace = null }
             )
         }
     }
