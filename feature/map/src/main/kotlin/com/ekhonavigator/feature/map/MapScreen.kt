@@ -204,7 +204,7 @@ fun MapScreen(
         }
     }
 
-    // Hides the tip automatically after 10 seconds
+    // Hides the tip automatically after 20 seconds
     LaunchedEffect(Unit) {
         delay(20000)
         showFilterTip = false
