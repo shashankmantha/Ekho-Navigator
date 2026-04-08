@@ -14,6 +14,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -185,6 +186,24 @@ fun MapScreen(
     var isPanelExpanded by remember { mutableStateOf(true) }
     var showFilterTip by remember { mutableStateOf(true) }
 
+    val mapPaddingForInfoCards by remember(isPanelExpanded, showFilterTip, selectedCategory) {
+        derivedStateOf {
+            val isFilterTipVisible = showFilterTip && selectedCategory == PlaceCategory.BUILDINGS
+
+            val collapsedFilterHeight = 80.dp
+            val expandedFilterHeight = 220.dp
+            val expandedFilterWithTipHeight = 300.dp
+
+            val totalTopPadding = when {
+                isPanelExpanded && isFilterTipVisible -> expandedFilterWithTipHeight
+                isPanelExpanded -> expandedFilterHeight
+                else -> collapsedFilterHeight
+            }
+
+            PaddingValues(top = totalTopPadding)
+        }
+    }
+
     // Hides the tip automatically after 10 seconds
     LaunchedEffect(Unit) {
         delay(20000)
@@ -219,6 +238,7 @@ fun MapScreen(
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
+            contentPadding = mapPaddingForInfoCards,
             properties = MapProperties(isMyLocationEnabled = hasLocationPermission),
             uiSettings = MapUiSettings(
                 myLocationButtonEnabled = false, // hide default to use custom square one
