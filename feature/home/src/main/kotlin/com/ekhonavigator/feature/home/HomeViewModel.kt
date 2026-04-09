@@ -4,7 +4,9 @@ import android.annotation.SuppressLint
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ekhonavigator.core.data.auth.AuthRepository
 import com.ekhonavigator.core.data.repository.CalendarRepository
+import com.ekhonavigator.core.data.repository.CustomEventRepository
 import com.ekhonavigator.core.model.CalendarEvent
 import com.google.android.gms.location.LocationServices
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -32,9 +34,15 @@ import kotlin.math.roundToInt
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val repository: CalendarRepository,
+    private val authRepository: AuthRepository,
+    private val customEventRepository: CustomEventRepository,
 ) : ViewModel() {
 
-    // ---- Event filter state ----
+    init {
+        if (authRepository.getCurrentUserUid() != null) {
+            customEventRepository.startSync(viewModelScope)
+        }
+    }
 
     /** When true (default), show every event. When false, only bookmarked. */
     private val _showAll = MutableStateFlow(true)
@@ -58,8 +66,6 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    // ---- Weather state ----
-
     private val _weatherState = MutableStateFlow(WeatherUiState())
     val weatherState: StateFlow<WeatherUiState> = _weatherState.asStateFlow()
 
@@ -82,8 +88,6 @@ class HomeViewModel @Inject constructor(
             errorMessage = "Allow location to load current weather.",
         )
     }
-
-    // ---- Weather data loading ----
 
     private suspend fun fetchWeatherState(context: Context): WeatherUiState {
         return try {
@@ -183,8 +187,6 @@ class HomeViewModel @Inject constructor(
     }
 }
 
-// ---- Weather UI state ----
-
 data class WeatherUiState(
     val isLoading: Boolean = true,
     val currentTemperature: String = "--°F",
@@ -202,8 +204,6 @@ data class HourlyForecastUi(
     val temperatureLabel: String,
     val conditionLabel: String,
 )
-
-// ---- Network models (private to this file) ----
 
 @Serializable
 private data class OpenMeteoResponse(
@@ -225,8 +225,6 @@ private data class HourlyWeather(
     @SerialName("temperature_2m") val temperature2m: List<Double>,
     @SerialName("weather_code") val weatherCode: List<Int>,
 )
-
-// ---- Helpers ----
 
 private fun fahrenheitLabel(value: Double): String = "${value.roundToInt()}°F"
 

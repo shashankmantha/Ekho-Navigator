@@ -2,6 +2,7 @@ package com.ekhonavigator.core.testing
 
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventCategory
+import com.ekhonavigator.core.model.EventSource
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -40,6 +41,9 @@ fun testCalendarEvent(
     status: String = "CONFIRMED",
     isBookmarked: Boolean = false,
     lastSyncedAt: Instant = Instant.now(),
+    source: EventSource = EventSource.ICAL_FEED,
+    ownerUid: String? = null,
+    pendingSync: Boolean = false,
 ): CalendarEvent = CalendarEvent(
     id = id,
     title = title,
@@ -52,4 +56,7 @@ fun testCalendarEvent(
     status = status,
     isBookmarked = isBookmarked,
     lastSyncedAt = lastSyncedAt,
+    source = source,
+    ownerUid = ownerUid,
+    pendingSync = pendingSync,
 )

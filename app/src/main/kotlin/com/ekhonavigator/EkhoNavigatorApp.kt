@@ -2,7 +2,6 @@
 
 package com.ekhonavigator
 
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -23,7 +22,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.res.stringResource
 import androidx.navigation3.ui.NavDisplay
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
@@ -34,26 +32,35 @@ import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.navigation.Navigator
 import com.ekhonavigator.core.navigation.rememberNavigationState
 import com.ekhonavigator.core.navigation.toEntries
-import com.ekhonavigator.feature.calendar.CalendarScreen
-import com.ekhonavigator.feature.calendar.navigation.CalendarNavKey
 import com.ekhonavigator.feature.map.MapScreen
 import com.ekhonavigator.feature.map.navigation.MapNavKey
 import com.ekhonavigator.feature.account.navigation.navigateToAccount
 import com.ekhonavigator.feature.account.AccountScreen
 import com.ekhonavigator.feature.account.navigation.AccountNavKey
 import com.ekhonavigator.feature.social.SocialScreen
+import com.ekhonavigator.feature.social.UserProfileScreen
 import com.ekhonavigator.feature.social.navigation.SocialNavKey
-import com.ekhonavigator.feature.events.EventsScreen
-import com.ekhonavigator.feature.events.navigation.EventsNavKey
+import com.ekhonavigator.feature.social.navigation.UserProfileNavKey
+import com.ekhonavigator.feature.schedule.CreateEventScreen
+import com.ekhonavigator.feature.schedule.navigation.CreateEventNavKey
+import com.ekhonavigator.feature.schedule.navigation.navigateToCreateEvent
 import com.ekhonavigator.feature.event.EventScreen
 import com.ekhonavigator.feature.event.navigation.EventNavKey
 import com.ekhonavigator.feature.event.navigation.navigateToEvent
 import com.ekhonavigator.feature.home.HomeScreen
 import com.ekhonavigator.feature.home.navigation.HomeNavKey
+import com.ekhonavigator.feature.schedule.DayScreen
+import com.ekhonavigator.feature.schedule.ScheduleScreen
+import com.ekhonavigator.feature.schedule.navigation.DayNavKey
+import com.ekhonavigator.feature.schedule.navigation.ScheduleNavKey
+import com.ekhonavigator.feature.schedule.navigation.navigateToDay
 import com.ekhonavigator.navigation.TOP_LEVEL_NAV_ITEMS
 
 @Composable
-fun EkhoNavigatorApp() {
+fun EkhoNavigatorApp(
+    onSignIn: () -> Unit = {},
+    onSignOut: () -> Unit = {},
+) {
     val navigationState = rememberNavigationState(
         startKey = HomeNavKey,
         topLevelKeys = TOP_LEVEL_NAV_ITEMS.keys
@@ -124,15 +131,38 @@ fun EkhoNavigatorApp() {
                         }
                     }
 
-                    is CalendarNavKey -> {
+                    is ScheduleNavKey -> {
                         NavEntry(key) {
-                            CalendarScreen(onEventClick = navigator::navigateToEvent)
+                            ScheduleScreen(
+                                onEventClick = navigator::navigateToEvent,
+                                onDayClick = navigator::navigateToDay,
+                                onCreateEventClick = { epochDay ->
+                                    navigator.navigateToCreateEvent(epochDay)
+                                },
+                            )
                         }
                     }
 
-                    is EventsNavKey -> {
+                    is DayNavKey -> {
                         NavEntry(key) {
-                            EventsScreen(onEventClick = navigator::navigateToEvent)
+                            DayScreen(
+                                epochDay = key.epochDay,
+                                onEventClick = navigator::navigateToEvent,
+                                onCreateEventClick = { epochDay ->
+                                    navigator.navigateToCreateEvent(epochDay)
+                                },
+                                sourceTypeNames = key.sourceTypes,
+                                categoryNames = key.categories,
+                            )
+                        }
+                    }
+
+                    is CreateEventNavKey -> {
+                        NavEntry(key) {
+                            CreateEventScreen(
+                                onBack = navigator::goBack,
+                                initialEpochDay = key.initialEpochDay,
+                            )
                         }
                     }
 
@@ -144,19 +174,40 @@ fun EkhoNavigatorApp() {
 
                     is SocialNavKey -> {
                         NavEntry(key) {
-                            SocialScreen(onEventClick = navigator::navigateToEvent)
+                            SocialScreen(
+                                onProfileClick = { userId ->
+                                    navigator.navigate(UserProfileNavKey(userId))
+                                },
+                            )
+                        }
+                    }
+
+                    is UserProfileNavKey -> {
+                        NavEntry(key) {
+                            UserProfileScreen(
+                                userId = key.userId,
+                            )
                         }
                     }
 
                     is AccountNavKey -> {
                         NavEntry(key) {
-                            AccountScreen()
+                            AccountScreen(
+                                onSignIn = onSignIn,
+                                onSignOut = onSignOut,
+                            )
                         }
                     }
 
                     is EventNavKey -> {
                         NavEntry(key) {
-                            EventScreen(eventId = key.id)
+                            EventScreen(
+                                eventId = key.id,
+                                // this is here because we have custom event deletion
+                                // so the standard back button is not enough here
+                                // normally the top nav bar handles all back functionality
+                                onBack = navigator::goBack,
+                            )
                         }
                     }
 

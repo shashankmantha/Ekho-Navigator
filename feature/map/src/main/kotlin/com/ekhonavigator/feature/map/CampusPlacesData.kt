@@ -6,404 +6,729 @@ object CampusPlacesData {
     val places = listOf(
         // BUILDINGS
         CampusPlace(
-            "Broome Library",
-            LatLng(34.16269924567034, -119.04095431988378),
-            PlaceCategory.BUILDINGS,
-            "Library"
+            name = "Broome Library",
+            position = LatLng(34.16269924567034, -119.04095431988378),
+            category = PlaceCategory.BUILDINGS,
+            fullLocationDescription = "Main campus library and academic study space",
+            quickPreviewSummary = "Study space, books, research help",
+            studentVisitReasons = "Students go here to study, use library materials, reserve study rooms, and get research support.",
+            keyServicesOffered = "Ask a Librarian support, study rooms, and equipment checkout.",
+            studentProTip = "A good place to stop between classes if you need a quiet place to work or help finding academic sources.",
+            campusOfficePhoneNumber = "Contact: 805-437-8561"
         ),
         CampusPlace(
-            "Bell Tower",
-            LatLng(34.16094392676536, -119.04308517583166),
-            PlaceCategory.BUILDINGS,
-            "Bell Tower"
+            name = "Bell Tower",
+            position = LatLng(34.16094392676536, -119.04308517583166),
+            category = PlaceCategory.BUILDINGS,
+            fullLocationDescription = "Central campus building area with classrooms and student support offices",
+            quickPreviewSummary = "Landmark, classes, student support",
+            studentVisitReasons = "Students may go here for classes, academic advising, counseling, or other student support offices in the Bell Tower area.",
+            keyServicesOffered = "Academic advising, Dean of Students support, CARE Team support, and counseling services in the Bell Tower/Bell Tower East area.",
+            studentProTip = "Helpful as a central campus landmark and a starting point for several student support offices.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Sage Hall/Enrollment Center",
-            LatLng(34.16409704291065, -119.04221707938154),
-            PlaceCategory.BUILDINGS,
-            "Student services"
+            name = "Sage Hall/Enrollment Center",
+            position = LatLng(34.16409704291065, -119.04221707938154),
+            category = PlaceCategory.BUILDINGS,
+            fullLocationDescription = "Enrollment Center building still used on current CSUCI Registrar pages",
+            quickPreviewSummary = "Registrar, records, enrollment help",
+            studentVisitReasons = "Students may go here for registration, records, transcripts, transfer credit questions, or other Registrar-related help.",
+            keyServicesOffered = "Enrollment Center front-counter support, Registrar help, records and registration assistance, and transfer credit support.",
+            studentProTip = "Check the exact department page before going, since some current CSUCI pages now send admissions, financial aid, and billing to Gateway Hall or Marin Hall instead.",
+            campusOfficePhoneNumber = "Contact: 805-437-8500"
         ),
         CampusPlace(
-            "Gateway Hall",
-            LatLng(34.164959668539744, -119.04514675441855),
-            PlaceCategory.BUILDINGS,
-            "Academic building"
+            name = "Gateway Hall",
+            position = LatLng(34.164959668539744, -119.04514675441855),
+            category = PlaceCategory.BUILDINGS,
+            fullLocationDescription = "Academic and student services building near the campus entrance",
+            quickPreviewSummary = "Welcome Center, classes, study spaces",
+            studentVisitReasons = "Students may go here for classes, study spaces, the Welcome Center, or Enrollment Management services.",
+            keyServicesOffered = "Welcome Center, Enrollment Management services, classrooms, study rooms, gathering spaces, and academic labs.",
+            studentProTip = "Useful to know as a front-door campus building for both student services and academic spaces.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Marin Hall",
-            LatLng(34.16448029307431, -119.04506628814714),
-            PlaceCategory.BUILDINGS,
-            "Academic building"
+            name = "Marin Hall",
+            position = LatLng(34.16448029307431, -119.04506628814714),
+            category = PlaceCategory.BUILDINGS,
+            fullLocationDescription = "Student services and administrative building",
+            quickPreviewSummary = "Records, billing, financial aid",
+            studentVisitReasons = "Students may go here for registration and records help, student account and payment questions, or financial aid support.",
+            keyServicesOffered = "Registrar's Office, Student Business Services, and Financial Aid services.",
+            studentProTip = "A useful building to know for common enrollment, records, billing, and aid questions.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Modoc Hall",
-            LatLng(34.16412297902208, -119.04835467640991),
-            PlaceCategory.BUILDINGS,
-            "Academic building"
+            name = "Modoc Hall",
+            position = LatLng(34.16412297902208, -119.04835467640991),
+            category = PlaceCategory.BUILDINGS,
+            fullLocationDescription = "Academic building with classrooms, labs, and conservation-related space",
+            quickPreviewSummary = "Classes, labs, conservation office",
+            studentVisitReasons = "Students may go here for classes, lab work, or conservation-related programs and office visits.",
+            keyServicesOffered = "Classrooms, labs, and the Conservation Office.",
+            studentProTip = "Useful to know if you have science-related classes or activities near the Biology Garden area.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "El Dorado Hall",
-            LatLng(34.16420953349231, -119.04711549582302),
-            PlaceCategory.BUILDINGS,
-            "Academic building"
+            name = "El Dorado Hall",
+            position = LatLng(34.16420953349231, -119.04711549582302),
+            category = PlaceCategory.BUILDINGS,
+            fullLocationDescription = "Academic building that houses the Graduate Studies Center",
+            quickPreviewSummary = "Graduate studies, study spaces, meetings",
+            studentVisitReasons = "Students may go here for graduate studies support, studying, meetings, or campus events tied to the Graduate Studies Center.",
+            keyServicesOffered = "Graduate Studies Center support, study spaces, and meeting or conference room space.",
+            studentProTip = "Useful to know if you are a graduate or credential student looking for study space or graduate support resources.",
+            campusOfficePhoneNumber = "Contact: 805-437-3579"
         ),
         CampusPlace(
-            "Napa Hall",
-            LatLng(34.16369686340805, -119.04565369191049),
-            PlaceCategory.BUILDINGS,
-            "Academic building"
+            name = "Napa Hall",
+            position = LatLng(34.16369686340805, -119.04565369191049),
+            category = PlaceCategory.BUILDINGS,
+            fullLocationDescription = "Academic arts building with studios, classrooms, and gallery space",
+            quickPreviewSummary = "Art classes, studios, gallery space",
+            studentVisitReasons = "Students may go here for art classes, studio work, gallery visits, or digital media and recording-related coursework.",
+            keyServicesOffered = "Studio classrooms, a small computer lab, faculty and staff offices, the Napa Hall Art Gallery, and the Mike Curb Studio.",
+            studentProTip = "Useful to know if you have art, photography, video, audio, or other creative coursework on campus.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Solano Hall",
-            LatLng(34.163361739718496, -119.04515480103048),
-            PlaceCategory.BUILDINGS,
-            "Academic building"
+            name = "Solano Hall",
+            position = LatLng(34.163361739718496, -119.04515480103048),
+            category = PlaceCategory.BUILDINGS,
+            fullLocationDescription = "Academic building with classrooms, nursing, and teaching innovation spaces",
+            quickPreviewSummary = "Nursing, classrooms, FIT Studio",
+            studentVisitReasons = "Students may go here for classes, Nursing Program visits, or activities connected to spaces in Solano Hall.",
+            keyServicesOffered = "Nursing Program offices, the FIT Studio, and classroom space.",
+            studentProTip = "Useful to know if you have nursing-related classes or visits in the north quad area.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Del Norte Hall",
-            LatLng(34.16314868025611, -119.04408191744362),
-            PlaceCategory.BUILDINGS,
-            "Academic building"
+            name = "Del Norte Hall",
+            position = LatLng(34.16314868025611, -119.04408191744362),
+            category = PlaceCategory.BUILDINGS,
+            fullLocationDescription = "Academic building with classrooms, computer labs, and a lecture hall",
+            quickPreviewSummary = "Lecture hall, classrooms, computer labs",
+            studentVisitReasons = "Students may go here for lectures, regular classes, computer lab courses, or study time in the student lounge area.",
+            keyServicesOffered = "Lecture hall, classrooms, computer labs, and a student lounge area.",
+            studentProTip = "Good building to know if you have larger lecture classes or computer-based courses.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Madera Hall",
-            LatLng(34.162933400884064, -119.04388075176304),
-            PlaceCategory.BUILDINGS,
-            "Academic building"
+            name = "Madera Hall",
+            position = LatLng(34.162933400884064, -119.04388075176304),
+            category = PlaceCategory.BUILDINGS,
+            fullLocationDescription = "Academic and office building used by education programs and campus departments",
+            quickPreviewSummary = "Education programs, offices, classrooms",
+            studentVisitReasons = "Students may go here for School of Education programs, classes, or meetings with campus offices located in the building.",
+            keyServicesOffered = "School of Education offices, Institutional Research, and classroom or lecture space.",
+            studentProTip = "Useful to know if you are in education-related programs or have meetings in campus offices housed here.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Richard R. Rush Hall",
-            LatLng(34.16262934556803, -119.04342209402576),
-            PlaceCategory.BUILDINGS,
-            "Academic building"
+            name = "Richard R. Rush Hall",
+            position = LatLng(34.16262934556803, -119.04342209402576),
+            category = PlaceCategory.BUILDINGS,
+            fullLocationDescription = "Administrative building that houses the Office of the President",
+            quickPreviewSummary = "Administration, President's Office, collection",
+            studentVisitReasons = "Students may go here for university administration-related visits or to access resources located in the building.",
+            keyServicesOffered = "Office of the President and the Michele Serros Collection.",
+            studentProTip = "Useful to know as a main administration building near the center of campus.",
+            campusOfficePhoneNumber = "Contact: 805-437-8410"
         ),
         CampusPlace(
-            "Sierra Hall",
-            LatLng(34.16224317155607, -119.04461299484034),
-            PlaceCategory.BUILDINGS,
-            "Academic building"
+            name = "Sierra Hall",
+            position = LatLng(34.16224317155607, -119.04461299484034),
+            category = PlaceCategory.BUILDINGS,
+            fullLocationDescription = "Science and technology building with labs, classrooms, and collaboration spaces",
+            quickPreviewSummary = "Science, technology, labs",
+            studentVisitReasons = "Students may go here for science or technology classes, lab work, computer science spaces, or group collaboration.",
+            keyServicesOffered = "Classrooms, computer and science labs, collaboration areas, and computer science program space.",
+            studentProTip = "Useful to know if you have STEM classes or lab-based courses.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Ojai Hall",
-            LatLng(34.161626177213485, -119.04252623619175),
-            PlaceCategory.BUILDINGS,
-            "Academic building"
+            name = "Ojai Hall",
+            position = LatLng(34.161626177213485, -119.04252623619175),
+            category = PlaceCategory.BUILDINGS,
+            fullLocationDescription = "Academic building with classrooms, offices, and computer labs",
+            quickPreviewSummary = "Classes, offices, computer labs",
+            studentVisitReasons = "Students may go here for classes, computer lab work, or visits to offices located in the building.",
+            keyServicesOffered = "Classrooms, office space, and computer labs.",
+            studentProTip = "Useful to know if you have computer-based coursework or classes near the center of campus.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Malibu Hall",
-            LatLng(34.161212687793316, -119.04097989053598),
-            PlaceCategory.BUILDINGS,
-            "Academic building"
+            name = "Malibu Hall",
+            position = LatLng(34.161212687793316, -119.04097989053598),
+            category = PlaceCategory.BUILDINGS,
+            fullLocationDescription = "Performing arts building with instructional, rehearsal, and performance spaces",
+            quickPreviewSummary = "Performing arts, dance, music",
+            studentVisitReasons = "Students may go here for performing arts classes, rehearsals, performances, or meetings with faculty.",
+            keyServicesOffered = "Recital and performance space, dance studio space, and performing arts faculty offices.",
+            studentProTip = "Useful to know if you take dance, music, or theatre classes or attend campus performances.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Yuba Hall/Student Health Services",
-            LatLng(34.16399732962278, -119.04108401027618),
-            PlaceCategory.BUILDINGS,
-            "Academic building"
+            name = "Yuba Hall/Student Health Services",
+            position = LatLng(34.16399732962278, -119.04108401027618),
+            category = PlaceCategory.BUILDINGS,
+            fullLocationDescription = "Student health services building for basic medical care and wellness support",
+            quickPreviewSummary = "Health care, appointments, wellness support",
+            studentVisitReasons = "Students may go here for medical appointments, basic health care, physical exams, immunization-related help, or general wellness support.",
+            keyServicesOffered = "Basic health care services, appointments, physical exams, immunization support, health education, and prescription-related support.",
+            studentProTip = "Useful to know anytime you need non-emergency health support on campus.",
+            campusOfficePhoneNumber = "Contact: 805-437-8828"
         ),
         CampusPlace(
-            "Ironwood Hall",
-            LatLng(34.162539342799676, -119.0464490267396),
-            PlaceCategory.BUILDINGS,
-            "Academic building"
+            name = "Ironwood Hall",
+            position = LatLng(34.162539342799676, -119.0464490267396),
+            category = PlaceCategory.BUILDINGS,
+            fullLocationDescription = "Operations and support-services building for facilities, logistics, and campus services",
+            quickPreviewSummary = "Facilities, mail, logistics support",
+            studentVisitReasons = "Students may go here for mail-related needs or other campus service visits connected to offices in the building.",
+            keyServicesOffered = "Facilities Services, the Work Center, the Mail Center, Shipping and Receiving, and Procurement and Contract Services.",
+            studentProTip = "Mostly useful for campus service needs rather than regular classes.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Chaparral Hall",
-            LatLng(34.162099441347955, -119.04566142665234),
-            PlaceCategory.BUILDINGS,
-            "Academic building"
+            name = "Chaparral Hall",
+            position = LatLng(34.162099441347955, -119.04566142665234),
+            category = PlaceCategory.BUILDINGS,
+            fullLocationDescription = "Support and storage building",
+            quickPreviewSummary = "Support space, limited access",
+            studentVisitReasons = "Students would usually go here only for approved program, lab, or support-related work.",
+            keyServicesOffered = "Support and storage space referenced on current CSUCI facilities and operations pages.",
+            studentProTip = "Not a general-use destination, so it is best to go only if your class, lab, or program specifically sends you there.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Aliso Hall",
-            LatLng(34.16090271825481, -119.04526673476065),
-            PlaceCategory.BUILDINGS,
-            "Academic building"
+            name = "Aliso Hall",
+            position = LatLng(34.16090271825481, -119.04526673476065),
+            category = PlaceCategory.BUILDINGS,
+            fullLocationDescription = "Science building with biology labs, lecture space, and program offices",
+            quickPreviewSummary = "Biology, science labs, classes",
+            studentVisitReasons = "Students may go here for biology and science classes, lab work, or visits related to the Biology and Natural Sciences Program.",
+            keyServicesOffered = "Biology and Natural Sciences Program offices, science labs, and lecture space.",
+            studentProTip = "Useful to know if you have science courses with lab sections.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Aliso Annex",
-            LatLng(34.16112751725973, -119.04571329582699),
-            PlaceCategory.BUILDINGS,
-            "Academic building"
+            name = "Aliso Annex",
+            position = LatLng(34.16112751725973, -119.04571329582699),
+            category = PlaceCategory.BUILDINGS,
+            fullLocationDescription = "Lab and research-use building near Aliso Hall",
+            quickPreviewSummary = "Labs, research work, limited access",
+            studentVisitReasons = "Students would usually go here for scheduled lab, research, or other program-related work.",
+            keyServicesOffered = "Specialized lab space for academic work.",
+            studentProTip = "Not a general-use destination, so it is best to go only if your class, lab, or program specifically sends you there.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Trinity Hall",
-            LatLng(34.15933133426799, -119.04242418314429),
-            PlaceCategory.BUILDINGS,
-            "Academic building"
+            name = "Trinity Hall",
+            position = LatLng(34.15933133426799, -119.04242418314429),
+            category = PlaceCategory.BUILDINGS,
+            fullLocationDescription = "Student-focused building space that includes the Esports Lounge",
+            quickPreviewSummary = "Esports lounge, student space",
+            studentVisitReasons = "Students may go here to use the Esports Lounge, join gaming events, or access student-use space in the building.",
+            keyServicesOffered = "Esports Lounge access and a designated lactation room.",
+            studentProTip = "Useful to know if you are involved in campus gaming or looking for the Esports Lounge.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Topanga Hall",
-            LatLng(34.16011480443447, -119.04166109466685),
-            PlaceCategory.BUILDINGS,
-            "Academic building"
+            name = "Topanga Hall",
+            position = LatLng(34.16011480443447, -119.04166109466685),
+            category = PlaceCategory.BUILDINGS,
+            fullLocationDescription = "Art building with sculpture, ceramics, digital media, and fabrication spaces",
+            quickPreviewSummary = "Sculpture, ceramics, digital media",
+            studentVisitReasons = "Students may go here for art classes, studio work, ceramics, sculpture, digital media, or fabrication projects.",
+            keyServicesOffered = "Sculpture studio space, ceramics facilities, the Topanga Computer Lab, FabLab tools, and Art Program support space.",
+            studentProTip = "Useful to know if you take studio art classes that need hands-on work, specialized tools, or digital production space.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Lindero Hall",
-            LatLng(34.159513335398444, -119.04140349327288),
-            PlaceCategory.BUILDINGS,
-            "Academic building"
+            name = "Lindero Hall",
+            position = LatLng(34.159513335398444, -119.04140349327288),
+            category = PlaceCategory.BUILDINGS,
+            fullLocationDescription = "Administrative building with business, budget, and human resources offices",
+            quickPreviewSummary = "HR, budget, admin offices",
+            studentVisitReasons = "Students may go here for student employment or other visits connected to administrative offices housed in the building.",
+            keyServicesOffered = "Human Resources, Budget and Planning, the Vice President's Office for Business and Financial Affairs, Internal Audit, and University Glen Home Sales.",
+            studentProTip = "Mostly useful for administrative or employment-related needs rather than regular classes.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Carden Kids Preschool",
-            LatLng(34.16477247708901, -119.04348799190726),
-            PlaceCategory.BUILDINGS,
-            "Academic building"
+            name = "Carden Kids Preschool",
+            position = LatLng(34.16477247708901, -119.04348799190726),
+            category = PlaceCategory.BUILDINGS,
+            fullLocationDescription = "On-campus preschool and childcare center",
+            quickPreviewSummary = "Preschool, childcare, family support",
+            studentVisitReasons = "Students with children may go here for preschool or childcare information for young children.",
+            keyServicesOffered = "On-campus preschool services and childcare information.",
+            studentProTip = "Useful to know if you are balancing school and childcare needs.",
+            campusOfficePhoneNumber = "Contact: 805-482-6386"
         ),
         CampusPlace(
-            "Shasta Hall",
-            LatLng(34.1645461051814, -119.04471912587594),
-            PlaceCategory.BUILDINGS,
-            "Academic building"
+            name = "Shasta Hall",
+            position = LatLng(34.1645461051814, -119.04471912587594),
+            category = PlaceCategory.BUILDINGS,
+            fullLocationDescription = "Academic support building with Extended University and International Programs offices",
+            quickPreviewSummary = "Extended University, international programs",
+            studentVisitReasons = "Students may go here for Open University or Extended University help, continuing education support, or International Programs services.",
+            keyServicesOffered = "Extended University, Open University support, and International Programs offices.",
+            studentProTip = "Useful to know if you need help with international programs or courses taken through Extended University.",
+            campusOfficePhoneNumber = null
         ),
 
         // SERVICES / FACILITIES
         CampusPlace(
-            "Town Center",
-            LatLng(34.163144356251436, -119.0392759941097),
-            PlaceCategory.SERVICES,
-            "Campus services"
+            name = "Town Center",
+            position = LatLng(34.163144356251436, -119.0392759941097),
+            category = PlaceCategory.SERVICES,
+            fullLocationDescription = "Residential and retail hub with student apartments, bookstore, and eateries",
+            quickPreviewSummary = "Housing, bookstore, eateries",
+            studentVisitReasons = "Students may go here to live on campus, buy bookstore items, or grab food from Town Center dining spots.",
+            keyServicesOffered = "Student apartments, The Cove Bookstore, and dining options.",
+            studentProTip = "Useful stop on the east side of campus for food or bookstore needs.",
+            campusOfficePhoneNumber = "Town Center Office Contact: 805-437-8965"
         ),
         CampusPlace(
-            "Grand Salon",
-            LatLng(34.1639111458964, -119.04361178503132),
-            PlaceCategory.SERVICES,
-            "Event space"
+            name = "Grand Salon",
+            position = LatLng(34.1639111458964, -119.04361178503132),
+            category = PlaceCategory.SERVICES,
+            fullLocationDescription = "Large campus event venue in the North Quad",
+            quickPreviewSummary = "Ceremonies, receptions, large events",
+            studentVisitReasons = "Students may go here for ceremonies, campus programs, receptions, or other large gatherings.",
+            keyServicesOffered = "Large event space with theater and banquet layouts, a front foyer, nearby restrooms, climate control, and wireless access.",
+            studentProTip = "Useful to know as one of the main campus venues for major events and celebrations.",
+            campusOfficePhoneNumber = "University Events Contact: 805-437-3900"
         ),
         CampusPlace(
-            "Conference Center",
-            LatLng(34.163783533053795, -119.04353131875963),
-            PlaceCategory.SERVICES,
-            "Event space"
+            name = "Conference Center",
+            position = LatLng(34.163783533053795, -119.04353131875963),
+            category = PlaceCategory.SERVICES,
+            fullLocationDescription = "Campus meeting and event space in the North Quad area",
+            quickPreviewSummary = "Meetings, events, North Quad",
+            studentVisitReasons = "Students would usually go here for a scheduled meeting, program, or campus event.",
+            keyServicesOffered = "Conference and meeting space near Grand Salon, Petit Salon, and other North Quad event areas.",
+            studentProTip = "Not a regular everyday stop, so it is best to go only if your class, program, or event specifically sends you there.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Petit Salon",
-            LatLng(34.16360598443106, -119.04349108562353),
-            PlaceCategory.SERVICES,
-            "Event space"
+            name = "Petit Salon",
+            position = LatLng(34.16360598443106, -119.04349108562353),
+            category = PlaceCategory.SERVICES,
+            fullLocationDescription = "Campus event space in the North Quad",
+            quickPreviewSummary = "Events, celebrations, receptions",
+            studentVisitReasons = "Students may go here for student programs, affinity celebrations, meetings, or receptions.",
+            keyServicesOffered = "Reservable event space used for campus programs, celebrations, and gatherings.",
+            studentProTip = "Useful to know as a common indoor venue for smaller campus events than Grand Salon.",
+            campusOfficePhoneNumber = "University Events Contact: 805-437-3900"
         ),
         CampusPlace(
-            "Central Plant",
-            LatLng(34.16319532044837, -119.04694979280103),
-            PlaceCategory.SERVICES,
-            "Campus facility"
+            name = "Central Plant",
+            position = LatLng(34.16319532044837, -119.04694979280103),
+            category = PlaceCategory.SERVICES,
+            fullLocationDescription = "Campus utility facility that supports heating, cooling, and infrastructure operations",
+            quickPreviewSummary = "Utilities, heating, cooling support",
+            studentVisitReasons = "Most students would not visit this facility unless they work with Facilities Services or related campus operations.",
+            keyServicesOffered = "Support for campus utility operations and the university's main heating and cooling systems.",
+            studentProTip = "Mostly a behind-the-scenes operations site rather than a regular student destination.",
+            campusOfficePhoneNumber = "Contact: 805-437-3545"
         ),
         CampusPlace(
-            "Facilities Services Work Center",
-            LatLng(34.162736939394556, -119.04573841191757),
-            PlaceCategory.SERVICES,
-            "Campus facility"
+            name = "Facilities Services Work Center",
+            position = LatLng(34.162736939394556, -119.04573841191757),
+            category = PlaceCategory.SERVICES,
+            fullLocationDescription = "Facilities service request and maintenance coordination office",
+            quickPreviewSummary = "Maintenance help, keys, work orders",
+            studentVisitReasons = "Students may contact or visit this office for maintenance issues, key or code requests, HVAC or lighting problems, and custodial or grounds concerns.",
+            keyServicesOffered = "Work order processing, key and code requests, maintenance coordination, and Facilities Services support.",
+            studentProTip = "Useful for reporting campus facility problems rather than for regular class visits.",
+            campusOfficePhoneNumber = "Contact: 805-437-8461"
         ),
         CampusPlace(
-            "Maintenance Warehouse Stores",
-            LatLng(34.16265661627372, -119.04718433873771),
-            PlaceCategory.SERVICES,
-            "Campus facility"
+            name = "Maintenance Warehouse Stores",
+            position = LatLng(34.16265661627372, -119.04718433873771),
+            category = PlaceCategory.SERVICES,
+            fullLocationDescription = "Facilities support store for materials and equipment",
+            quickPreviewSummary = "Materials, equipment, facilities support",
+            studentVisitReasons = "Students usually would not visit unless coordinating approved facilities or operational needs.",
+            keyServicesOffered = "Orders, stores, tracks, and delivers materials and equipment for Facilities Services shops.",
+            studentProTip = "Mostly a behind-the-scenes operations site, not a regular student destination.",
+            campusOfficePhoneNumber = "Contact: 805-437-8468"
         ),
         CampusPlace(
-            "Paint Shop",
-            LatLng(34.16145026844382, -119.04600332655171),
-            PlaceCategory.SERVICES,
-            "Campus facility"
+            name = "Paint Shop",
+            position = LatLng(34.16145026844382, -119.04600332655171),
+            category = PlaceCategory.SERVICES,
+            fullLocationDescription = "Facilities operations shop for interior and exterior campus painting",
+            quickPreviewSummary = "Campus painting and upkeep",
+            studentVisitReasons = "Students usually would not visit unless they work with Facilities Services or related campus operations.",
+            keyServicesOffered = "Interior and exterior painting support for campus buildings.",
+            studentProTip = "Mostly a behind-the-scenes operations site rather than a regular student destination.",
+            campusOfficePhoneNumber = "Contact: 805-437-3223"
         ),
         CampusPlace(
-            "CSUCI University Police (Placer Hall)",
-            LatLng(34.163303339253346, -119.04298830751196),
-            PlaceCategory.SERVICES,
-            "Campus facility"
+            name = "CSUCI University Police (Placer Hall)",
+            position = LatLng(34.163303339253346, -119.04298830751196),
+            category = PlaceCategory.SERVICES,
+            fullLocationDescription = "Campus public safety building for police assistance and related support services",
+            quickPreviewSummary = "Police help, parking, lost and found",
+            studentVisitReasons = "Students may go here for police assistance, parking services, lost and found, records requests, or other public safety needs.",
+            keyServicesOffered = "University Police support, Transportation and Parking Services, lost and found, police records requests, and Live Scan services.",
+            studentProTip = "Useful to know for safety concerns, parking questions, or if you need help with a lost item.",
+            campusOfficePhoneNumber = "Contact: 805-437-8444"
         ),
         CampusPlace(
-            "Sage Hall/Enrollment Center",
-            LatLng(34.16409704291065, -119.04221707938154),
-            PlaceCategory.SERVICES,
-            "Student services"
+            name = "Sage Hall/Enrollment Center",
+            position = LatLng(34.16409704291065, -119.04221707938154),
+            category = PlaceCategory.SERVICES,
+            fullLocationDescription = "Enrollment Center building still used on current CSUCI Registrar pages",
+            quickPreviewSummary = "Registrar, records, enrollment help",
+            studentVisitReasons = "Students may go here for registration, records, transcripts, transfer credit questions, or other Registrar-related help.",
+            keyServicesOffered = "Enrollment Center front-counter support, Registrar help, records and registration assistance, and transfer credit support.",
+            studentProTip = "Check the exact department page before going, since some current CSUCI pages now send admissions, financial aid, and billing to Gateway Hall or Marin Hall instead.",
+            campusOfficePhoneNumber = "Contact: 805-437-8500"
         ),
         CampusPlace(
-            "Yuba Hall/Student Health Services",
-            LatLng(34.16399732962278, -119.04108401027618),
-            PlaceCategory.SERVICES,
-            "Academic building"
+            name = "Yuba Hall/Student Health Services",
+            position = LatLng(34.16399732962278, -119.04108401027618),
+            category = PlaceCategory.SERVICES,
+            fullLocationDescription = "Student health services building for basic medical care and wellness support",
+            quickPreviewSummary = "Health care, appointments, wellness support",
+            studentVisitReasons = "Students may go here for medical appointments, basic health care, physical exams, immunization-related help, or general wellness support.",
+            keyServicesOffered = "Basic health care services, appointments, physical exams, immunization support, health education, and prescription-related support.",
+            studentProTip = "Useful to know anytime you need non-emergency health support on campus.",
+            campusOfficePhoneNumber = "Contact: 805-437-8828"
         ),
 
         // HOUSING
         CampusPlace(
-            "Arroyo Hall",
-            LatLng(34.16038050274691, -119.04497067609698),
-            PlaceCategory.HOUSING,
-            "Residence Hall"
+            name = "Arroyo Hall",
+            position = LatLng(34.16038050274691, -119.04497067609698),
+            category = PlaceCategory.HOUSING,
+            fullLocationDescription = "Student housing and support-services building with basic needs, accommodations, and recreation resources",
+            quickPreviewSummary = "Housing, pantry, DASS, recreation",
+            studentVisitReasons = "Students may go here for campus housing, Basic Needs support, Dolphin Pantry visits, DASS appointments, or Campus Recreation use.",
+            keyServicesOffered = "Student housing, Basic Needs support, Dolphin Pantry services, DASS services, and the Recreation Center.",
+            studentProTip = "Useful building to know because it combines housing with several everyday student support resources.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Anacapa Village Commons Building",
-            LatLng(34.159145244639355, -119.04489939214349),
-            PlaceCategory.HOUSING,
-            "Housing"
+            name = "Anacapa Village Commons Building",
+            position = LatLng(34.159145244639355, -119.04489939214349),
+            category = PlaceCategory.HOUSING,
+            fullLocationDescription = "Shared community building for the Anacapa Village housing area",
+            quickPreviewSummary = "Housing commons, study and shared spaces",
+            studentVisitReasons = "Students may go here for shared housing amenities, community spaces, and village-related activities.",
+            keyServicesOffered = "Shared common areas, study rooms, computer lab space, and community-use amenities for Anacapa Village residents.",
+            studentProTip = "Most useful if you live in Anacapa Village or need a shared resident space nearby.",
+            campusOfficePhoneNumber = "Anacapa Village Office Contact: 805-437-3346"
         ),
         CampusPlace(
-            "Anacapa Village A",
-            LatLng(34.159158561500966, -119.04449035527075),
-            PlaceCategory.HOUSING,
-            "Housing"
+            name = "Anacapa Village A",
+            position = LatLng(34.159158561500966, -119.04449035527075),
+            category = PlaceCategory.HOUSING,
+            fullLocationDescription = "Apartment-style residence building in Anacapa Village",
+            quickPreviewSummary = "Upper-division housing, apartment-style living",
+            studentVisitReasons = "Students may go here for on-campus housing in Anacapa Village.",
+            keyServicesOffered = "Residential housing with access to Anacapa Village shared amenities and community spaces.",
+            studentProTip = "One of the Anacapa Village residence buildings rather than a separate service location.",
+            campusOfficePhoneNumber = "Anacapa Village Office Contact: 805-437-3346"
         ),
         CampusPlace(
-            "Anacapa Village B",
-            LatLng(34.1597589279052, -119.04470761420434),
-            PlaceCategory.HOUSING,
-            "Housing"
+            name = "Anacapa Village B",
+            position = LatLng(34.1597589279052, -119.04470761420434),
+            category = PlaceCategory.HOUSING,
+            fullLocationDescription = "Apartment-style residence building in Anacapa Village",
+            quickPreviewSummary = "Upper-division housing, apartment-style living",
+            studentVisitReasons = "Students may go here for on-campus housing in Anacapa Village.",
+            keyServicesOffered = "Residential housing with access to Anacapa Village shared amenities and community spaces.",
+            studentProTip = "One of the Anacapa Village residence buildings rather than a separate service location.",
+            campusOfficePhoneNumber = "Anacapa Village Office Contact: 805-437-3346"
         ),
         CampusPlace(
-            "Anacapa Village C",
-            LatLng(34.15960578493917, -119.04532988669999),
-            PlaceCategory.HOUSING,
-            "Housing"
+            name = "Anacapa Village C",
+            position = LatLng(34.15960578493917, -119.04532988669999),
+            category = PlaceCategory.HOUSING,
+            fullLocationDescription = "Apartment-style residence building in Anacapa Village",
+            quickPreviewSummary = "Upper-division housing, apartment-style living",
+            studentVisitReasons = "Students may go here for on-campus housing in Anacapa Village.",
+            keyServicesOffered = "Residential housing with access to Anacapa Village shared amenities and community spaces.",
+            studentProTip = "One of the Anacapa Village residence buildings rather than a separate service location.",
+            campusOfficePhoneNumber = "Anacapa Village Office Contact: 805-437-3346"
         ),
         CampusPlace(
-            "Santa Cruz Village D",
-            LatLng(34.160115479056195, -119.04413373409251),
-            PlaceCategory.HOUSING,
-            "Housing"
+            name = "Santa Cruz Village D",
+            position = LatLng(34.160115479056195, -119.04413373409251),
+            category = PlaceCategory.HOUSING,
+            fullLocationDescription = "Suite-style residence building in Santa Cruz Village",
+            quickPreviewSummary = "Student housing, suite-style living",
+            studentVisitReasons = "Students may go here for on-campus housing in Santa Cruz Village.",
+            keyServicesOffered = "Residential housing with access to Santa Cruz Village shared amenities and community spaces.",
+            studentProTip = "One of the Santa Cruz Village residence buildings rather than a separate service location.",
+            campusOfficePhoneNumber = "Santa Cruz Village Office Contact: 805-437-3343"
         ),
         CampusPlace(
-            "Santa Cruz Village E",
-            LatLng(34.159944581088965, -119.04408545432916),
-            PlaceCategory.HOUSING,
-            "Housing"
+            name = "Santa Cruz Village E",
+            position = LatLng(34.159944581088965, -119.04408545432916),
+            category = PlaceCategory.HOUSING,
+            fullLocationDescription = "Suite-style residence building in Santa Cruz Village that also houses the main Housing office",
+            quickPreviewSummary = "Student housing, housing office",
+            studentVisitReasons = "Students may go here for on-campus housing or for help from the Housing & Residential Education main office.",
+            keyServicesOffered = "Residential housing and the Housing & Residential Education main office.",
+            studentProTip = "Good building to know if you need housing help, check-in support, or other residential services.",
+            campusOfficePhoneNumber = "Main Housing Office Contact: 805-437-2733"
         ),
         CampusPlace(
-            "Santa Cruz Village F",
-            LatLng(34.159825840089866, -119.0440009647433),
-            PlaceCategory.HOUSING,
-            "Housing"
+            name = "Santa Cruz Village F",
+            position = LatLng(34.159825840089866, -119.0440009647433),
+            category = PlaceCategory.HOUSING,
+            fullLocationDescription = "Suite-style residence building in Santa Cruz Village",
+            quickPreviewSummary = "Student housing, suite-style living",
+            studentVisitReasons = "Students may go here for on-campus housing in Santa Cruz Village.",
+            keyServicesOffered = "Residential housing with access to Santa Cruz Village shared amenities and community spaces.",
+            studentProTip = "One of the Santa Cruz Village residence buildings rather than a separate service location.",
+            campusOfficePhoneNumber = "Santa Cruz Village Office Contact: 805-437-3343"
         ),
         CampusPlace(
-            "Santa Cruz Village G",
-            LatLng(34.1595850283848, -119.04384271441177),
-            PlaceCategory.HOUSING,
-            "Housing"
+            name = "Santa Cruz Village G",
+            position = LatLng(34.1595850283848, -119.04384271441177),
+            category = PlaceCategory.HOUSING,
+            fullLocationDescription = "Suite-style residence building in Santa Cruz Village with a village office",
+            quickPreviewSummary = "Student housing, village office",
+            studentVisitReasons = "Students may go here for on-campus housing in Santa Cruz Village or for help from the Santa Cruz Village office.",
+            keyServicesOffered = "Residential housing, shared village amenities, and Santa Cruz Village office support.",
+            studentProTip = "Good building to know if you live in Santa Cruz Village and need nearby housing office help.",
+            campusOfficePhoneNumber = "Santa Cruz Village Office Contact: 805-437-3343"
         ),
         CampusPlace(
-            "Santa Cruz Village H",
-            LatLng(34.159287619441514, -119.04378102360305),
-            PlaceCategory.HOUSING,
-            "Housing"
+            name = "Santa Cruz Village H",
+            position = LatLng(34.159287619441514, -119.04378102360305),
+            category = PlaceCategory.HOUSING,
+            fullLocationDescription = "Suite-style residence building in Santa Cruz Village",
+            quickPreviewSummary = "Student housing, suite-style living",
+            studentVisitReasons = "Students may go here for on-campus housing in Santa Cruz Village.",
+            keyServicesOffered = "Residential housing with access to Santa Cruz Village shared amenities and community spaces.",
+            studentProTip = "Good building to know if you live in Santa Cruz Village and want to be near the H courtyard and Secret Garden area.",
+            campusOfficePhoneNumber = "Santa Cruz Village Office Contact: 805-437-3343"
         ),
         CampusPlace(
-            "Santa Rosa Village",
-            LatLng(34.1590279837229, -119.04252312670616),
-            PlaceCategory.HOUSING,
-            "Housing"
+            name = "Santa Rosa Village",
+            position = LatLng(34.1590279837229, -119.04252312670616),
+            category = PlaceCategory.HOUSING,
+            fullLocationDescription = "Traditional residence hall village for mostly first-year students",
+            quickPreviewSummary = "First-year housing, study and family rooms",
+            studentVisitReasons = "Students may go here for on-campus housing, the village office, or Santa Rosa common spaces.",
+            keyServicesOffered = "Residential housing, study rooms, family rooms, a community kitchen, community living room, laundry, and village office support.",
+            studentProTip = "Useful to know if you live in Santa Rosa or need the village office and common spaces.",
+            campusOfficePhoneNumber = "Santa Rosa Village Office Contact: 805-437-3848"
         ),
 
         // FOOD
         CampusPlace(
-            "Islands Cafe",
-            LatLng(34.16040443642445, -119.04154959797783),
-            PlaceCategory.FOOD,
-            "Main Dining Hall"
+            name = "Islands Cafe",
+            position = LatLng(34.16040443642445, -119.04154959797783),
+            category = PlaceCategory.FOOD,
+            fullLocationDescription = "Main campus dining hall, currently branded as Islands Kitchen",
+            quickPreviewSummary = "All-you-care-to-dine, daily stations",
+            studentVisitReasons = "Students go here for meal plan swipes, dine-in meals, or to-go meals.",
+            keyServicesOffered = "An all-you-care-to-dine meal service with seven entree stations and mobile ordering.",
+            studentProTip = "Good main dining stop off South Quad, especially if you have a housing meal plan.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Dolphin Food Pantry",
-            LatLng(34.160584870736926, -119.04516127687491),
-            PlaceCategory.FOOD,
-            "Student Food Assistance"
+            name = "Dolphin Food Pantry",
+            position = LatLng(34.160584870736926, -119.04516127687491),
+            category = PlaceCategory.FOOD,
+            fullLocationDescription = "Food and basic needs pantry for students",
+            quickPreviewSummary = "Free food, toiletries, essentials",
+            studentVisitReasons = "Students may go here for food, toiletries, and other basic necessities through the Basic Needs Program.",
+            keyServicesOffered = "Pantry food, toiletries, and basic necessities; parenting items such as diapers, wipes, formula, and baby food are also supported through the program.",
+            studentProTip = "Good place to know if you need basic support without extra cost.",
+            campusOfficePhoneNumber = "Contact: 805-437-2067"
         ),
 
         // PARKING
         CampusPlace(
-            "Parking Lot A1",
-            LatLng(34.1615574298747, -119.0422449606771),
-            PlaceCategory.PARKING,
-            "Student parking"
+            name = "Parking Lot A1",
+            position = LatLng(34.1615574298747, -119.0422449606771),
+            category = PlaceCategory.PARKING,
+            fullLocationDescription = "A-lot parking near Placer Hall",
+            quickPreviewSummary = "Permit parking, daily permits",
+            studentVisitReasons = "Use this lot when you need campus parking near Placer Hall or the east side of campus.",
+            keyServicesOffered = "A-lot parking and a daily permit dispenser.",
+            studentProTip = "Useful lot to know if you want to buy a same-day permit on site.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Parking Lot A2",
-            LatLng(34.16417724914477, -119.04179625023635),
-            PlaceCategory.PARKING,
-            "Student parking"
+            name = "Parking Lot A2",
+            position = LatLng(34.16417724914477, -119.04179625023635),
+            category = PlaceCategory.PARKING,
+            fullLocationDescription = "A-lot parking with a daily permit dispenser",
+            quickPreviewSummary = "Permit parking, daily permits",
+            studentVisitReasons = "Use this lot when you need A-lot parking for classes, services, or a campus visit.",
+            keyServicesOffered = "A-lot parking and a daily permit dispenser.",
+            studentProTip = "One of the lots where you can buy a same-day permit on site.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Parking Lot A3",
-            LatLng(34.16657143937711, -119.04704616885896),
-            PlaceCategory.PARKING,
-            "Permit parking"
+            name = "Parking Lot A3",
+            position = LatLng(34.16657143937711, -119.04704616885896),
+            category = PlaceCategory.PARKING,
+            fullLocationDescription = "A-lot parking off University Drive",
+            quickPreviewSummary = "Permit parking, daily permits",
+            studentVisitReasons = "Use this lot for classes, campus visits, or larger events.",
+            keyServicesOffered = "A-lot parking and a daily permit dispenser.",
+            studentProTip = "Good lot to know if you are entering campus from University Drive or coming for a campus tour.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Parking Lot A4",
-            LatLng(34.164183316315004, -119.04645632740116),
-            PlaceCategory.PARKING,
-            "Permit parking"
+            name = "Parking Lot A4",
+            position = LatLng(34.164183316315004, -119.04645632740116),
+            category = PlaceCategory.PARKING,
+            fullLocationDescription = "A-lot parking near El Dorado Hall",
+            quickPreviewSummary = "Permit parking, daily permits",
+            studentVisitReasons = "Use this lot when you need campus parking on the Ventura Street side of campus.",
+            keyServicesOffered = "A-lot parking and a daily permit dispenser.",
+            studentProTip = "Useful lot to know if you want a same-day permit near El Dorado Hall.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Parking Lot A5",
-            LatLng(34.16028738317786, -119.04457875614888),
-            PlaceCategory.PARKING,
-            "Permit parking"
+            name = "Parking Lot A5",
+            position = LatLng(34.16028738317786, -119.04457875614888),
+            category = PlaceCategory.PARKING,
+            fullLocationDescription = "A-lot parking near the Recreation Center",
+            quickPreviewSummary = "Permit parking, faculty, short-term visitor",
+            studentVisitReasons = "Use this lot when you need campus parking near the Recreation Center, Arroyo Hall, or nearby housing areas.",
+            keyServicesOffered = "A-lot parking, designated faculty parking, and short-term visitor spaces.",
+            studentProTip = "Good lot to know if you need parking near student housing or the Recreation Center.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Parking Lot A6",
-            LatLng(34.16322198914701, -119.04202689595482),
-            PlaceCategory.PARKING,
-            "Permit parking"
+            name = "Parking Lot A6",
+            position = LatLng(34.16322198914701, -119.04202689595482),
+            category = PlaceCategory.PARKING,
+            fullLocationDescription = "A-lot parking",
+            quickPreviewSummary = "Permit parking",
+            studentVisitReasons = "Use this lot when you need general A-lot parking for classes, services, or a campus visit.",
+            keyServicesOffered = "General A-lot parking for valid A permits and same-day parking with an online or dispenser daily permit.",
+            studentProTip = "A simple general parking option if nearby lots are full. Online daily permits still work in A lots.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Parking Lot A7",
-            LatLng(34.1606339735571, -119.04119526733172),
-            PlaceCategory.PARKING,
-            "Permit parking"
+            name = "Parking Lot A7",
+            position = LatLng(34.1606339735571, -119.04119526733172),
+            category = PlaceCategory.PARKING,
+            fullLocationDescription = "A-lot parking with faculty and motorcycle spaces",
+            quickPreviewSummary = "Permit parking, faculty, motorcycles",
+            studentVisitReasons = "Use this lot for general campus parking near the south side of campus.",
+            keyServicesOffered = "A-lot parking, designated faculty parking, and designated motorcycle parking.",
+            studentProTip = "Useful lot to know if you park a motorcycle or need a south-campus A lot.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Parking Lot A8",
-            LatLng(34.16302567637596, -119.04031330802815),
-            PlaceCategory.PARKING,
-            "Permit parking"
+            name = "Parking Lot A8",
+            position = LatLng(34.16302567637596, -119.04031330802815),
+            category = PlaceCategory.PARKING,
+            fullLocationDescription = "A-lot parking behind Broome Library with EV charging",
+            quickPreviewSummary = "Permit parking, EV charging",
+            studentVisitReasons = "Use this lot when you need campus parking near Broome Library or want access to EV charging.",
+            keyServicesOffered = "A-lot parking and 30 electric vehicle charging stations.",
+            studentProTip = "Best lot to know if you drive an EV. Charging has a four-hour limit and still requires a valid parking permit.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Parking Lot R",
-            LatLng(34.16291456374539, -119.04317367769761),
-            PlaceCategory.PARKING,
-            "Permit parking"
+            name = "Parking Lot R",
+            position = LatLng(34.16291456374539, -119.04317367769761),
+            category = PlaceCategory.PARKING,
+            fullLocationDescription = "Restricted and A-lot parking near Madera Hall",
+            quickPreviewSummary = "Restricted parking, faculty, short-term visitor",
+            studentVisitReasons = "Use this lot if you have the right permit type or need short-term visitor parking near the center of campus.",
+            keyServicesOffered = "Restricted parking spaces, A-lot access for valid permits, designated faculty parking, and short-term visitor spaces.",
+            studentProTip = "Only use this lot if your permit matches the posted signs. It is not just a regular student lot.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Parking Lot A/E",
-            LatLng(34.16181596432445, -119.0415536234366),
-            PlaceCategory.PARKING,
-            "Permit parking"
+            name = "Parking Lot A/E",
+            position = LatLng(34.16181596432445, -119.0415536234366),
+            category = PlaceCategory.PARKING,
+            fullLocationDescription = "A-lot parking near Malibu Hall",
+            quickPreviewSummary = "Permit parking",
+            studentVisitReasons = "Use this lot when you need general A-lot parking near the south-central campus area.",
+            keyServicesOffered = "General A-lot parking for valid A permits and current CSU semester permits honored in A lots.",
+            studentProTip = "A straightforward general parking option near Malibu Hall and nearby campus buildings.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Parking Lot A10",
-            LatLng(34.15929656149958, -119.04060022214941),
-            PlaceCategory.PARKING,
-            "Permit parking"
+            name = "Parking Lot A10",
+            position = LatLng(34.15929656149958, -119.04060022214941),
+            category = PlaceCategory.PARKING,
+            fullLocationDescription = "A-lot parking near student housing",
+            quickPreviewSummary = "Permit parking, housing guests, short-term visitor",
+            studentVisitReasons = "Use this lot for campus parking near student housing, short-term housing visits, or approved overnight guest parking.",
+            keyServicesOffered = "A-lot parking, short-term visitor spaces, and approved overnight guest parking support for housing.",
+            studentProTip = "Good lot to know if you live near housing or have an approved overnight guest with the right permits.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Parking Lot A11",
-            LatLng(34.16445171167112, -119.04799616089558),
-            PlaceCategory.PARKING,
-            "Permit parking"
+            name = "Parking Lot A11",
+            position = LatLng(34.16445171167112, -119.04799616089558),
+            category = PlaceCategory.PARKING,
+            fullLocationDescription = "A-lot overflow parking behind El Dorado Hall",
+            quickPreviewSummary = "Permit parking, overflow lot",
+            studentVisitReasons = "Use this lot for general campus parking or when closer north-campus lots are full.",
+            keyServicesOffered = "A-lot parking and overflow parking for larger campus visit traffic.",
+            studentProTip = "A useful backup lot on the El Dorado/Modoc side of campus.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Parking Lot SH2",
-            LatLng(34.15834261398384, -119.0410768256611),
-            PlaceCategory.PARKING,
-            "Permit parking"
+            name = "Parking Lot SH2",
+            position = LatLng(34.15834261398384, -119.0410768256611),
+            category = PlaceCategory.PARKING,
+            fullLocationDescription = "Student housing parking lot for residents with SH permits",
+            quickPreviewSummary = "Housing parking, resident permit only",
+            studentVisitReasons = "Use this lot if you live in student housing and have a valid SH parking permit.",
+            keyServicesOffered = "Student housing parking for SH permit holders; designated Low Emission Vehicle stalls in SH2 are also available for approved Santa Rosa residents.",
+            studentProTip = "This is a housing lot, not a general student lot. Make sure you have the right permit before parking here.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "Parking Lot SH1",
-            LatLng(34.159024110922225, -119.04536405524816),
-            PlaceCategory.PARKING,
-            "Permit parking"
+            name = "Parking Lot SH1",
+            position = LatLng(34.159024110922225, -119.04536405524816),
+            category = PlaceCategory.PARKING,
+            fullLocationDescription = "Student housing parking lot for residents with SH permits",
+            quickPreviewSummary = "Housing parking, resident permit only",
+            studentVisitReasons = "Use this lot if you live in student housing and have a valid SH parking permit.",
+            keyServicesOffered = "Student housing parking for SH permit holders and designated motorcycle parking for SH motorcycle permits.",
+            studentProTip = "This lot is meant for housing residents, so regular A-lot permits do not apply here.",
+            campusOfficePhoneNumber = null
         ),
 
         // GENERAL
         CampusPlace(
-            "North Quad",
-            LatLng(34.163753423241644, -119.04437064818602),
-            PlaceCategory.ALL,
-            "Quad area"
+            name = "North Quad",
+            position = LatLng(34.163753423241644, -119.04437064818602),
+            category = PlaceCategory.ALL,
+            fullLocationDescription = "Main outdoor quad surrounded by academic buildings and event spaces",
+            quickPreviewSummary = "Gathering space, studying, campus events",
+            studentVisitReasons = "Students may go here to meet between classes, study outdoors, relax, or attend campus events.",
+            keyServicesOffered = "Open outdoor gathering space next to academic buildings, Grand Salon, and Petit Salon, with use for receptions, festivals, and campus gatherings.",
+            studentProTip = "Good spot to cut through central campus or stop between classes if you want outdoor seating and open space.",
+            campusOfficePhoneNumber = null
         ),
         CampusPlace(
-            "South Quad",
-            LatLng(34.160127068848, -119.04267310796122),
-            PlaceCategory.ALL,
-            "Quad area"
+            name = "South Quad",
+            position = LatLng(34.160127068848, -119.04267310796122),
+            category = PlaceCategory.ALL,
+            fullLocationDescription = "Large outdoor quad near student housing, dining, and academic buildings",
+            quickPreviewSummary = "Gathering space, major events, dining nearby",
+            studentVisitReasons = "Students may go here for campus events, social gatherings, outdoor activities, or to pass through between housing, dining, and classes.",
+            keyServicesOffered = "Open outdoor space used for festivals, social events, Commencement, and other large campus gatherings, with Islands Kitchen and nearby housing close by.",
+            studentProTip = "Useful area to know because it connects housing, dining, and event space on the south side of campus.",
+            campusOfficePhoneNumber = null
         ),
     )
 }

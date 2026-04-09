@@ -33,6 +33,7 @@ dependencies {
     implementation(projects.core.database)
     implementation(projects.core.network)
 
+    implementation(libs.androidx.core.ktx)
     implementation(libs.work.runtime.ktx)
     implementation(libs.androidx.hilt.work)
     ksp(libs.androidx.hilt.compiler)

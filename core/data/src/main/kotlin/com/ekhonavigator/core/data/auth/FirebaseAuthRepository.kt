@@ -9,8 +9,11 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
-import javax.inject.Inject
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import javax.inject.Inject
 
 class FirebaseAuthRepository @Inject constructor() : AuthRepository {
 
@@ -26,6 +29,14 @@ class FirebaseAuthRepository @Inject constructor() : AuthRepository {
 
     override fun getCurrentUserUid(): String? {
         return auth.currentUser?.uid
+    }
+
+    override fun userFlow(): Flow<String?> = callbackFlow {
+        val listener = FirebaseAuth.AuthStateListener { auth ->
+            trySend(auth.currentUser?.uid)
+        }
+        auth.addAuthStateListener(listener)
+        awaitClose { auth.removeAuthStateListener(listener) }
     }
 
     override suspend fun signInWithGoogle(

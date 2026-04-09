@@ -31,18 +31,25 @@ import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 
 /**
  * Unified "Lozenge" style event card used across Home, Events, and Calendar screens.
- * Features a multi-category color accent and sleek typography.
+ *
+ * The left accent bar color represents the **event source type**:
+ * - primary (SchoolRed) = class schedule
+ * - secondary (DolphinCyan) = custom/shared
+ * - tertiary (CampusAmber) = campus events
+ *
+ * @param accentColor The source-type color for the left accent bar.
  */
 @Composable
 fun EkhoEventCard(
     title: String,
     timeRange: String,
     location: String,
-    categoryColors: List<Color>,
+    accentColor: Color,
     onClick: () -> Unit,
     onBookmarkClick: () -> Unit,
     modifier: Modifier = Modifier,
     isBookmarked: Boolean = false,
+    showBookmark: Boolean = true,
 ) {
     Surface(
         modifier = modifier
@@ -57,33 +64,14 @@ fun EkhoEventCard(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Multi-category minimal accent lozenge
-            Column(
+            // Source-type accent bar
+            Box(
                 modifier = Modifier
                     .width(4.dp)
-                    .height(44.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                if (categoryColors.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(MaterialTheme.colorScheme.outlineVariant)
-                    )
-                } else {
-                    categoryColors.take(4).forEach { color ->
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                                .clip(RoundedCornerShape(2.dp))
-                                .background(color)
-                        )
-                    }
-                }
-            }
+                    .height(44.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(accentColor)
+            )
 
             Column(
                 modifier = Modifier
@@ -139,16 +127,18 @@ fun EkhoEventCard(
                 }
             }
 
-            IconButton(
-                onClick = onBookmarkClick,
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    imageVector = if (isBookmarked) EkhoIcons.Bookmark else EkhoIcons.BookmarkBorder,
-                    contentDescription = null,
-                    tint = if (isBookmarked) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outlineVariant,
-                    modifier = Modifier.size(20.dp)
-                )
+            if (showBookmark) {
+                IconButton(
+                    onClick = onBookmarkClick,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isBookmarked) EkhoIcons.Bookmark else EkhoIcons.BookmarkBorder,
+                        contentDescription = null,
+                        tint = if (isBookmarked) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.outlineVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
     }
