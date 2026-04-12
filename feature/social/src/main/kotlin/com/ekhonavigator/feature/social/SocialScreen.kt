@@ -4,30 +4,35 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Button
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.LaunchedEffect
 
 @Composable
 fun SocialScreen(
@@ -97,7 +102,7 @@ fun SocialScreen(
                         trailingContent = {
                             Row {
                                 TextButton(
-                                    onClick = { viewModel.acceptFriendRequest(request.uid) }
+                                    onClick = { viewModel.acceptFriendRequest(request.uid) },
                                 ) {
                                     Text("Accept")
                                 }
@@ -105,7 +110,7 @@ fun SocialScreen(
                                 Spacer(modifier = Modifier.width(8.dp))
 
                                 TextButton(
-                                    onClick = { viewModel.denyFriendRequest(request.uid) }
+                                    onClick = { viewModel.denyFriendRequest(request.uid) },
                                 ) {
                                     Text("Deny")
                                 }
@@ -125,24 +130,16 @@ fun SocialScreen(
                 }
 
                 items(uiState.friends, key = { "friend_${it.uid}" }) { friend ->
-                    ListItem(
-                        modifier = Modifier.clickable {
-                            onProfileClick(friend.uid)
+                    FriendRow(
+                        uid = friend.uid,
+                        displayName = friend.displayName,
+                        major = friend.major,
+                        onMessageClick = { uid ->
+                            println("Message clicked for user: $uid")
                         },
-                        headlineContent = {
-                            Text(friend.displayName)
-                        },
-                        supportingContent = {
-                            if (friend.major.isNotBlank()) {
-                                Text(friend.major)
-                            }
-                        },
-                        trailingContent = {
-                            TextButton(
-                                onClick = { viewModel.removeFriend(friend.uid) }
-                            ) {
-                                Text("Delete")
-                            }
+                        onViewProfileClick = onProfileClick,
+                        onRemoveFriendClick = { uid ->
+                            viewModel.removeFriend(uid)
                         },
                     )
                     HorizontalDivider()
@@ -248,7 +245,7 @@ fun SocialScreen(
 
                                     else -> {
                                         Button(
-                                            onClick = { viewModel.sendFriendRequest(user.id) }
+                                            onClick = { viewModel.sendFriendRequest(user.id) },
                                         ) {
                                             Text("Add")
                                         }
@@ -260,6 +257,68 @@ fun SocialScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun FriendRow(
+    uid: String,
+    displayName: String,
+    major: String,
+    onMessageClick: (String) -> Unit,
+    onViewProfileClick: (String) -> Unit,
+    onRemoveFriendClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var showMenu by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        ListItem(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    showMenu = true
+                },
+            headlineContent = {
+                Text(displayName)
+            },
+            supportingContent = {
+                if (major.isNotBlank()) {
+                    Text(major)
+                }
+            },
+        )
+
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text("Message") },
+                onClick = {
+                    showMenu = false
+                    onMessageClick(uid)
+                },
+            )
+
+            DropdownMenuItem(
+                text = { Text("View Profile") },
+                onClick = {
+                    showMenu = false
+                    onViewProfileClick(uid)
+                },
+            )
+
+            DropdownMenuItem(
+                text = { Text("Remove Friend") },
+                onClick = {
+                    showMenu = false
+                    onRemoveFriendClick(uid)
+                },
+            )
         }
     }
 }
