@@ -31,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
@@ -194,7 +195,17 @@ fun SocialScreen(
                                 onProfileClick(user.id)
                             },
                             headlineContent = {
-                                Text(user.displayName)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (user.showOnlineStatus) {
+                                        Text(
+                                            text = "●",
+                                            color = Color(0xFF34C759),
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                    }
+
+                                    Text(user.displayName)
+                                }
                             },
                             supportingContent = {
                                 val subtitle = buildString {

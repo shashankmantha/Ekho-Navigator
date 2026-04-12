@@ -16,6 +16,7 @@ data class SocialUser(
     val majorVisible: Boolean = false,
     val descriptionVisible: Boolean = false,
     val linksVisible: Boolean = false,
+    val showOnlineStatus: Boolean = true,
 )
 
 class SocialRepository @Inject constructor() {
@@ -43,6 +44,7 @@ class SocialRepository @Inject constructor() {
             majorVisible = doc.getBoolean("majorVisible") ?: false,
             descriptionVisible = doc.getBoolean("descriptionVisible") ?: false,
             linksVisible = doc.getBoolean("linksVisible") ?: false,
+            showOnlineStatus = doc.getBoolean("showOnlineStatus") ?: true,
         )
     }
 
@@ -98,6 +100,7 @@ class SocialRepository @Inject constructor() {
                 majorVisible = doc.getBoolean("majorVisible") ?: false,
                 descriptionVisible = doc.getBoolean("descriptionVisible") ?: false,
                 linksVisible = doc.getBoolean("linksVisible") ?: false,
+                showOnlineStatus = doc.getBoolean("showOnlineStatus") ?: true,
             )
         }.filter { it.id != currentUserId }
     }

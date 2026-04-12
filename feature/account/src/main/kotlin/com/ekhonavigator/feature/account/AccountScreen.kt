@@ -50,7 +50,6 @@ fun AccountScreen(
     val viewModel: AccountViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
 
-    // Trigger sync when user signs in
     LaunchedEffect(uiState) {
         if (uiState is AccountUiState.SignedIn) onSignIn()
     }
@@ -197,8 +196,9 @@ fun AccountScreen(
                     initialDescriptionVisible = state.descriptionVisible,
                     initialLinksVisible = state.linksVisible,
                     initialSearchable = state.searchable,
+                    initialShowOnlineStatus = state.showOnlineStatus,
                     avatarId = state.avatarId,
-                    onSaveClick = { displayName, major, description, links, majorVisible, descriptionVisible, linksVisible, searchable, avatarId ->
+                    onSaveClick = { displayName, major, description, links, majorVisible, descriptionVisible, linksVisible, searchable, showOnlineStatus, avatarId ->
                         val oldDisplayName = state.displayName
                         val oldMajor = state.major
                         val oldDescription = state.description
@@ -208,6 +208,7 @@ fun AccountScreen(
                         val oldLinksVisible = state.linksVisible
                         val oldAvatarId = state.avatarId
                         val oldSearchable = state.searchable
+                        val oldShowOnlineStatus = state.showOnlineStatus
 
                         viewModel.saveProfile(
                             displayName = displayName,
@@ -219,6 +220,7 @@ fun AccountScreen(
                             linksVisible = linksVisible,
                             avatarId = avatarId,
                             searchable = searchable,
+                            showOnlineStatus = showOnlineStatus,
                         )
 
                         scope.launch {
@@ -239,6 +241,7 @@ fun AccountScreen(
                                     linksVisible = oldLinksVisible,
                                     avatarId = oldAvatarId,
                                     searchable = oldSearchable,
+                                    showOnlineStatus = oldShowOnlineStatus,
                                 )
                             }
                         }

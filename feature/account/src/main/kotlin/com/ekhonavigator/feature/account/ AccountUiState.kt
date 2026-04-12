@@ -15,6 +15,7 @@ sealed interface AccountUiState {
         val linksVisible: Boolean,
         val avatarId: String,
         val searchable: Boolean,
+        val showOnlineStatus: Boolean,
     ) : AccountUiState
 
     data class Error(val message: String) : AccountUiState
