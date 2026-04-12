@@ -135,6 +135,7 @@ fun SocialScreen(
                         uid = friend.uid,
                         displayName = friend.displayName,
                         major = friend.major,
+                        showOnlineStatus = friend.showOnlineStatus,
                         onMessageClick = { uid ->
                             println("Message clicked for user: $uid")
                         },
@@ -277,6 +278,7 @@ private fun FriendRow(
     uid: String,
     displayName: String,
     major: String,
+    showOnlineStatus: Boolean,
     onMessageClick: (String) -> Unit,
     onViewProfileClick: (String) -> Unit,
     onRemoveFriendClick: (String) -> Unit,
@@ -294,7 +296,17 @@ private fun FriendRow(
                     showMenu = true
                 },
             headlineContent = {
-                Text(displayName)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (showOnlineStatus) {
+                        Text(
+                            text = "●",
+                            color = Color(0xFF34C759),
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+
+                    Text(displayName)
+                }
             },
             supportingContent = {
                 if (major.isNotBlank()) {

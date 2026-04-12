@@ -5,4 +5,5 @@ data class FriendUser(
     val displayName: String = "",
     val avatarId: String = "avatar_default",
     val major: String = "",
+    val showOnlineStatus: Boolean = true,
 )
