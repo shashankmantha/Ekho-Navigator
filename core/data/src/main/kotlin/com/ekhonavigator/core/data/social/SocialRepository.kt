@@ -5,20 +5,6 @@ import com.google.firebase.firestore.FirebaseFirestore
 import javax.inject.Inject
 import kotlinx.coroutines.tasks.await
 
-data class SocialUser(
-    val id: String = "",
-    val displayName: String = "",
-    val email: String = "",
-    val major: String = "",
-    val description: String = "",
-    val links: String = "",
-    val avatarId: String = "avatar_default",
-    val majorVisible: Boolean = false,
-    val descriptionVisible: Boolean = false,
-    val linksVisible: Boolean = false,
-    val showOnlineStatus: Boolean = true,
-)
-
 class SocialRepository @Inject constructor() {
 
     private val firestore = FirebaseFirestore.getInstance()

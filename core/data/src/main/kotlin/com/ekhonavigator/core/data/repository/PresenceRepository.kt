@@ -11,6 +11,11 @@ interface PresenceRepository {
     fun startPresence(uid: String)
 
     /**
+     * Stops tracking presence for the current user.
+     */
+    fun stopPresence()
+
+    /**
      * Manually marks the user as offline (e.g. during sign out).
      */
     suspend fun setOfflineNow(uid: String)

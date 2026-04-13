@@ -68,11 +68,6 @@ class SocialViewModel @Inject constructor(
                     }
                 }
         }
-
-        // Start presence tracking for the current user
-        authRepository.getCurrentUserUid()?.let { uid ->
-            presenceRepository.startPresence(uid)
-        }
     }
 
     fun onSearchQueryChange(query: String) {

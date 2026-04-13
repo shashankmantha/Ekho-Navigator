@@ -27,7 +27,7 @@ class DefaultPresenceRepository @Inject constructor() : PresenceRepository {
         if (activeUid == uid) return
 
         // Clean up any existing listener before starting a new one
-        stopPresenceTracking()
+        stopPresence()
 
         activeUid = uid
         val userStatusRef = database.getReference("status").child(uid)
@@ -60,8 +60,16 @@ class DefaultPresenceRepository @Inject constructor() : PresenceRepository {
         connectedRef.addValueEventListener(listener)
     }
 
+    override fun stopPresence() {
+        connectedListener?.let {
+            database.getReference(".info/connected").removeEventListener(it)
+        }
+        connectedListener = null
+        activeUid = null
+    }
+
     override suspend fun setOfflineNow(uid: String) {
-        stopPresenceTracking()
+        stopPresence()
         
         val userStatusRef = database.getReference("status").child(uid)
         val offlineStatus = mapOf(
@@ -69,14 +77,6 @@ class DefaultPresenceRepository @Inject constructor() : PresenceRepository {
             "lastChanged" to ServerValue.TIMESTAMP
         )
         userStatusRef.setValue(offlineStatus).await()
-    }
-
-    private fun stopPresenceTracking() {
-        connectedListener?.let {
-            database.getReference(".info/connected").removeEventListener(it)
-        }
-        connectedListener = null
-        activeUid = null
     }
 
     override fun observePresence(uid: String): Flow<PresenceStatus> = callbackFlow {
