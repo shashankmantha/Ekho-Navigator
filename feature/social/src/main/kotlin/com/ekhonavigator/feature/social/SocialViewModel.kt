@@ -17,6 +17,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import com.ekhonavigator.core.data.social.FriendRequest
 import com.ekhonavigator.core.data.social.FriendUser
+import com.ekhonavigator.core.data.repository.PresenceRepository
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 
 data class SocialUiState(
     val searchQuery: String = "",
@@ -33,6 +37,7 @@ data class SocialUiState(
 class SocialViewModel @Inject constructor(
     private val repository: SocialRepository,
     private val authRepository: AuthRepository,
+    private val presenceRepository: PresenceRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SocialUiState())
@@ -63,6 +68,11 @@ class SocialViewModel @Inject constructor(
                     }
                 }
         }
+
+        // Start presence tracking for the current user
+        authRepository.getCurrentUserUid()?.let { uid ->
+            presenceRepository.startPresence(uid)
+        }
     }
 
     fun onSearchQueryChange(query: String) {
@@ -88,11 +98,43 @@ class SocialViewModel @Inject constructor(
                         errorMessage = null,
                     )
                 }
+                observeFriendPresence(friends)
             }.onFailure { e ->
                 _uiState.update {
                     it.copy(
                         errorMessage = e.message ?: "Failed to load social data",
                     )
+                }
+            }
+        }
+    }
+
+    private fun observeFriendPresence(friends: List<FriendUser>) {
+        if (friends.isEmpty()) return
+
+        viewModelScope.launch {
+            val presenceFlows = friends.map { friend ->
+                presenceRepository.observePresence(friend.uid).map { presence ->
+                    friend.uid to presence
+                }
+            }
+
+            combine(presenceFlows) { friendPresences ->
+                friendPresences.toMap()
+            }.collectLatest { presenceMap ->
+                _uiState.update { state ->
+                    val updatedFriends = state.friends.map { friend ->
+                        val presence = presenceMap[friend.uid]
+                        if (presence != null) {
+                            friend.copy(
+                                online = presence.state == "online",
+                                lastChanged = presence.lastChanged
+                            )
+                        } else {
+                            friend
+                        }
+                    }
+                    state.copy(friends = updatedFriends)
                 }
             }
         }

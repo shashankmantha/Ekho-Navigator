@@ -1,6 +1,7 @@
 package com.ekhonavigator.core.data.auth
 
 import android.content.Context
+import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.flow.Flow
 
 interface AuthRepository {
@@ -9,6 +10,8 @@ interface AuthRepository {
     fun getCurrentUserDisplayName(): String?
 
     fun getCurrentUserUid(): String?
+
+    fun getCurrentUser(): FirebaseUser?
 
     fun userFlow(): Flow<String?>
 
