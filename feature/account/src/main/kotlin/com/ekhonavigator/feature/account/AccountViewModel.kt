@@ -4,18 +4,21 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ekhonavigator.core.data.auth.AuthRepository
-import com.ekhonavigator.core.data.auth.FirebaseAuthRepository
-import com.ekhonavigator.core.data.profile.FirestoreProfileRepository
 import com.ekhonavigator.core.data.profile.ProfileRepository
 import com.ekhonavigator.core.data.profile.UserProfile
+import com.ekhonavigator.core.data.repository.PresenceRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class AccountViewModel(
-    private val authRepo: AuthRepository = FirebaseAuthRepository(),
-    private val profileRepo: ProfileRepository = FirestoreProfileRepository(),
+@HiltViewModel
+class AccountViewModel @Inject constructor(
+    private val authRepo: AuthRepository,
+    private val profileRepo: ProfileRepository,
+    private val presenceRepo: PresenceRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<AccountUiState>(AccountUiState.Loading)
@@ -122,7 +125,24 @@ class AccountViewModel(
     }
 
     fun onSignOutClick() {
-        authRepo.signOut()
-        checkUser()
+        val uid = authRepo.getCurrentUserUid()
+
+        viewModelScope.launch {
+            try {
+                // 1. Write offline status BEFORE clearing auth
+                if (uid != null) {
+                    presenceRepo.setOfflineNow(uid)
+                }
+            } catch (_: Exception) {
+                // Ignore errors during offline write
+            } finally {
+                // 2. Stop tracking
+                presenceRepo.stopPresence()
+                // 3. Clear auth
+                authRepo.signOut()
+                // 4. Update UI
+                _uiState.value = AccountUiState.SignedOut
+            }
+        }
     }
 }

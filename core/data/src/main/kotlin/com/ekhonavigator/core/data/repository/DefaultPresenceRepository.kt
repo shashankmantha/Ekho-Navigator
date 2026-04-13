@@ -18,15 +18,12 @@ class DefaultPresenceRepository @Inject constructor() : PresenceRepository {
 
     private val database = FirebaseDatabase.getInstance()
     
-    // Track the active listener and UID to prevent duplicates
     private var activeUid: String? = null
     private var connectedListener: ValueEventListener? = null
 
     override fun startPresence(uid: String) {
-        // Guard: don't restart if already running for the same user
         if (activeUid == uid) return
 
-        // Clean up any existing listener before starting a new one
         stopPresence()
 
         activeUid = uid
@@ -47,7 +44,6 @@ class DefaultPresenceRepository @Inject constructor() : PresenceRepository {
                         "lastChanged" to ServerValue.TIMESTAMP
                     )
 
-                    // Set onDisconnect before marking online to avoid race conditions
                     userStatusRef.onDisconnect().setValue(offlineStatus)
                     userStatusRef.setValue(onlineStatus)
                 }
@@ -69,8 +65,6 @@ class DefaultPresenceRepository @Inject constructor() : PresenceRepository {
     }
 
     override suspend fun setOfflineNow(uid: String) {
-        stopPresence()
-        
         val userStatusRef = database.getReference("status").child(uid)
         val offlineStatus = mapOf(
             "state" to "offline",
@@ -83,13 +77,13 @@ class DefaultPresenceRepository @Inject constructor() : PresenceRepository {
         val ref = database.getReference("status").child(uid)
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                // ValueEventListener returns Long for TIMESTAMP, which matches PresenceStatus
                 val status = snapshot.getValue(PresenceStatus::class.java) ?: PresenceStatus()
                 trySend(status)
             }
 
             override fun onCancelled(error: DatabaseError) {
-                close(error.toException())
+                // Fail gracefully on permission loss during sign-out
+                close()
             }
         }
         ref.addValueEventListener(listener)

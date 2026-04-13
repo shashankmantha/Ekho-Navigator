@@ -51,8 +51,7 @@ class MainActivity : ComponentActivity() {
                 if (uid != null) {
                     presenceRepository.startPresence(uid)
                 } else {
-                    // uid is null on sign out, startPresence already cleans up 
-                    // but we can be explicit if needed
+                    presenceRepository.stopPresence()
                 }
             }
         }
@@ -90,11 +89,6 @@ class MainActivity : ComponentActivity() {
                             MainScope().launch {
                                 customEventRepository.onSignOut()
                                 calendarRepository.onSignOut()
-                                
-                                // Explicitly set offline on sign out
-                                authRepository.getCurrentUserUid()?.let { uid ->
-                                    presenceRepository.setOfflineNow(uid)
-                                }
                             }
                         },
                     )

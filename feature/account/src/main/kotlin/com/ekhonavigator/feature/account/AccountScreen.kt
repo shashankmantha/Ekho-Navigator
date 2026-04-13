@@ -38,7 +38,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.launch
 
 @Composable
@@ -46,8 +46,8 @@ fun AccountScreen(
     onSignIn: () -> Unit = {},
     onSignOut: () -> Unit = {},
     modifier: Modifier = Modifier,
+    viewModel: AccountViewModel = hiltViewModel(),
 ) {
-    val viewModel: AccountViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
 
     LaunchedEffect(uiState) {
