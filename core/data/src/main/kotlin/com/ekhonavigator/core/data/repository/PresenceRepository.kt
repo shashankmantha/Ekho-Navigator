@@ -8,7 +8,12 @@ interface PresenceRepository {
      * Sets up the onDisconnect handlers and marks the user as online.
      * Should be called when the user signs in or the app starts while signed in.
      */
-    fun startPresence(uid: String)
+    fun startPresence(uid: String, showOnlineStatus: Boolean)
+
+    /**
+     * Updates the online visibility preference without restarting the connection.
+     */
+    fun updateOnlineStatusPreference(showOnlineStatus: Boolean)
 
     /**
      * Stops tracking presence for the current user.

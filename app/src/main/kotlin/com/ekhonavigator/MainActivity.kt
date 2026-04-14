@@ -16,6 +16,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import com.ekhonavigator.core.data.auth.AuthRepository
+import com.ekhonavigator.core.data.profile.ProfileRepository
 import com.ekhonavigator.core.data.repository.CalendarRepository
 import com.ekhonavigator.core.data.repository.CustomEventRepository
 import com.ekhonavigator.core.data.repository.PresenceRepository
@@ -31,6 +32,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var authRepository: AuthRepository
+
+    @Inject
+    lateinit var profileRepository: ProfileRepository
 
     @Inject
     lateinit var presenceRepository: PresenceRepository
@@ -49,7 +53,9 @@ class MainActivity : ComponentActivity() {
         MainScope().launch {
             authRepository.userFlow().collectLatest { uid ->
                 if (uid != null) {
-                    presenceRepository.startPresence(uid)
+                    val profile = profileRepository.getProfile(uid)
+                    val showOnlineStatus = profile?.showOnlineStatus ?: true
+                    presenceRepository.startPresence(uid, showOnlineStatus)
                 } else {
                     presenceRepository.stopPresence()
                 }

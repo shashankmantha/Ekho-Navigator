@@ -20,32 +20,28 @@ class DefaultPresenceRepository @Inject constructor() : PresenceRepository {
     
     private var activeUid: String? = null
     private var connectedListener: ValueEventListener? = null
+    private var showOnlineStatusPreference: Boolean = true
 
-    override fun startPresence(uid: String) {
-        if (activeUid == uid) return
+    override fun startPresence(uid: String, showOnlineStatus: Boolean) {
+        this.showOnlineStatusPreference = showOnlineStatus
+        
+        if (activeUid == uid) {
+            // Just update preference-based state if UID matches
+            updatePresenceState()
+            return
+        }
 
         stopPresence()
 
         activeUid = uid
-        val userStatusRef = database.getReference("status").child(uid)
         val connectedRef = database.getReference(".info/connected")
 
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val connected = snapshot.getValue(Boolean::class.java) ?: false
                 if (connected) {
-                    val offlineStatus = mapOf(
-                        "state" to "offline",
-                        "lastChanged" to ServerValue.TIMESTAMP
-                    )
-
-                    val onlineStatus = mapOf(
-                        "state" to "online",
-                        "lastChanged" to ServerValue.TIMESTAMP
-                    )
-
-                    userStatusRef.onDisconnect().setValue(offlineStatus)
-                    userStatusRef.setValue(onlineStatus)
+                    setupDisconnectHandler()
+                    updatePresenceState()
                 }
             }
 
@@ -54,6 +50,39 @@ class DefaultPresenceRepository @Inject constructor() : PresenceRepository {
 
         connectedListener = listener
         connectedRef.addValueEventListener(listener)
+    }
+
+    override fun updateOnlineStatusPreference(showOnlineStatus: Boolean) {
+        this.showOnlineStatusPreference = showOnlineStatus
+        if (activeUid != null) {
+            updatePresenceState()
+        }
+    }
+
+    private fun setupDisconnectHandler() {
+        val uid = activeUid ?: return
+        val userStatusRef = database.getReference("status").child(uid)
+        
+        val offlineStatus = mapOf(
+            "state" to "offline",
+            "lastChanged" to ServerValue.TIMESTAMP
+        )
+        
+        userStatusRef.onDisconnect().setValue(offlineStatus)
+    }
+
+    private fun updatePresenceState() {
+        val uid = activeUid ?: return
+        val userStatusRef = database.getReference("status").child(uid)
+
+        val state = if (showOnlineStatusPreference) "online" else "offline"
+        
+        val status = mapOf(
+            "state" to state,
+            "lastChanged" to ServerValue.TIMESTAMP
+        )
+
+        userStatusRef.setValue(status)
     }
 
     override fun stopPresence() {
@@ -82,7 +111,6 @@ class DefaultPresenceRepository @Inject constructor() : PresenceRepository {
             }
 
             override fun onCancelled(error: DatabaseError) {
-                // Fail gracefully on permission loss during sign-out
                 close()
             }
         }
