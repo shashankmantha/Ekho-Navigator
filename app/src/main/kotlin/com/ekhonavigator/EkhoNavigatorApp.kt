@@ -36,7 +36,10 @@ import com.ekhonavigator.feature.map.MapScreen
 import com.ekhonavigator.feature.map.navigation.MapNavKey
 import com.ekhonavigator.feature.account.navigation.navigateToAccount
 import com.ekhonavigator.feature.account.AccountScreen
+import com.ekhonavigator.feature.account.SettingsScreen
 import com.ekhonavigator.feature.account.navigation.AccountNavKey
+import com.ekhonavigator.feature.account.navigation.SettingsNavKey
+import com.ekhonavigator.feature.account.navigation.navigateToSettings
 import com.ekhonavigator.feature.social.SocialScreen
 import com.ekhonavigator.feature.social.UserProfileScreen
 import com.ekhonavigator.feature.social.navigation.SocialNavKey
@@ -89,7 +92,9 @@ fun EkhoNavigatorApp(
                 scrollBehavior = scrollBehavior,
                 navigationIcon = if (isTopLevelDestination) null else EkhoIcons.ArrowBack,
                 actionIcon = EkhoIcons.AccountCircle,
-                navigationIconContentDescription = if (isTopLevelDestination) null else "Back",
+                actionIconContentDescription = "Account",
+                secondaryActionIcon = EkhoIcons.Settings,
+                secondaryActionIconContentDescription = "Settings",
                 onNavigationClick = {
                     if (!isTopLevelDestination) {
                         navigator.goBack()
@@ -97,6 +102,9 @@ fun EkhoNavigatorApp(
                 },
                 onActionClick = {
                     navigator.navigateToAccount()
+                },
+                onSecondaryActionClick = {
+                    navigator.navigateToSettings()
                 }
             )
         },
@@ -196,6 +204,12 @@ fun EkhoNavigatorApp(
                                 onSignIn = onSignIn,
                                 onSignOut = onSignOut,
                             )
+                        }
+                    }
+
+                    is SettingsNavKey -> {
+                        NavEntry(key) {
+                            SettingsScreen()
                         }
                     }
 

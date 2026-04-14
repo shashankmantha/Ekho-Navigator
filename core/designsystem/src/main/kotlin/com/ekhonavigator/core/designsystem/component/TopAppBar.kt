@@ -25,9 +25,12 @@ fun EkhoTopAppBar(
     navigationIconContentDescription: String? = null,
     actionIcon: ImageVector? = null,
     actionIconContentDescription: String? = null,
+    secondaryActionIcon: ImageVector? = null,
+    secondaryActionIconContentDescription: String? = null,
     colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(),
     onNavigationClick: () -> Unit = {},
     onActionClick: () -> Unit = {},
+    onSecondaryActionClick: () -> Unit = {},
     scrollBehavior: TopAppBarScrollBehavior? = null,
 ) {
     EkhoTopAppBar(
@@ -37,9 +40,12 @@ fun EkhoTopAppBar(
         navigationIconContentDescription = navigationIconContentDescription,
         actionIcon = actionIcon,
         actionIconContentDescription = actionIconContentDescription,
+        secondaryActionIcon = secondaryActionIcon,
+        secondaryActionIconContentDescription = secondaryActionIconContentDescription,
         colors = colors,
         onNavigationClick = onNavigationClick,
         onActionClick = onActionClick,
+        onSecondaryActionClick = onSecondaryActionClick,
         scrollBehavior = scrollBehavior,
     )
 }
@@ -53,9 +59,12 @@ fun EkhoTopAppBar(
     navigationIconContentDescription: String? = null,
     actionIcon: ImageVector? = null,
     actionIconContentDescription: String? = null,
+    secondaryActionIcon: ImageVector? = null,
+    secondaryActionIconContentDescription: String? = null,
     colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(),
     onNavigationClick: () -> Unit = {},
     onActionClick: () -> Unit = {},
+    onSecondaryActionClick: () -> Unit = {},
     scrollBehavior: TopAppBarScrollBehavior? = null,
 ) {
     CenterAlignedTopAppBar(
@@ -72,6 +81,15 @@ fun EkhoTopAppBar(
             }
         },
         actions = {
+            if (secondaryActionIcon != null) {
+                IconButton(onClick = onSecondaryActionClick) {
+                    Icon(
+                        imageVector = secondaryActionIcon,
+                        contentDescription = secondaryActionIconContentDescription,
+                        tint = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
             if (actionIcon != null) {
                 IconButton(onClick = onActionClick) {
                     Icon(

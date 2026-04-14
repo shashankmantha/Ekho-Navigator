@@ -115,7 +115,7 @@ class AccountViewModel @Inject constructor(
                         showOnlineStatus = showOnlineStatus,
                     ),
                 )
-                
+
                 // Update presence repository immediately with the new preference
                 presenceRepo.updateOnlineStatusPreference(showOnlineStatus)
 

@@ -195,10 +195,8 @@ fun AccountScreen(
                     initialMajorVisible = state.majorVisible,
                     initialDescriptionVisible = state.descriptionVisible,
                     initialLinksVisible = state.linksVisible,
-                    initialSearchable = state.searchable,
-                    initialShowOnlineStatus = state.showOnlineStatus,
                     avatarId = state.avatarId,
-                    onSaveClick = { displayName, major, description, links, majorVisible, descriptionVisible, linksVisible, searchable, showOnlineStatus, avatarId ->
+                    onSaveClick = { displayName, major, description, links, majorVisible, descriptionVisible, linksVisible, avatarId ->
                         val oldDisplayName = state.displayName
                         val oldMajor = state.major
                         val oldDescription = state.description
@@ -207,8 +205,6 @@ fun AccountScreen(
                         val oldDescriptionVisible = state.descriptionVisible
                         val oldLinksVisible = state.linksVisible
                         val oldAvatarId = state.avatarId
-                        val oldSearchable = state.searchable
-                        val oldShowOnlineStatus = state.showOnlineStatus
 
                         viewModel.saveProfile(
                             displayName = displayName,
@@ -219,8 +215,8 @@ fun AccountScreen(
                             descriptionVisible = descriptionVisible,
                             linksVisible = linksVisible,
                             avatarId = avatarId,
-                            searchable = searchable,
-                            showOnlineStatus = showOnlineStatus,
+                            searchable = state.searchable,
+                            showOnlineStatus = state.showOnlineStatus,
                         )
 
                         scope.launch {
@@ -240,8 +236,8 @@ fun AccountScreen(
                                     descriptionVisible = oldDescriptionVisible,
                                     linksVisible = oldLinksVisible,
                                     avatarId = oldAvatarId,
-                                    searchable = oldSearchable,
-                                    showOnlineStatus = oldShowOnlineStatus,
+                                    searchable = state.searchable,
+                                    showOnlineStatus = state.showOnlineStatus,
                                 )
                             }
                         }
