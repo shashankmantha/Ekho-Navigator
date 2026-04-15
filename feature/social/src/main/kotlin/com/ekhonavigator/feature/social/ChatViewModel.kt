@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 data class ChatUiState(
     val isLoading: Boolean = true,
@@ -52,6 +53,7 @@ class ChatViewModel @Inject constructor(
                 if (startedConversationId == conversation.id) return@onSuccess
 
                 startedConversationId = conversation.id
+
                 observeJob?.cancel()
                 observeJob = viewModelScope.launch {
                     chatRepository.observeMessages(conversation.id).collect { messages ->
@@ -60,6 +62,13 @@ class ChatViewModel @Inject constructor(
                                 isLoading = false,
                                 messages = messages,
                                 errorMessage = null,
+                            )
+                        }
+
+                        runCatching {
+                            chatRepository.markMessagesAsRead(
+                                conversationId = conversation.id,
+                                currentUserId = currentUserId,
                             )
                         }
                     }
@@ -89,6 +98,8 @@ class ChatViewModel @Inject constructor(
 
         if (draft.isBlank()) return
 
+        val clientMessageId = UUID.randomUUID().toString()
+
         viewModelScope.launch {
             runCatching {
                 val conversation = chatRepository.getOrCreateConversation(
@@ -103,9 +114,15 @@ class ChatViewModel @Inject constructor(
                     senderId = currentUserId,
                     senderName = currentUserName,
                     text = draft,
+                    clientMessageId = clientMessageId,
                 )
             }.onSuccess {
-                _uiState.update { it.copy(draftMessage = "") }
+                _uiState.update {
+                    it.copy(
+                        draftMessage = "",
+                        errorMessage = null,
+                    )
+                }
             }.onFailure { e ->
                 _uiState.update {
                     it.copy(
@@ -115,4 +132,5 @@ class ChatViewModel @Inject constructor(
             }
         }
     }
+    fun getCurrentUserId(): String? = authRepository.getCurrentUserUid()
 }

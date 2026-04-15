@@ -21,7 +21,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -37,6 +36,7 @@ fun ChatScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
+    val currentUserId = viewModel.getCurrentUserId()
 
     LaunchedEffect(friendUserId) {
         viewModel.startConversation(
@@ -97,7 +97,12 @@ fun ChatScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(uiState.messages, key = { it.id }) { message ->
-                        val isMine = message.senderId != friendUserId
+                        val isMine = message.senderId == currentUserId
+                        val statusText = when {
+                            !isMine -> ""
+                            friendUserId in message.readBy -> "Read"
+                            else -> "Sent"
+                        }
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -107,26 +112,39 @@ fun ChatScreen(
                                 Arrangement.Start
                             },
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .background(
-                                        color = if (isMine) {
-                                            MaterialTheme.colorScheme.primaryContainer
-                                        } else {
-                                            MaterialTheme.colorScheme.surfaceVariant
-                                        },
-                                        shape = MaterialTheme.shapes.medium,
-                                    )
-                                    .padding(12.dp),
+                            Column(
+                                horizontalAlignment = if (isMine) Alignment.End else Alignment.Start,
                             ) {
-                                Text(
-                                    text = message.text,
-                                    color = if (isMine) {
-                                        MaterialTheme.colorScheme.onPrimaryContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    },
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .background(
+                                            color = if (isMine) {
+                                                MaterialTheme.colorScheme.primaryContainer
+                                            } else {
+                                                MaterialTheme.colorScheme.surfaceVariant
+                                            },
+                                            shape = MaterialTheme.shapes.medium,
+                                        )
+                                        .padding(12.dp),
+                                ) {
+                                    Text(
+                                        text = message.text,
+                                        color = if (isMine) {
+                                            MaterialTheme.colorScheme.onPrimaryContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        },
+                                    )
+                                }
+
+                                if (isMine) {
+                                    Text(
+                                        text = statusText,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(top = 4.dp, end = 4.dp),
+                                    )
+                                }
                             }
                         }
                     }

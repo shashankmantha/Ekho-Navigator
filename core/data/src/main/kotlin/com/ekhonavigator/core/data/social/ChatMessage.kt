@@ -6,4 +6,6 @@ data class ChatMessage(
     val senderName: String = "",
     val text: String = "",
     val timestamp: Long = 0L,
+    val readBy: List<String> = emptyList(),
+    val clientMessageId: String = "",
 )

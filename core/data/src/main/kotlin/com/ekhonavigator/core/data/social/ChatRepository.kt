@@ -7,6 +7,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import com.google.firebase.firestore.FieldValue
 
 class ChatRepository @Inject constructor() {
 
@@ -66,6 +67,8 @@ class ChatRepository @Inject constructor() {
                         senderName = doc.getString("senderName") ?: "",
                         text = doc.getString("text") ?: "",
                         timestamp = doc.getLong("timestamp") ?: 0L,
+                        readBy = (doc.get("readBy") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
+                        clientMessageId = doc.getString("clientMessageId") ?: ""
                     )
                 }.orEmpty()
 
@@ -80,6 +83,7 @@ class ChatRepository @Inject constructor() {
         senderId: String,
         senderName: String,
         text: String,
+        clientMessageId: String,
     ) {
         val trimmed = text.trim()
         if (trimmed.isBlank()) return
@@ -93,6 +97,8 @@ class ChatRepository @Inject constructor() {
             "senderName" to senderName,
             "text" to trimmed,
             "timestamp" to now,
+            "readBy" to listOf(senderId),
+            "clientMessageId" to clientMessageId,
         )
 
         val batch = firestore.batch()
@@ -105,6 +111,30 @@ class ChatRepository @Inject constructor() {
                 "lastTimestamp" to now,
             )
         )
+        batch.commit().await()
+    }
+
+    suspend fun markMessagesAsRead(
+        conversationId: String,
+        currentUserId: String,
+    ) {
+        val messagesRef = firestore.collection("conversations")
+            .document(conversationId)
+            .collection("messages")
+
+        val snapshot = messagesRef.get().await()
+
+        val batch = firestore.batch()
+
+        snapshot.documents.forEach { doc ->
+            val senderId = doc.getString("senderId") ?: return@forEach
+            val readBy = (doc.get("readBy") as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+
+            if (senderId != currentUserId && currentUserId !in readBy) {
+                batch.update(doc.reference, "readBy", FieldValue.arrayUnion(currentUserId))
+            }
+        }
+
         batch.commit().await()
     }
 }
