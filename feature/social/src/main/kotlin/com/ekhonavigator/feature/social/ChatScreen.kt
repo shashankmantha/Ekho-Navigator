@@ -26,11 +26,40 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 
+@Composable
+private fun ChatAvatar(
+    friendAvatarId: String,
+    friendDisplayName: String,
+    modifier: Modifier = Modifier,
+) {
+    val avatarRes = when (friendAvatarId) {
+        "avatar_dolphin" -> com.ekhonavigator.core.designsystem.R.drawable.avatar_dolphin
+        "avatar_whale" -> com.ekhonavigator.core.designsystem.R.drawable.avatar_whale
+        "avatar_turtle" -> com.ekhonavigator.core.designsystem.R.drawable.avatar_turtle
+        else -> com.ekhonavigator.core.designsystem.R.drawable.avatar_default
+    }
+
+    Image(
+        painter = painterResource(id = avatarRes),
+        contentDescription = "$friendDisplayName avatar",
+        modifier = modifier
+            .size(72.dp)
+            .clip(CircleShape),
+        contentScale = ContentScale.Crop,
+    )
+}
 @Composable
 fun ChatScreen(
     friendUserId: String,
     friendDisplayName: String,
+    friendAvatarId: String,
     modifier: Modifier = Modifier,
     viewModel: ChatViewModel = hiltViewModel(),
 ) {
@@ -58,10 +87,19 @@ fun ChatScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(
-            text = friendDisplayName,
-            style = MaterialTheme.typography.headlineSmall,
-        )
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ChatAvatar(friendAvatarId = friendAvatarId, friendDisplayName = friendDisplayName)
+
+            Text(
+                text = friendDisplayName,
+                style = MaterialTheme.typography.headlineSmall,
+                textAlign = TextAlign.Center,
+            )
+        }
 
         when {
             uiState.isLoading -> {

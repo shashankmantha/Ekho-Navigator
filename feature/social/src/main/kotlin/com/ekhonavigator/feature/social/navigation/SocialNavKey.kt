@@ -20,6 +20,7 @@ data class UserProfileNavKey(
 data class ChatNavKey(
     val friendUserId: String,
     val friendDisplayName: String,
+    val friendAvatarId: String,
 ) : NavKey
 
 fun EntryProviderScope<NavKey>.socialEntry(navigator: Navigator) {
@@ -28,11 +29,12 @@ fun EntryProviderScope<NavKey>.socialEntry(navigator: Navigator) {
             onProfileClick = { userId ->
                 navigator.navigate(UserProfileNavKey(userId))
             },
-            onMessageClick = { friendUserId, friendDisplayName ->
+            onMessageClick = { friendUserId, friendDisplayName, friendAvatarId ->
                 navigator.navigate(
                     ChatNavKey(
                         friendUserId = friendUserId,
                         friendDisplayName = friendDisplayName,
+                        friendAvatarId = friendAvatarId,
                     )
                 )
             },
@@ -49,6 +51,7 @@ fun EntryProviderScope<NavKey>.socialEntry(navigator: Navigator) {
         ChatScreen(
             friendUserId = key.friendUserId,
             friendDisplayName = key.friendDisplayName,
+            friendAvatarId = key.friendAvatarId
         )
     }
 }

@@ -180,11 +180,12 @@ fun EkhoNavigatorApp(
                                 onProfileClick = { userId ->
                                     navigator.navigate(UserProfileNavKey(userId))
                                 },
-                                onMessageClick = { friendUserId, friendDisplayName ->
+                                onMessageClick = { friendUserId, friendDisplayName, friendAvatarId ->
                                     navigator.navigate(
                                         ChatNavKey(
                                             friendUserId = friendUserId,
                                             friendDisplayName = friendDisplayName,
+                                            friendAvatarId = friendAvatarId,
                                         )
                                     )
                                 },
@@ -205,6 +206,7 @@ fun EkhoNavigatorApp(
                             ChatScreen(
                                 friendUserId = key.friendUserId,
                                 friendDisplayName = key.friendDisplayName,
+                                friendAvatarId = key.friendAvatarId,
                             )
                         }
                     }
