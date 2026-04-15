@@ -37,6 +37,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 @Composable
 fun SocialScreen(
     onProfileClick: (String) -> Unit,
+    onMessageClick: (String, String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SocialViewModel = hiltViewModel(),
 ) {
@@ -134,8 +135,8 @@ fun SocialScreen(
                         uid = friend.uid,
                         displayName = friend.displayName,
                         major = friend.major,
-                        onMessageClick = { uid ->
-                            println("Message clicked for user: $uid")
+                        onMessageClick = { uid, displayName ->
+                            onMessageClick(uid, displayName)
                         },
                         onViewProfileClick = onProfileClick,
                         onRemoveFriendClick = { uid ->
@@ -266,7 +267,7 @@ private fun FriendRow(
     uid: String,
     displayName: String,
     major: String,
-    onMessageClick: (String) -> Unit,
+    onMessageClick: (String, String) -> Unit,
     onViewProfileClick: (String) -> Unit,
     onRemoveFriendClick: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -300,7 +301,7 @@ private fun FriendRow(
                 text = { Text("Message") },
                 onClick = {
                     showMenu = false
-                    onMessageClick(uid)
+                    onMessageClick(uid, displayName)
                 },
             )
 
