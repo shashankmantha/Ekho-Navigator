@@ -1,17 +1,24 @@
 package com.ekhonavigator.feature.social
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -23,15 +30,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 
 @Composable
 private fun ChatAvatar(
@@ -55,6 +60,8 @@ private fun ChatAvatar(
         contentScale = ContentScale.Crop,
     )
 }
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ChatScreen(
     friendUserId: String,
@@ -66,6 +73,8 @@ fun ChatScreen(
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     val currentUserId = viewModel.getCurrentUserId()
+    val density = LocalDensity.current
+    val imeBottom = WindowInsets.ime.getBottom(density)
 
     LaunchedEffect(friendUserId) {
         viewModel.startConversation(
@@ -80,10 +89,15 @@ fun ChatScreen(
         }
     }
 
+    LaunchedEffect(imeBottom, uiState.messages.size) {
+        if (imeBottom > 0 && uiState.messages.isNotEmpty()) {
+            listState.animateScrollToItem(uiState.messages.lastIndex)
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
-            .imePadding()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -92,7 +106,10 @@ fun ChatScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            ChatAvatar(friendAvatarId = friendAvatarId, friendDisplayName = friendDisplayName)
+            ChatAvatar(
+                friendAvatarId = friendAvatarId,
+                friendDisplayName = friendDisplayName,
+            )
 
             Text(
                 text = friendDisplayName,
@@ -133,6 +150,7 @@ fun ChatScreen(
                     state = listState,
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(bottom = 12.dp),
                 ) {
                     items(uiState.messages, key = { it.id }) { message ->
                         val isMine = message.senderId == currentUserId
@@ -191,7 +209,9 @@ fun ChatScreen(
         }
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .imePadding(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
