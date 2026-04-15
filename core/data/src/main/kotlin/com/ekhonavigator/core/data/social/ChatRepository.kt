@@ -61,16 +61,26 @@ class ChatRepository @Inject constructor() {
                 }
 
                 val messages = snapshot?.documents?.map { doc ->
+                    val timestampValue = doc.get("timestamp")
+                    val timestampMillis = when (timestampValue) {
+                        is com.google.firebase.Timestamp -> timestampValue.toDate().time
+                        is Long -> timestampValue
+                        is Number -> timestampValue.toLong()
+                        else -> doc.getLong("clientTimestamp") ?: 0L
+                    }
+
                     ChatMessage(
                         id = doc.id,
                         senderId = doc.getString("senderId") ?: "",
                         senderName = doc.getString("senderName") ?: "",
                         text = doc.getString("text") ?: "",
-                        timestamp = doc.getTimestamp("timestamp"),
+                        timestamp = timestampMillis,
                         readBy = (doc.get("readBy") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
-                        clientMessageId = doc.getString("clientMessageId") ?: ""
+                        clientMessageId = doc.getString("clientMessageId") ?: "",
                     )
-                }.orEmpty()
+                }
+                    ?.sortedBy { it.timestamp }
+                    .orEmpty()
 
                 trySend(messages)
             }
