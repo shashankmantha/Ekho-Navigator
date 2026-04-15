@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
+import kotlinx.coroutines.flow.catch
 
 data class ChatUiState(
     val isLoading: Boolean = true,
@@ -33,6 +34,23 @@ class ChatViewModel @Inject constructor(
 
     private var observeJob: Job? = null
     private var startedConversationId: String? = null
+
+    init {
+        viewModelScope.launch {
+            authRepository.userFlow().collect { uid ->
+                if (uid == null) {
+                    observeJob?.cancel()
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            messages = emptyList(),
+                            errorMessage = null,
+                        )
+                    }
+                }
+            }
+        }
+    }
 
     fun startConversation(
         friendUserId: String,
@@ -56,22 +74,31 @@ class ChatViewModel @Inject constructor(
 
                 observeJob?.cancel()
                 observeJob = viewModelScope.launch {
-                    chatRepository.observeMessages(conversation.id).collect { messages ->
-                        _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                messages = messages,
-                                errorMessage = null,
-                            )
+                    chatRepository.observeMessages(conversation.id)
+                        .catch { e ->
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    errorMessage = e.message ?: "Chat unavailable",
+                                )
+                            }
                         }
+                        .collect { messages ->
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    messages = messages,
+                                    errorMessage = null,
+                                )
+                            }
 
-                        runCatching {
-                            chatRepository.markMessagesAsRead(
-                                conversationId = conversation.id,
-                                currentUserId = currentUserId,
-                            )
+                            runCatching {
+                                chatRepository.markMessagesAsRead(
+                                    conversationId = conversation.id,
+                                    currentUserId = currentUserId,
+                                )
+                            }
                         }
-                    }
                 }
             }.onFailure { e ->
                 _uiState.update {
@@ -132,5 +159,6 @@ class ChatViewModel @Inject constructor(
             }
         }
     }
+
     fun getCurrentUserId(): String? = authRepository.getCurrentUserUid()
 }
