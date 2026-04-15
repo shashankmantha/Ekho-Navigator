@@ -22,9 +22,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.navigation3.ui.NavDisplay
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.ui.NavDisplay
 import com.ekhonavigator.core.designsystem.component.EkhoNavigationBar
 import com.ekhonavigator.core.designsystem.component.EkhoNavigationBarItem
 import com.ekhonavigator.core.designsystem.component.EkhoTopAppBar
@@ -32,28 +32,28 @@ import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.navigation.Navigator
 import com.ekhonavigator.core.navigation.rememberNavigationState
 import com.ekhonavigator.core.navigation.toEntries
-import com.ekhonavigator.feature.map.MapScreen
-import com.ekhonavigator.feature.map.navigation.MapNavKey
-import com.ekhonavigator.feature.account.navigation.navigateToAccount
 import com.ekhonavigator.feature.account.AccountScreen
 import com.ekhonavigator.feature.account.navigation.AccountNavKey
-import com.ekhonavigator.feature.social.SocialScreen
-import com.ekhonavigator.feature.social.UserProfileScreen
-import com.ekhonavigator.feature.social.navigation.SocialNavKey
-import com.ekhonavigator.feature.social.navigation.UserProfileNavKey
-import com.ekhonavigator.feature.schedule.CreateEventScreen
-import com.ekhonavigator.feature.schedule.navigation.CreateEventNavKey
-import com.ekhonavigator.feature.schedule.navigation.navigateToCreateEvent
+import com.ekhonavigator.feature.account.navigation.navigateToAccount
 import com.ekhonavigator.feature.event.EventScreen
 import com.ekhonavigator.feature.event.navigation.EventNavKey
 import com.ekhonavigator.feature.event.navigation.navigateToEvent
 import com.ekhonavigator.feature.home.HomeScreen
 import com.ekhonavigator.feature.home.navigation.HomeNavKey
+import com.ekhonavigator.feature.map.MapScreen
+import com.ekhonavigator.feature.map.navigation.MapNavKey
+import com.ekhonavigator.feature.schedule.CreateEventScreen
 import com.ekhonavigator.feature.schedule.DayScreen
 import com.ekhonavigator.feature.schedule.ScheduleScreen
+import com.ekhonavigator.feature.schedule.navigation.CreateEventNavKey
 import com.ekhonavigator.feature.schedule.navigation.DayNavKey
 import com.ekhonavigator.feature.schedule.navigation.ScheduleNavKey
+import com.ekhonavigator.feature.schedule.navigation.navigateToCreateEvent
 import com.ekhonavigator.feature.schedule.navigation.navigateToDay
+import com.ekhonavigator.feature.social.SocialScreen
+import com.ekhonavigator.feature.social.UserProfileScreen
+import com.ekhonavigator.feature.social.navigation.SocialNavKey
+import com.ekhonavigator.feature.social.navigation.UserProfileNavKey
 import com.ekhonavigator.navigation.TOP_LEVEL_NAV_ITEMS
 
 @Composable
@@ -139,6 +139,7 @@ fun EkhoNavigatorApp(
                                 onCreateEventClick = { epochDay ->
                                     navigator.navigateToCreateEvent(epochDay)
                                 },
+                                initialLocationFilter = key.initialLocationFilter
                             )
                         }
                     }
@@ -168,7 +169,12 @@ fun EkhoNavigatorApp(
 
                     is MapNavKey -> {
                         NavEntry(key) {
-                            MapScreen(onEventClick = navigator::navigateToEvent)
+                            MapScreen(
+                                onEventClick = navigator::navigateToEvent,
+                                onOpenScheduleForLocation = { selectedCampusPlaceName ->
+                                    navigator.navigate(ScheduleNavKey(initialLocationFilter = selectedCampusPlaceName))
+                                }
+                            )
                         }
                     }
 

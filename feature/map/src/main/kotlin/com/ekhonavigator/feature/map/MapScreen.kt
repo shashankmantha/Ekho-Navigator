@@ -139,6 +139,7 @@ fun MapLocationControls(
 @Composable
 fun MapScreen(
     onEventClick: (String) -> Unit,
+    onOpenScheduleForLocation: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: MapViewModel = hiltViewModel()
 ) {
@@ -495,7 +496,11 @@ fun MapScreen(
         selectedCampusPlace?.let { place ->
             CampusPlaceDetailCard(
                 place = place,
-                onDismiss = { selectedCampusPlace = null }
+                onDismiss = { selectedCampusPlace = null },
+                onViewLocationEvents = { selectedLocationName ->
+                    selectedCampusPlace = null
+                    onOpenScheduleForLocation(selectedLocationName)
+                }
             )
         }
     }
