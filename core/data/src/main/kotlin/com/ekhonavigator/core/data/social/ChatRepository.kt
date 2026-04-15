@@ -66,7 +66,7 @@ class ChatRepository @Inject constructor() {
                         senderId = doc.getString("senderId") ?: "",
                         senderName = doc.getString("senderName") ?: "",
                         text = doc.getString("text") ?: "",
-                        timestamp = doc.getLong("timestamp") ?: 0L,
+                        timestamp = doc.getTimestamp("timestamp"),
                         readBy = (doc.get("readBy") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
                         clientMessageId = doc.getString("clientMessageId") ?: ""
                     )
@@ -96,7 +96,8 @@ class ChatRepository @Inject constructor() {
             "senderId" to senderId,
             "senderName" to senderName,
             "text" to trimmed,
-            "timestamp" to now,
+            "timestamp" to FieldValue.serverTimestamp(),
+            "clientTimestamp" to now,
             "readBy" to listOf(senderId),
             "clientMessageId" to clientMessageId,
         )
@@ -108,7 +109,7 @@ class ChatRepository @Inject constructor() {
             mapOf(
                 "lastMessage" to trimmed,
                 "lastSenderId" to senderId,
-                "lastTimestamp" to now,
+                "lastTimestamp" to FieldValue.serverTimestamp(),
             )
         )
         batch.commit().await()
