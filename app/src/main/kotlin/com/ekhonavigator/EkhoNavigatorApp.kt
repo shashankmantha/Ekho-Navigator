@@ -106,7 +106,8 @@ fun EkhoNavigatorApp(
             if (isTopLevelDestination) {
                 EkhoBottomBar(
                     onNavigateToNavKey = navigator::navigate,
-                    currentTopLevelKey = navigationState.currentTopLevelKey
+                    // used currentKey so the bar knows exactly which screen is active
+                    currentTopLevelKey = currentKey
                 )
             }
         }
@@ -238,7 +239,7 @@ private fun EkhoBottomBar(
 ) {
     EkhoNavigationBar {
         TOP_LEVEL_NAV_ITEMS.forEach { (navKey, item) ->
-            val selected = navKey::class == currentTopLevelKey::class
+            val selected = navKey::class == currentTopLevelKey::class     // matched by class so the icon highlights for any version of the tab
             EkhoNavigationBarItem(
                 selected = selected,
                 onClick = { onNavigateToNavKey(navKey) },
