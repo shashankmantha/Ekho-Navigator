@@ -37,11 +37,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 
 @Composable
 fun SocialScreen(
     onProfileClick: (String) -> Unit,
+    onMessageClick: (String, String, String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SocialViewModel = hiltViewModel(),
 ) {
@@ -138,11 +139,12 @@ fun SocialScreen(
                     FriendRow(
                         uid = friend.uid,
                         displayName = friend.displayName,
+                        avatarId = friend.avatarId,
                         major = friend.major,
                         showOnlineStatus = friend.showOnlineStatus,
                         online = friend.online,
-                        onMessageClick = { uid ->
-                            println("Message clicked for user: $uid")
+                        onMessageClick = { uid, displayName, avatarId ->
+                            onMessageClick(uid, displayName, avatarId)
                         },
                         onViewProfileClick = onProfileClick,
                         onRemoveFriendClick = { uid ->
@@ -272,10 +274,11 @@ fun SocialScreen(
 private fun FriendRow(
     uid: String,
     displayName: String,
+    avatarId: String,
     major: String,
     showOnlineStatus: Boolean,
     online: Boolean,
-    onMessageClick: (String) -> Unit,
+    onMessageClick: (String, String, String) -> Unit,
     onViewProfileClick: (String) -> Unit,
     onRemoveFriendClick: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -346,7 +349,7 @@ private fun FriendRow(
                 text = { Text("Message") },
                 onClick = {
                     showMenu = false
-                    onMessageClick(uid)
+                    onMessageClick(uid, displayName, avatarId)
                 },
             )
 
