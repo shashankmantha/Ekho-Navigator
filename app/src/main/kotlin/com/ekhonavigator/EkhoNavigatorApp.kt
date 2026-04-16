@@ -55,6 +55,8 @@ import com.ekhonavigator.feature.schedule.navigation.DayNavKey
 import com.ekhonavigator.feature.schedule.navigation.ScheduleNavKey
 import com.ekhonavigator.feature.schedule.navigation.navigateToDay
 import com.ekhonavigator.navigation.TOP_LEVEL_NAV_ITEMS
+import com.ekhonavigator.feature.social.ChatScreen
+import com.ekhonavigator.feature.social.navigation.ChatNavKey
 
 @Composable
 fun EkhoNavigatorApp(
@@ -178,6 +180,15 @@ fun EkhoNavigatorApp(
                                 onProfileClick = { userId ->
                                     navigator.navigate(UserProfileNavKey(userId))
                                 },
+                                onMessageClick = { friendUserId, friendDisplayName, friendAvatarId ->
+                                    navigator.navigate(
+                                        ChatNavKey(
+                                            friendUserId = friendUserId,
+                                            friendDisplayName = friendDisplayName,
+                                            friendAvatarId = friendAvatarId,
+                                        )
+                                    )
+                                },
                             )
                         }
                     }
@@ -186,6 +197,16 @@ fun EkhoNavigatorApp(
                         NavEntry(key) {
                             UserProfileScreen(
                                 userId = key.userId,
+                            )
+                        }
+                    }
+
+                    is ChatNavKey -> {
+                        NavEntry(key) {
+                            ChatScreen(
+                                friendUserId = key.friendUserId,
+                                friendDisplayName = key.friendDisplayName,
+                                friendAvatarId = key.friendAvatarId,
                             )
                         }
                     }
