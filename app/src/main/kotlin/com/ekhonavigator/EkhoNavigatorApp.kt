@@ -186,6 +186,9 @@ fun EkhoNavigatorApp(
                                 onProfileClick = { userId ->
                                     navigator.navigate(UserProfileNavKey(userId))
                                 },
+                                onMessageClick = { uid, displayName, avatarId ->
+                                    // TODO: Implement messaging navigation
+                                }
                             )
                         }
                     }

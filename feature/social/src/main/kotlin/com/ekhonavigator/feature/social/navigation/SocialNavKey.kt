@@ -21,6 +21,9 @@ fun EntryProviderScope<NavKey>.socialEntry(navigator: Navigator) {
             onProfileClick = { userId ->
                 navigator.navigate(UserProfileNavKey(userId))
             },
+            onMessageClick = { uid, displayName, avatarId ->
+                // TODO: Implement messaging navigation
+            }
         )
     }
 
