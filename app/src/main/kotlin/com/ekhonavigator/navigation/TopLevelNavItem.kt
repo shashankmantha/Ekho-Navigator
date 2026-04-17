@@ -8,7 +8,7 @@ import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.feature.home.navigation.HomeNavKey
 import com.ekhonavigator.feature.calendar.navigation.CalendarNavKey
 import com.ekhonavigator.feature.map.navigation.MapNavKey
-import com.ekhonavigator.feature.schedule.navigation.ScheduleNavKey
+import com.ekhonavigator.feature.discover.navigation.DiscoverNavKey
 import com.ekhonavigator.feature.social.navigation.SocialNavKey
 
 /** UI metadata for a top-level navigation destination. */
@@ -31,10 +31,10 @@ val CALENDAR = TopLevelNavItem(
     label = "Calendar",
 )
 
-val SCHEDULE = TopLevelNavItem(
+val DISCOVER = TopLevelNavItem(
     selectedIcon = EkhoIcons.EventsFilled,
     unselectedIcon = EkhoIcons.EventsOutlined,
-    label = "Schedule",
+    label = "Discover",
 )
 
 val SOCIAL = TopLevelNavItem(
@@ -51,7 +51,7 @@ val MAP = TopLevelNavItem(
 val TOP_LEVEL_NAV_ITEMS: Map<NavKey, TopLevelNavItem> = mapOf(
     HomeNavKey to HOME,
     CalendarNavKey to CALENDAR,
-    ScheduleNavKey() to SCHEDULE,         // changed ScheduleNavKey from an object to a data class to allow passing locationQuery for filtering events from the map
+    DiscoverNavKey() to DISCOVER,         // data class (not object) so a locationQuery can be passed in from the map
     SocialNavKey to SOCIAL,
     MapNavKey to MAP,
 )

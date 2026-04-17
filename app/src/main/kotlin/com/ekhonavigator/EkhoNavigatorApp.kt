@@ -45,12 +45,12 @@ import com.ekhonavigator.feature.map.MapScreen
 import com.ekhonavigator.feature.map.navigation.MapNavKey
 import com.ekhonavigator.feature.event.CreateEventScreen
 import com.ekhonavigator.feature.calendar.DayScreen
-import com.ekhonavigator.feature.schedule.ScheduleScreen
+import com.ekhonavigator.feature.discover.DiscoverScreen
 import com.ekhonavigator.feature.event.navigation.CreateEventNavKey
 import com.ekhonavigator.feature.calendar.navigation.CalendarNavKey
 import com.ekhonavigator.feature.calendar.CalendarScreen
 import com.ekhonavigator.feature.calendar.navigation.DayNavKey
-import com.ekhonavigator.feature.schedule.navigation.ScheduleNavKey
+import com.ekhonavigator.feature.discover.navigation.DiscoverNavKey
 import com.ekhonavigator.feature.event.navigation.navigateToCreateEvent
 import com.ekhonavigator.feature.calendar.navigation.navigateToDay
 import com.ekhonavigator.feature.social.SocialScreen
@@ -153,9 +153,9 @@ fun EkhoNavigatorApp(
                         }
                     }
 
-                    is ScheduleNavKey -> {
+                    is DiscoverNavKey -> {
                         NavEntry(key) {
-                            ScheduleScreen(
+                            DiscoverScreen(
                                 onEventClick = navigator::navigateToEvent,
                                 onCreateEventClick = { epochDay ->
                                     navigator.navigateToCreateEvent(epochDay)
@@ -192,8 +192,8 @@ fun EkhoNavigatorApp(
                         NavEntry(key) {
                             MapScreen(
                                 onEventClick = navigator::navigateToEvent,
-                                onOpenScheduleForLocation = { selectedCampusPlaceName ->
-                                    navigator.navigate(ScheduleNavKey(initialLocationFilter = selectedCampusPlaceName))
+                                onOpenDiscoverForLocation = { selectedCampusPlaceName ->
+                                    navigator.navigate(DiscoverNavKey(initialLocationFilter = selectedCampusPlaceName))
                                 }
                             )
                         }

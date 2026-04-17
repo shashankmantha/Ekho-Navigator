@@ -1,4 +1,4 @@
-package com.ekhonavigator.feature.schedule
+package com.ekhonavigator.feature.discover
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -23,7 +23,7 @@ import java.time.ZoneId
 import javax.inject.Inject
 
 @HiltViewModel
-class ScheduleViewModel @Inject constructor(
+class DiscoverViewModel @Inject constructor(
     private val repository: CalendarRepository,
     private val authRepository: AuthRepository,
     private val customEventRepository: CustomEventRepository,

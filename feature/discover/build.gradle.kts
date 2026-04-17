@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.ekhonavigator.feature.schedule"
+    namespace = "com.ekhonavigator.feature.discover"
     compileSdk = 36
 
     defaultConfig {

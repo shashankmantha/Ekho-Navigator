@@ -1,4 +1,4 @@
-package com.ekhonavigator.feature.schedule
+package com.ekhonavigator.feature.discover
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -31,8 +31,8 @@ import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-internal fun ScheduleEventsList(
-    viewModel: ScheduleViewModel,
+internal fun DiscoverEventsList(
+    viewModel: DiscoverViewModel,
     onEventClick: (String) -> Unit,
     listState: LazyListState,
     modifier: Modifier = Modifier,

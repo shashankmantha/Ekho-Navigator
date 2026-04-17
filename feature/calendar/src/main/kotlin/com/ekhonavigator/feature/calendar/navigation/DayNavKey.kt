@@ -9,9 +9,9 @@ import kotlinx.serialization.Serializable
 /**
  * Navigation key for the day detail screen.
  * @param epochDay The day as [java.time.LocalDate.toEpochDay] for serialization.
- * @param sourceTypes Active source-type filter names from the parent schedule screen.
+ * @param sourceTypes Active source-type filter names from the parent calendar screen.
  *   Empty list means "use ViewModel defaults".
- * @param categories Active category filter names from the parent schedule screen.
+ * @param categories Active category filter names from the parent calendar screen.
  *   Empty list means "no category filter" (show all).
  */
 @Serializable

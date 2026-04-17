@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalMaterial3Api::class)
 
-package com.ekhonavigator.feature.schedule
+package com.ekhonavigator.feature.discover
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,12 +47,12 @@ import com.ekhonavigator.feature.event.component.FilterSheetContent
 import kotlinx.coroutines.launch
 
 @Composable
-fun ScheduleScreen(
+fun DiscoverScreen(
     onEventClick: (String) -> Unit,
     onCreateEventClick: (Long?) -> Unit = {},
     initialLocationFilter: String? = null,
     modifier: Modifier = Modifier,
-    viewModel: ScheduleViewModel = hiltViewModel(),
+    viewModel: DiscoverViewModel = hiltViewModel(),
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -146,7 +146,7 @@ fun ScheduleScreen(
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
             )
 
-            ScheduleEventsList(
+            DiscoverEventsList(
                 viewModel = viewModel,
                 onEventClick = onEventClick,
                 listState = listState,

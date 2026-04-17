@@ -137,11 +137,10 @@ fun CalendarScreen(
         Column(
             modifier = Modifier.fillMaxSize(),
         ) {
-            // Unified Header Row - Matches ScheduleScreen
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(64.dp) // Fixed height for consistency
+                    .height(64.dp)
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
