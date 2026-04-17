@@ -8,6 +8,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -117,7 +118,9 @@ fun EkhoNavigatorApp(
         }
     ) { paddingValues ->
         NavDisplay(
-            modifier = Modifier.padding(paddingValues),
+            modifier = Modifier
+                .padding(paddingValues)
+                .consumeWindowInsets(paddingValues),
             transitionSpec = {
                 slideInHorizontally(initialOffsetX = { it }) + fadeIn() togetherWith
                         slideOutHorizontally(targetOffsetX = { -it / 2 }) + fadeOut()

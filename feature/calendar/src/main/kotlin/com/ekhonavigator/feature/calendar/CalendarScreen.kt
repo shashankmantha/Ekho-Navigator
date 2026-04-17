@@ -133,11 +133,9 @@ fun CalendarScreen(
                 }
             }
         },
-    ) { innerPadding ->
+    ) { _ ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = innerPadding.calculateBottomPadding()),
+            modifier = Modifier.fillMaxSize(),
         ) {
             // Unified Header Row - Matches ScheduleScreen
             Row(
