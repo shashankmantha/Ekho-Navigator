@@ -187,7 +187,7 @@ fun DayTimelineContent(
                     else -> currentDate.format(dayFormatter)
                 },
                 style = MaterialTheme.typography.headlineSmall,
-                color = if (currentDate == today) {
+                color = if (currentDate == today || currentDate == today.plusDays(1)) {
                     MaterialTheme.colorScheme.primary
                 } else {
                     MaterialTheme.colorScheme.onSurface

@@ -2,6 +2,7 @@ package com.ekhonavigator.feature.discover
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +35,7 @@ import java.time.format.DateTimeFormatter
 internal fun DiscoverEventsList(
     viewModel: DiscoverViewModel,
     onEventClick: (String) -> Unit,
+    onDayClick: (Long) -> Unit,
     listState: LazyListState,
     modifier: Modifier = Modifier,
 ) {
@@ -95,7 +97,9 @@ internal fun DiscoverEventsList(
                             title = headerLabel,
                             isImportant = isImportant,
                             modifier = Modifier
+                                .fillMaxWidth()
                                 .background(MaterialTheme.colorScheme.surface)
+                                .clickable { onDayClick(date.toEpochDay()) }
                                 .padding(horizontal = 16.dp),
                         )
                     }

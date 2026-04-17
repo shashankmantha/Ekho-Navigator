@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSourceType
 import com.ekhonavigator.feature.event.component.FilterSheetContent
 import kotlinx.coroutines.launch
@@ -49,6 +50,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun DiscoverScreen(
     onEventClick: (String) -> Unit,
+    onDayClick: (Long, Set<EventSourceType>, Set<EventCategory>) -> Unit,
     onCreateEventClick: (Long?) -> Unit = {},
     initialLocationFilter: String? = null,
     modifier: Modifier = Modifier,
@@ -62,6 +64,11 @@ fun DiscoverScreen(
     val activeSourceTypes by viewModel.activeSourceTypes.collectAsStateWithLifecycle()
     val selectedCategories by viewModel.selectedCategories.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+
+    // Forward current filters so the day timeline opens in the same context
+    val onDayHeaderClick: (Long) -> Unit = { epochDay ->
+        onDayClick(epochDay, activeSourceTypes, selectedCategories)
+    }
 
     LaunchedEffect(initialLocationFilter) {
         initialLocationFilter?.takeIf { it.isNotBlank() }?.let { selectedLocationName ->
@@ -149,6 +156,7 @@ fun DiscoverScreen(
             DiscoverEventsList(
                 viewModel = viewModel,
                 onEventClick = onEventClick,
+                onDayClick = onDayHeaderClick,
                 listState = listState,
                 modifier = Modifier.fillMaxSize()
             )

@@ -157,6 +157,7 @@ fun EkhoNavigatorApp(
                         NavEntry(key) {
                             DiscoverScreen(
                                 onEventClick = navigator::navigateToEvent,
+                                onDayClick = navigator::navigateToDay,
                                 onCreateEventClick = { epochDay ->
                                     navigator.navigateToCreateEvent(epochDay)
                                 },

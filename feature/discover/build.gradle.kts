@@ -35,7 +35,6 @@ android {
 }
 
 dependencies {
-    api(projects.core.navigation)
     api(projects.feature.event)
     implementation(projects.core.model)
     implementation(projects.core.data)
@@ -49,7 +48,6 @@ dependencies {
     ksp(libs.hilt.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
-    implementation(libs.kizitonwose.calendar.compose)
 
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.core.ktx)
