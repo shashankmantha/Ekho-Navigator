@@ -7,8 +7,9 @@ import com.ekhonavigator.core.data.repository.CalendarRepository
 import com.ekhonavigator.core.data.repository.CustomEventRepository
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventCategory
-import com.ekhonavigator.core.model.EventSource
 import com.ekhonavigator.core.model.EventSourceType
+import com.ekhonavigator.core.model.matchesCategories
+import com.ekhonavigator.core.model.matchesSourceTypes
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -107,37 +108,3 @@ class ScheduleViewModel @Inject constructor(
         }
     }
 }
-
-/**
- * Check if a [CalendarEvent] matches any of the active [EventSourceType]s.
- * An event matches if ANY active type includes it.
- */
-private fun CalendarEvent.matchesSourceTypes(activeTypes: Set<EventSourceType>): Boolean {
-    for (type in activeTypes) {
-        when (type) {
-            EventSourceType.SCHEDULE -> {
-                // CLASS_SCHEDULE source (future — not yet in EventSource)
-            }
-
-            EventSourceType.CUSTOM -> {
-                if (source == EventSource.USER_CREATED || source == EventSource.SHARED) return true
-            }
-
-            EventSourceType.CAMPUS -> {
-                if (source == EventSource.ICAL_FEED) return true
-            }
-
-            EventSourceType.BOOKMARKED -> {
-                if (source == EventSource.ICAL_FEED && isBookmarked) return true
-            }
-        }
-    }
-    return false
-}
-
-/**
- * Check if a [CalendarEvent] matches the selected categories.
- * Empty set = no filter = all events pass.
- */
-private fun CalendarEvent.matchesCategories(selected: Set<EventCategory>): Boolean =
-    selected.isEmpty() || categories.any { it in selected }
