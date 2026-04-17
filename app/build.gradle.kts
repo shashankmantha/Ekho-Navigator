@@ -71,6 +71,7 @@ dependencies {
     implementation(projects.core.network)
     implementation(projects.core.navigation)
     implementation(projects.feature.account)
+    implementation(projects.feature.calendar)
     implementation(projects.feature.home)
     implementation(projects.feature.event)
     implementation(projects.feature.schedule)

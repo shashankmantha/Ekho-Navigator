@@ -1,4 +1,4 @@
-package com.ekhonavigator.feature.schedule
+package com.ekhonavigator.feature.event
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

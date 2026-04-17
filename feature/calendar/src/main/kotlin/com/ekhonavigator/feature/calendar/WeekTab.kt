@@ -1,4 +1,4 @@
-package com.ekhonavigator.feature.schedule
+package com.ekhonavigator.feature.calendar
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -35,8 +35,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.EventSource
-import com.ekhonavigator.feature.schedule.component.MiniMonthCalendar
-import com.ekhonavigator.feature.schedule.component.TimelineGrid
+import com.ekhonavigator.feature.calendar.component.MiniMonthCalendar
+import com.ekhonavigator.feature.calendar.component.TimelineGrid
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
@@ -49,7 +49,7 @@ private const val WEEK_PAGE_RANGE = 52
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun WeekTab(
-    viewModel: ScheduleViewModel,
+    viewModel: CalendarViewModel,
     onEventClick: (String) -> Unit,
     onDayClick: (Long) -> Unit = {},
     snapToTodayTrigger: Int = 0,

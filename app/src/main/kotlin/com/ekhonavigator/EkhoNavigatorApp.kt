@@ -42,14 +42,16 @@ import com.ekhonavigator.feature.home.HomeScreen
 import com.ekhonavigator.feature.home.navigation.HomeNavKey
 import com.ekhonavigator.feature.map.MapScreen
 import com.ekhonavigator.feature.map.navigation.MapNavKey
-import com.ekhonavigator.feature.schedule.CreateEventScreen
-import com.ekhonavigator.feature.schedule.DayScreen
+import com.ekhonavigator.feature.event.CreateEventScreen
+import com.ekhonavigator.feature.calendar.DayScreen
 import com.ekhonavigator.feature.schedule.ScheduleScreen
-import com.ekhonavigator.feature.schedule.navigation.CreateEventNavKey
-import com.ekhonavigator.feature.schedule.navigation.DayNavKey
+import com.ekhonavigator.feature.event.navigation.CreateEventNavKey
+import com.ekhonavigator.feature.calendar.navigation.CalendarNavKey
+import com.ekhonavigator.feature.calendar.CalendarScreen
+import com.ekhonavigator.feature.calendar.navigation.DayNavKey
 import com.ekhonavigator.feature.schedule.navigation.ScheduleNavKey
-import com.ekhonavigator.feature.schedule.navigation.navigateToCreateEvent
-import com.ekhonavigator.feature.schedule.navigation.navigateToDay
+import com.ekhonavigator.feature.event.navigation.navigateToCreateEvent
+import com.ekhonavigator.feature.calendar.navigation.navigateToDay
 import com.ekhonavigator.feature.social.SocialScreen
 import com.ekhonavigator.feature.social.UserProfileScreen
 import com.ekhonavigator.feature.social.navigation.SocialNavKey
@@ -136,11 +138,22 @@ fun EkhoNavigatorApp(
                         }
                     }
 
+                    is CalendarNavKey -> {
+                        NavEntry(key) {
+                            CalendarScreen(
+                                onEventClick = navigator::navigateToEvent,
+                                onDayClick = navigator::navigateToDay,
+                                onCreateEventClick = { epochDay ->
+                                    navigator.navigateToCreateEvent(epochDay)
+                                }
+                            )
+                        }
+                    }
+
                     is ScheduleNavKey -> {
                         NavEntry(key) {
                             ScheduleScreen(
                                 onEventClick = navigator::navigateToEvent,
-                                onDayClick = navigator::navigateToDay,
                                 onCreateEventClick = { epochDay ->
                                     navigator.navigateToCreateEvent(epochDay)
                                 },

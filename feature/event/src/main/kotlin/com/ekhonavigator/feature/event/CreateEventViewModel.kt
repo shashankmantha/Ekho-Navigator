@@ -1,4 +1,4 @@
-package com.ekhonavigator.feature.schedule
+package com.ekhonavigator.feature.event
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

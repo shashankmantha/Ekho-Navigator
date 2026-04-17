@@ -1,4 +1,4 @@
-package com.ekhonavigator.feature.schedule
+package com.ekhonavigator.feature.calendar
 
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
@@ -15,9 +15,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.ekhonavigator.feature.schedule.component.CalendarTitle
-import com.ekhonavigator.feature.schedule.component.DayContent
-import com.ekhonavigator.feature.schedule.component.DaysOfWeekHeader
+import com.ekhonavigator.feature.calendar.component.CalendarTitle
+import com.ekhonavigator.feature.calendar.component.DayContent
+import com.ekhonavigator.feature.calendar.component.DaysOfWeekHeader
 import com.kizitonwose.calendar.compose.VerticalCalendar
 import com.kizitonwose.calendar.compose.rememberCalendarState
 import com.kizitonwose.calendar.core.OutDateStyle
@@ -29,7 +29,7 @@ import java.time.ZoneId
 
 @Composable
 internal fun MonthTab(
-    viewModel: ScheduleViewModel,
+    viewModel: CalendarViewModel,
     onDayClick: (Long) -> Unit,
     snapToTodayTrigger: Int = 0,
 ) {

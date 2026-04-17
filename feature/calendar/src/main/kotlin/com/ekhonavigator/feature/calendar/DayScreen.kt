@@ -1,4 +1,4 @@
-package com.ekhonavigator.feature.schedule
+package com.ekhonavigator.feature.calendar
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -37,9 +37,9 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.EventCategory
-import com.ekhonavigator.core.model.ScheduleSourceType
-import com.ekhonavigator.feature.schedule.component.MiniMonthCalendar
-import com.ekhonavigator.feature.schedule.component.TimelineGrid
+import com.ekhonavigator.core.model.EventSourceType
+import com.ekhonavigator.feature.calendar.component.MiniMonthCalendar
+import com.ekhonavigator.feature.calendar.component.TimelineGrid
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -56,15 +56,15 @@ fun DayScreen(
     sourceTypeNames: List<String> = emptyList(),
     categoryNames: List<String> = emptyList(),
     modifier: Modifier = Modifier,
-    viewModel: ScheduleViewModel = hiltViewModel(),
+    viewModel: CalendarViewModel = hiltViewModel(),
 ) {
     val initialDate = remember(epochDay) { LocalDate.ofEpochDay(epochDay) }
     val selectedDate by viewModel.selectedDate.collectAsStateWithLifecycle()
 
-    // Initialize filters from the parent schedule screen's active selections (one-shot)
+    // Initialize filters from the parent calendar screen's active selections (one-shot)
     LaunchedEffect(Unit) {
         val sourceTypes = sourceTypeNames.mapNotNull { name ->
-            ScheduleSourceType.entries.find { it.name == name }
+            EventSourceType.entries.find { it.name == name }
         }.toSet()
         val categories = categoryNames.mapNotNull { name ->
             EventCategory.entries.find { it.name == name }
@@ -126,7 +126,7 @@ private const val DAY_PAGE_RANGE = 365
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DayTimelineContent(
-    viewModel: ScheduleViewModel,
+    viewModel: CalendarViewModel,
     onEventClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     initialDate: LocalDate = LocalDate.now(),

@@ -1,4 +1,4 @@
-package com.ekhonavigator.feature.schedule.component
+package com.ekhonavigator.feature.calendar.component
 
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth

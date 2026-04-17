@@ -9,29 +9,21 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ekhonavigator.core.designsystem.component.EkhoEventCard
 import com.ekhonavigator.core.designsystem.component.EkhoSectionHeader
 import com.ekhonavigator.core.designsystem.component.sourceAccentColor
-import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.EventSource
 import java.time.LocalDate
 import java.time.ZoneId
@@ -39,36 +31,21 @@ import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-internal fun DiscoverTab(
+internal fun ScheduleEventsList(
     viewModel: ScheduleViewModel,
     onEventClick: (String) -> Unit,
-    snapToTodayTrigger: Int = 0,
+    listState: LazyListState,
+    modifier: Modifier = Modifier,
 ) {
     val events by viewModel.discoverEvents.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val selectedCategories by viewModel.selectedCategories.collectAsStateWithLifecycle()
-    val listState = rememberLazyListState()
-
-    LaunchedEffect(snapToTodayTrigger) {
-        if (snapToTodayTrigger > 0) {
-            listState.animateScrollToItem(0)
-        }
-    }
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface),
     ) {
-        // Search bar
-        EventSearchBar(
-            query = searchQuery,
-            onQueryChange = viewModel::setSearchQuery,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-        )
-
         // Event list
         if (events.isEmpty()) {
             Box(
@@ -143,41 +120,4 @@ internal fun DiscoverTab(
             }
         }
     }
-}
-
-@Composable
-internal fun EventSearchBar(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    TextField(
-        value = query,
-        onValueChange = onQueryChange,
-        modifier = modifier,
-        placeholder = {
-            Text(
-                "Search...",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-            )
-        },
-        leadingIcon = {
-            Icon(
-                imageVector = EkhoIcons.Search,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp),
-            )
-        },
-        singleLine = true,
-        shape = RoundedCornerShape(12.dp),
-        colors = TextFieldDefaults.colors(
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            focusedIndicatorColor = Color.Transparent,
-            unfocusedIndicatorColor = Color.Transparent,
-        ),
-        textStyle = MaterialTheme.typography.bodyMedium,
-    )
 }

@@ -1,4 +1,4 @@
-package com.ekhonavigator.feature.schedule.component
+package com.ekhonavigator.feature.event.component
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,27 +28,27 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.EventCategory
-import com.ekhonavigator.core.model.ScheduleSourceType
+import com.ekhonavigator.core.model.EventSourceType
 
 /**
- * Maps a [ScheduleSourceType] to its (accent, onAccent) color pair from the theme.
+ * Maps a [EventSourceType] to its (accent, onAccent) color pair from the theme.
  */
 internal fun sourceTypeThemeColors(
-    type: ScheduleSourceType,
+    type: EventSourceType,
     colors: androidx.compose.material3.ColorScheme,
 ): Pair<Color, Color> = when (type) {
-    ScheduleSourceType.SCHEDULE -> colors.primary to colors.onPrimary
-    ScheduleSourceType.CUSTOM -> colors.secondary to colors.onSecondary
-    ScheduleSourceType.CAMPUS -> colors.onSurfaceVariant to colors.onSurface
-    ScheduleSourceType.BOOKMARKED -> colors.tertiary to colors.onTertiary
+    EventSourceType.SCHEDULE -> colors.primary to colors.onPrimary
+    EventSourceType.CUSTOM -> colors.secondary to colors.onSecondary
+    EventSourceType.CAMPUS -> colors.onSurfaceVariant to colors.onSurface
+    EventSourceType.BOOKMARKED -> colors.tertiary to colors.onTertiary
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun FilterSheetContent(
-    activeSourceTypes: Set<ScheduleSourceType>,
+    activeSourceTypes: Set<EventSourceType>,
     selectedCategories: Set<EventCategory>,
-    onToggleSourceType: (ScheduleSourceType) -> Unit,
+    onToggleSourceType: (EventSourceType) -> Unit,
     onToggleCategory: (EventCategory) -> Unit,
     onClearCategories: () -> Unit,
     modifier: Modifier = Modifier,
@@ -72,9 +72,9 @@ fun FilterSheetContent(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // SCHEDULE excluded until class schedule import is implemented
-            ScheduleSourceType.entries
-                .filter { it != ScheduleSourceType.SCHEDULE }
+            // SCHEDULE excluded until class calendar import is implemented
+            EventSourceType.entries
+                .filter { it != EventSourceType.SCHEDULE }
                 .forEach { type ->
                     val isActive = type in activeSourceTypes
                     val (accentColor, _) = sourceTypeThemeColors(type, colors)
@@ -82,7 +82,7 @@ fun FilterSheetContent(
                     FilterChip(
                         selected = isActive,
                         onClick = { onToggleSourceType(type) },
-                        leadingIcon = if (isActive && type != ScheduleSourceType.BOOKMARKED) {
+                        leadingIcon = if (isActive && type != EventSourceType.BOOKMARKED) {
                             {
                                 Box(
                                     Modifier
@@ -95,7 +95,7 @@ fun FilterSheetContent(
                             null
                         },
                         label = {
-                            if (type == ScheduleSourceType.BOOKMARKED) {
+                            if (type == EventSourceType.BOOKMARKED) {
                                 Icon(
                                     imageVector = EkhoIcons.Bookmark,
                                     contentDescription = "Bookmarked",
@@ -111,7 +111,7 @@ fun FilterSheetContent(
                         },
                         modifier = Modifier
                             .then(
-                                if (type != ScheduleSourceType.BOOKMARKED) Modifier.weight(1f)
+                                if (type != EventSourceType.BOOKMARKED) Modifier.weight(1f)
                                 else Modifier,
                             )
                             .height(36.dp),

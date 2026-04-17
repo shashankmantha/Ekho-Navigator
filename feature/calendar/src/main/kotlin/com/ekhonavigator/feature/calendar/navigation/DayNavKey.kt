@@ -1,8 +1,8 @@
-package com.ekhonavigator.feature.schedule.navigation
+package com.ekhonavigator.feature.calendar.navigation
 
 import androidx.navigation3.runtime.NavKey
 import com.ekhonavigator.core.model.EventCategory
-import com.ekhonavigator.core.model.ScheduleSourceType
+import com.ekhonavigator.core.model.EventSourceType
 import com.ekhonavigator.core.navigation.Navigator
 import kotlinx.serialization.Serializable
 
@@ -23,7 +23,7 @@ data class DayNavKey(
 
 fun Navigator.navigateToDay(
     epochDay: Long,
-    sourceTypes: Set<ScheduleSourceType> = emptySet(),
+    sourceTypes: Set<EventSourceType> = emptySet(),
     categories: Set<EventCategory> = emptySet(),
 ) {
     navigate(

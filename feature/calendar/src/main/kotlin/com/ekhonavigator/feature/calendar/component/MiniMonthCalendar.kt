@@ -1,4 +1,4 @@
-package com.ekhonavigator.feature.schedule.component
+package com.ekhonavigator.feature.calendar.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,7 +26,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.ekhonavigator.core.model.ScheduleSourceType
+import com.ekhonavigator.core.model.EventSourceType
 import com.kizitonwose.calendar.compose.HorizontalCalendar
 import com.kizitonwose.calendar.compose.rememberCalendarState
 import com.kizitonwose.calendar.core.CalendarDay
@@ -35,7 +35,6 @@ import com.kizitonwose.calendar.core.OutDateStyle
 import com.kizitonwose.calendar.core.daysOfWeek
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
-import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.TextStyle
@@ -44,13 +43,13 @@ import java.util.Locale
 /**
  * Compact horizontal-swipe month calendar for day/week navigation.
  * Shows small date numbers with colored dots for days that have events,
- * colored by [ScheduleSourceType]. Tapping a day fires [onDayClick].
+ * colored by [EventSourceType]. Tapping a day fires [onDayClick].
  * Includes a scrollable month tab row at the bottom.
  */
 @Composable
 fun MiniMonthCalendar(
     selectedDate: LocalDate,
-    daySourceTypes: Map<LocalDate, Set<ScheduleSourceType>>,
+    daySourceTypes: Map<LocalDate, Set<EventSourceType>>,
     onDayClick: (LocalDate) -> Unit,
     onMonthChanged: (YearMonth) -> Unit,
     modifier: Modifier = Modifier,
@@ -129,14 +128,14 @@ fun MiniMonthCalendar(
 }
 
 /**
- * Maps a [ScheduleSourceType] to its dot color from the current theme.
+ * Maps a [EventSourceType] to its dot color from the current theme.
  */
 @Composable
-private fun dotColorForSourceType(type: ScheduleSourceType): Color = when (type) {
-    ScheduleSourceType.SCHEDULE -> MaterialTheme.colorScheme.primary
-    ScheduleSourceType.CUSTOM -> MaterialTheme.colorScheme.secondary
-    ScheduleSourceType.CAMPUS -> MaterialTheme.colorScheme.onSurfaceVariant
-    ScheduleSourceType.BOOKMARKED -> MaterialTheme.colorScheme.tertiary
+private fun dotColorForSourceType(type: EventSourceType): Color = when (type) {
+    EventSourceType.SCHEDULE -> MaterialTheme.colorScheme.primary
+    EventSourceType.CUSTOM -> MaterialTheme.colorScheme.secondary
+    EventSourceType.CAMPUS -> MaterialTheme.colorScheme.onSurfaceVariant
+    EventSourceType.BOOKMARKED -> MaterialTheme.colorScheme.tertiary
 }
 
 @Composable
@@ -144,7 +143,7 @@ private fun MiniDayCell(
     day: CalendarDay,
     isToday: Boolean,
     isSelected: Boolean,
-    sourceTypes: Set<ScheduleSourceType>,
+    sourceTypes: Set<EventSourceType>,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {

@@ -1,12 +1,6 @@
 package com.ekhonavigator.core.model
 
-/**
- * Source types for the Schedule tab's multi-select filter chips.
- * Each maps to one or more [EventSource] values and/or bookmark state.
- *
- * Colors are NOT stored here — they live in the UI layer via MaterialTheme.
- */
-enum class ScheduleSourceType(val displayName: String) {
+enum class EventSourceType(val displayName: String) {
     /** Class schedule events imported via ICS. */
     SCHEDULE("Schedule"),
 

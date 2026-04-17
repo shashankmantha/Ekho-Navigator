@@ -1,4 +1,4 @@
-package com.ekhonavigator.feature.schedule.component
+package com.ekhonavigator.feature.calendar.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -63,12 +63,12 @@ fun DayContent(
     }
 
     // Source-type pill colors from the theme
-    val schedulePillColor = MaterialTheme.colorScheme.primary
+    val calendarPillColor = MaterialTheme.colorScheme.primary
     val customPillColor = MaterialTheme.colorScheme.secondary
     val campusMutedPillColor = MaterialTheme.colorScheme.surfaceContainerHighest
     val campusBookmarkedPillColor = MaterialTheme.colorScheme.tertiary
 
-    val onSchedulePillColor = MaterialTheme.colorScheme.onPrimary
+    val onCalendarPillColor = MaterialTheme.colorScheme.onPrimary
     val onCustomPillColor = MaterialTheme.colorScheme.onSecondary
     val onCampusMutedPillColor = MaterialTheme.colorScheme.onSurfaceVariant
     val onCampusBookmarkedPillColor = MaterialTheme.colorScheme.onTertiary
@@ -126,11 +126,11 @@ fun DayContent(
                 visibleEvents.forEach { event ->
                     val (pillBg, pillText) = eventPillColors(
                         event = event,
-                        schedulePill = schedulePillColor,
+                        calendarPill = calendarPillColor,
                         customPill = customPillColor,
                         campusMutedPill = campusMutedPillColor,
                         campusBookmarkedPill = campusBookmarkedPillColor,
-                        onSchedule = onSchedulePillColor,
+                        onCalendar = onCalendarPillColor,
                         onCustom = onCustomPillColor,
                         onCampusMuted = onCampusMutedPillColor,
                         onCampusBookmarked = onCampusBookmarkedPillColor,
@@ -181,11 +181,11 @@ fun DayContent(
  */
 private fun eventPillColors(
     event: CalendarEvent,
-    schedulePill: Color,
+    calendarPill: Color,
     customPill: Color,
     campusMutedPill: Color,
     campusBookmarkedPill: Color,
-    onSchedule: Color,
+    onCalendar: Color,
     onCustom: Color,
     onCampusMuted: Color,
     onCampusBookmarked: Color,
@@ -198,6 +198,6 @@ private fun eventPillColors(
 
     event.source == EventSource.USER_CREATED || event.source == EventSource.SHARED ->
         customPill to onCustom
-    // CLASS_SCHEDULE (future) falls through to schedule accent
-    else -> schedulePill to onSchedule
+    // CLASS_SCHEDULE (future) falls through to calendar accent
+    else -> calendarPill to onCalendar
 }
