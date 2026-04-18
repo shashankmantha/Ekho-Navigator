@@ -21,6 +21,7 @@ data class CalendarEvent(
     val eventName: String = "",
     val organization: String = "",
     val eventType: String = "",
+    val placeId: String? = null,
 ) {
     val primaryCategory: EventCategory
         get() = categories.firstOrNull() ?: EventCategory.GENERAL

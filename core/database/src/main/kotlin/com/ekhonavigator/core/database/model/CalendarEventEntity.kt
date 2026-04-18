@@ -28,6 +28,7 @@ data class CalendarEventEntity(
     val eventName: String = "",
     val organization: String = "",
     val eventType: String = "",
+    val placeId: String? = null,
 )
 
 fun CalendarEventEntity.toDomainModel(
@@ -51,4 +52,5 @@ fun CalendarEventEntity.toDomainModel(
     eventName = eventName,
     organization = organization,
     eventType = eventType,
+    placeId = placeId,
 )

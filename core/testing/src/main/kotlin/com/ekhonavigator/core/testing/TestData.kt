@@ -49,6 +49,7 @@ fun testCalendarEvent(
     eventName: String = "",
     organization: String = "",
     eventType: String = "",
+    placeId: String? = null,
 ): CalendarEvent = CalendarEvent(
     id = id,
     title = title,
@@ -68,4 +69,5 @@ fun testCalendarEvent(
     eventName = eventName,
     organization = organization,
     eventType = eventType,
+    placeId = placeId,
 )

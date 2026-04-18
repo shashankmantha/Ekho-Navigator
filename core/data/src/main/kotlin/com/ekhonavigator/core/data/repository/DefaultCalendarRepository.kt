@@ -2,6 +2,7 @@ package com.ekhonavigator.core.data.repository
 
 import com.ekhonavigator.core.data.auth.AuthRepository
 import com.ekhonavigator.core.data.model.toEntity
+import com.ekhonavigator.core.data.place.PlaceRepository
 import com.ekhonavigator.core.data.sync.DailyEventNotificationManager
 import com.ekhonavigator.core.data.util.SyncResult
 import com.ekhonavigator.core.database.dao.CalendarEventDao
@@ -32,6 +33,7 @@ class DefaultCalendarRepository @Inject constructor(
     private val iCalFeedDataSource: ICalFeedDataSource,
     private val authRepository: AuthRepository,
     private val dailyEventNotificationManager: DailyEventNotificationManager,
+    private val placeRepository: PlaceRepository,
 ) : CalendarRepository {
 
     private val firestore = FirebaseFirestore.getInstance()
@@ -168,12 +170,12 @@ class DefaultCalendarRepository @Inject constructor(
             val networkEvents = iCalFeedDataSource.fetchEvents(feedUrl)
             val syncTime = Instant.now()
 
-            // Preserve bookmark status for events that already exist locally
             val entities = networkEvents.map { networkEvent ->
                 val existing = calendarEventDao.getEventById(networkEvent.uid)
                 networkEvent.toEntity(
                     existingBookmark = existing?.isBookmarked ?: false,
                     syncedAt = syncTime,
+                    placeId = placeRepository.resolveFromText(networkEvent.location),
                 )
             }
 
