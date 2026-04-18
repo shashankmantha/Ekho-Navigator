@@ -58,8 +58,9 @@ val STUDY = TopLevelNavItem(
 val TOP_LEVEL_NAV_ITEMS: Map<NavKey, TopLevelNavItem> = mapOf(
     HomeNavKey to HOME,
     CalendarNavKey to CALENDAR,
-    DiscoverNavKey() to DISCOVER,         // data class (not object) so a locationQuery can be passed in from the map
+    DiscoverNavKey() to DISCOVER,
     SocialNavKey to SOCIAL,
     MapNavKey to MAP,
     StudyNavKey to STUDY,
+    MapNavKey() to MAP,
 )

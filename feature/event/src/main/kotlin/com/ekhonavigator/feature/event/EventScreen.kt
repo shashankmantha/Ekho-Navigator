@@ -4,6 +4,7 @@ import android.text.Html
 import android.text.method.LinkMovementMethod
 import android.widget.TextView
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -75,6 +76,7 @@ import java.util.Locale
 fun EventScreen(
     eventId: String,
     onBack: () -> Unit = {},
+    onLocationClick: (placeId: String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: EventDetailViewModel = hiltViewModel(
         checkNotNull(
@@ -125,6 +127,7 @@ fun EventScreen(
             currentUserRsvp = currentUserRsvp,
             attendees = attendees,
             onRsvp = viewModel::rsvp,
+            onLocationClick = onLocationClick,
             modifier = modifier,
         )
     }
@@ -143,6 +146,7 @@ private fun EventDetailContent(
     currentUserRsvp: RsvpStatus? = null,
     attendees: List<EventAttendee> = emptyList(),
     onRsvp: (RsvpStatus) -> Unit = {},
+    onLocationClick: (placeId: String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val zone = remember { ZoneId.systemDefault() }
@@ -208,7 +212,11 @@ private fun EventDetailContent(
             MetaTextRow(label = "HOSTED BY", value = event.organization.prettifyAllCaps())
         }
         if (event.location.isNotBlank()) {
-            MetaTextRow(label = "WHERE", value = event.location)
+            MetaTextRow(
+                label = "WHERE",
+                value = event.location,
+                onClick = event.placeId?.let { placeId -> { onLocationClick(placeId) } },
+            )
         }
         if (event.status != "CONFIRMED") {
             MetaTextRow(
@@ -564,9 +572,21 @@ private fun MetaTextRow(
     label: String,
     value: String,
     monoValue: Boolean = false,
+    onClick: (() -> Unit)? = null,
 ) {
+    val rowModifier = Modifier
+        .fillMaxWidth()
+        .then(
+            if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
+        )
+        .padding(vertical = 5.dp)
+    val valueColor = if (onClick != null) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
     Row(
-        modifier = Modifier.padding(vertical = 5.dp),
+        modifier = rowModifier,
         verticalAlignment = Alignment.Top,
     ) {
         MetaLabel(label, Modifier.width(MetaLabelWidth).padding(top = 2.dp))
@@ -580,7 +600,7 @@ private fun MetaTextRow(
             } else {
                 MaterialTheme.typography.bodyMedium
             },
-            color = MaterialTheme.colorScheme.onSurface,
+            color = valueColor,
         )
     }
 }

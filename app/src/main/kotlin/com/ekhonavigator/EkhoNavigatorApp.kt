@@ -221,6 +221,7 @@ fun EkhoNavigatorApp(
                                         )
                                     )
                                 }
+                                focusPlaceId = key.focusPlaceId,
                             )
                         }
                     }
@@ -296,6 +297,9 @@ fun EkhoNavigatorApp(
                                 // so the standard back button is not enough here
                                 // normally the top nav bar handles all back functionality
                                 onBack = navigator::goBack,
+                                onLocationClick = { placeId ->
+                                    navigator.navigateAsDetour(MapNavKey(focusPlaceId = placeId))
+                                },
                             )
                         }
                     }

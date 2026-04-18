@@ -145,14 +145,31 @@ fun MapScreen(
     onEventClick: (String) -> Unit,
     onOpenDiscoverForLocation: (String) -> Unit,
     onShareLocationToChat: (friendId: String, friendName: String, SharedLocation) -> Unit,
+    focusPlaceId: String? = null,
     modifier: Modifier = Modifier,
     viewModel: MapViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val csuciCenter = LatLng(34.162134342787105, -119.04400892418893)
 
+    val focusedPlace = remember(focusPlaceId) {
+        focusPlaceId?.let { id -> CampusPlacesData.places.firstOrNull { it.id == id } }
+    }
+
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(csuciCenter, 15f)
+    }
+
+    var isMapLoaded by remember { mutableStateOf(false) }
+
+    // Animate (not initial position) — contentPadding is only honored on CameraUpdate moves.
+    // Gate on isMapLoaded to avoid the world-view flash from racing the SDK's map init.
+    LaunchedEffect(focusPlaceId, isMapLoaded) {
+        if (focusedPlace != null && isMapLoaded) {
+            cameraPositionState.animate(
+                CameraUpdateFactory.newLatLngZoom(focusedPlace.position, 17f),
+            )
+        }
     }
 
     var selectedCampusPlace by remember { mutableStateOf<CampusPlace?>(null) }
@@ -188,9 +205,11 @@ fun MapScreen(
     val campusPlaces = remember { CampusPlacesData.places }
 
     var searchText by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf(PlaceCategory.BUILDINGS) }
+    var selectedCategory by remember {
+        mutableStateOf(focusedPlace?.category ?: PlaceCategory.BUILDINGS)
+    }
     var isPanelExpanded by remember { mutableStateOf(true) }
-    var showFilterTip by remember { mutableStateOf(true) }
+    var showFilterTip by remember { mutableStateOf(focusPlaceId == null) }
 
     val mapPaddingForInfoCards by remember(isPanelExpanded, showFilterTip, selectedCategory) {
         derivedStateOf {
@@ -253,7 +272,8 @@ fun MapScreen(
             ),
             onMapLongClick = { latLng ->
                 viewModel.addMarker(latLng)
-            }
+            },
+            onMapLoaded = { isMapLoaded = true },
         ) {
             key("csuci-main") {
                 Marker(
@@ -266,10 +286,15 @@ fun MapScreen(
             if (zoomRevealsCampusMarkers || searchText.isNotBlank()) {
                 visiblePlaces.forEach { place ->
                     key("campus-place-${place.name}") {
+                        val markerState = rememberMarkerState(position = place.position)
+                        if (place.id == focusPlaceId) {
+                            LaunchedEffect(focusPlaceId) {
+                                markerState.showInfoWindow()
+                            }
+                        }
                         MarkerInfoWindowContent(
-                            state = rememberMarkerState(position = place.position),
+                            state = markerState,
                             onInfoWindowClick = {
-
                                 selectedCampusPlace = place
                             }
                         ) {

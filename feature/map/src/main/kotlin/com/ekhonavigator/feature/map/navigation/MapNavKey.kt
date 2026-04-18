@@ -4,5 +4,4 @@ import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 
 @Serializable
-object MapNavKey : NavKey
-
+data class MapNavKey(val focusPlaceId: String? = null) : NavKey
