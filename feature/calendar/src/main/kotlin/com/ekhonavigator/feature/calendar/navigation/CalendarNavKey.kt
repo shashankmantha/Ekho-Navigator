@@ -1,8 +1,7 @@
-package com.ekhonavigator.feature.map.navigation
+package com.ekhonavigator.feature.calendar.navigation
 
 import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 
 @Serializable
-object MapNavKey : NavKey
-
+object CalendarNavKey : NavKey

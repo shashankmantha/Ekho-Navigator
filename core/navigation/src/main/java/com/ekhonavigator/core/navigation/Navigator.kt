@@ -32,8 +32,11 @@ class Navigator(val state: NavigationState) {
      */
     fun navigate(key: NavKey) {
         when (key) {
-            state.currentTopLevelKey -> clearSubStack()
-            in state.topLevelKeys -> goToTopLevel(key)
+            in state.topLevelKeys -> {
+                goToTopLevel(key)
+                // Always reset the tab to its root when selected from the Bottom Bar
+                clearSubStack()
+            }
             else -> goToKey(key)
         }
     }
