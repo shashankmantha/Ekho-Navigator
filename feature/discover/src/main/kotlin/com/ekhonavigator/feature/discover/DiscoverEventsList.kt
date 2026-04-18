@@ -60,9 +60,9 @@ internal fun DiscoverEventsList(
             ) {
                 Text(
                     text = if (searchQuery.isNotBlank() || selectedCategories.isNotEmpty()) {
-                        "No matching pulses"
+                        "No matching events"
                     } else {
-                        "Campus is quiet..."
+                        "No scheduled events"
                     },
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
