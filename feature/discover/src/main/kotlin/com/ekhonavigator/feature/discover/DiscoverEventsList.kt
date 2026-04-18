@@ -28,6 +28,7 @@ import com.ekhonavigator.core.designsystem.component.EkhoSectionHeader
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventSource
 import com.ekhonavigator.core.model.RsvpStatus
+import com.ekhonavigator.core.model.prettifyAllCaps
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -122,7 +123,7 @@ internal fun DiscoverEventsList(
                             monograms = event.categories.map { it.monogram },
                             state = event.toRowState(),
                             isPending = event.myRsvpStatus == RsvpStatus.PENDING,
-                            organization = event.organization,
+                            organization = event.organization.prettifyAllCaps(),
                             onClick = { onEventClick(event.id) },
                             onBookmarkClick = { viewModel.toggleBookmark(event.id) },
                         )

@@ -37,6 +37,7 @@ import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventSource
 import com.ekhonavigator.core.model.RsvpStatus
+import com.ekhonavigator.core.model.prettifyAllCaps
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -183,7 +184,7 @@ fun HomeScreen(
                         monograms = event.categories.map { it.monogram },
                         state = event.toRowState(),
                         isPending = event.myRsvpStatus == RsvpStatus.PENDING,
-                        organization = event.organization,
+                        organization = event.organization.prettifyAllCaps(),
                         onClick = { onEventClick(event.id) },
                         onBookmarkClick = { viewModel.toggleBookmark(event.id) },
                     )

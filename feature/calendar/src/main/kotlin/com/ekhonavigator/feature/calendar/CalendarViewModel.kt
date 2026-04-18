@@ -55,7 +55,7 @@ class CalendarViewModel @Inject constructor(
     /** Multi-select source filter: all types active by default. */
     // calendar excluded until class calendar import is implemented
     private val _activeSourceTypes = MutableStateFlow(
-        EventSourceType.entries.toSet() - EventSourceType.SCHEDULE,
+        EventSourceType.entries.toSet() - EventSourceType.SCHEDULE - EventSourceType.CAMPUS,
     )
     val activeSourceTypes: StateFlow<Set<EventSourceType>> = _activeSourceTypes.asStateFlow()
 
