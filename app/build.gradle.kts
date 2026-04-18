@@ -77,6 +77,7 @@ dependencies {
     implementation(projects.feature.discover)
     implementation(projects.feature.social)
     implementation(projects.feature.map)
+    implementation(projects.feature.study)
 
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.navigation3.runtime)

@@ -73,7 +73,7 @@ fun AccountScreen(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = "Loading...",
+                        text = stringResource(R.string.account_loading),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
@@ -122,7 +122,7 @@ fun AccountScreen(
                                 Spacer(modifier = Modifier.height(20.dp))
 
                                 Text(
-                                    text = "Welcome to Ekho Navigator",
+                                    text = stringResource(R.string.account_welcome_title),
                                     style = MaterialTheme.typography.headlineSmall,
                                     fontWeight = FontWeight.Bold,
                                     textAlign = TextAlign.Center,
@@ -131,7 +131,7 @@ fun AccountScreen(
                                 Spacer(modifier = Modifier.height(8.dp))
 
                                 Text(
-                                    text = "Sign in to have full access to all features.",
+                                    text = stringResource(R.string.account_welcome_subtitle),
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     textAlign = TextAlign.Center,
@@ -152,7 +152,7 @@ fun AccountScreen(
                                     ),
                                 ) {
                                     Text(
-                                        text = "Sign in with Google",
+                                        text = stringResource(R.string.account_sign_in_google),
                                         style = MaterialTheme.typography.labelLarge,
                                     )
                                 }
@@ -160,7 +160,7 @@ fun AccountScreen(
                                 Spacer(modifier = Modifier.height(12.dp))
 
                                 Text(
-                                    text = "You can sign in later from your account settings.",
+                                    text = stringResource(R.string.account_sign_in_later_info),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = Color.Gray,
                                     textAlign = TextAlign.Center,
@@ -222,9 +222,11 @@ fun AccountScreen(
                         )
 
                         scope.launch {
+                            val savedSuccessMessage = context.getString(R.string.account_save_success)
+                            val undoLabel = context.getString(R.string.account_undo)
                             val result = snackbarHostState.showSnackbar(
-                                message = "Saved successfully",
-                                actionLabel = "Undo",
+                                message = savedSuccessMessage,
+                                actionLabel = undoLabel,
                                 duration = SnackbarDuration.Long,
                             )
 
