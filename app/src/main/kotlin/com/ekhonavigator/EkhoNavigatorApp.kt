@@ -86,7 +86,7 @@ fun EkhoNavigatorApp(
     val topLevelDestination =
         TOP_LEVEL_NAV_ITEMS.entries.find { (key, _) -> key::class == currentKey::class }?.value
     val isTopLevelDestination = topLevelDestination != null
-    val isPureDestination = TOP_LEVEL_NAV_ITEMS.containsKey(currentKey)
+    val isDefaultTopLevel = TOP_LEVEL_NAV_ITEMS.containsKey(currentKey)
 
     val topAppBarState = rememberTopAppBarState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(topAppBarState)
@@ -104,12 +104,11 @@ fun EkhoNavigatorApp(
             EkhoTopAppBar(
                 titleRes = titleRes,
                 scrollBehavior = scrollBehavior,
-                navigationIcon = if (isPureDestination) null else EkhoIcons.ArrowBack,
+                navigationIcon = if (isDefaultTopLevel) null else EkhoIcons.ArrowBack,
                 actionIcon = EkhoIcons.AccountCircle,
-                secondaryActionIcon = EkhoIcons.Settings,
-                navigationIconContentDescription = if (isPureDestination) null else "Back",
+                navigationIconContentDescription = if (isDefaultTopLevel) null else "Back",
                 onNavigationClick = {
-                    if (!isPureDestination) {
+                    if (!isDefaultTopLevel) {
                         navigator.goBack()
                     }
                 },
