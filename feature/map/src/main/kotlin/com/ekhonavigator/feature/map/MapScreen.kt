@@ -143,8 +143,8 @@ fun MapLocationControls(
 @Composable
 fun MapScreen(
     onEventClick: (String) -> Unit,
-    onOpenDiscoverForLocation: (String) -> Unit,
     onShareLocationToChat: (friendId: String, friendName: String, SharedLocation) -> Unit,
+    onOpenDiscoverForPlace: (placeId: String) -> Unit,
     focusPlaceId: String? = null,
     modifier: Modifier = Modifier,
     viewModel: MapViewModel = hiltViewModel()
@@ -552,9 +552,9 @@ fun MapScreen(
             CampusPlaceDetailCard(
                 place = place,
                 onDismiss = { selectedCampusPlace = null },
-                onViewLocationEvents = { selectedLocationName ->
+                onViewLocationEvents = {
                     selectedCampusPlace = null
-                    onOpenDiscoverForLocation(selectedLocationName)
+                    onOpenDiscoverForPlace(place.id)
                 }
             )
         }

@@ -34,8 +34,8 @@ class Navigator(val state: NavigationState) {
         when (key) {
             in state.topLevelKeys -> {
                 goToTopLevel(key)
-                // Always reset the tab to its root when selected from the Bottom Bar
-                clearSubStack()
+                // Reset the root — a prior navigateAsTabSwitch may have parameterized it.
+                resetSubStack(key)
             }
             else -> goToKey(key)
         }
@@ -91,12 +91,10 @@ class Navigator(val state: NavigationState) {
         }
     }
 
-    /**
-     * Clearing all but the root key in the current substack.
-     */
-    private fun clearSubStack() {
-        state.currentSubStack.run {
-            if (size > 1) subList(1, size).clear()
+    private fun resetSubStack(rootKey: NavKey) {
+        state.subStacks.getValue(rootKey).apply {
+            clear()
+            add(rootKey)
         }
     }
 }

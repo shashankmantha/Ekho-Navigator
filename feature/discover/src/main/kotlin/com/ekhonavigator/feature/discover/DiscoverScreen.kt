@@ -20,6 +20,8 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
+import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -46,6 +48,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSourceType
+import com.ekhonavigator.core.model.Place
 import com.ekhonavigator.feature.event.component.FilterSheetContent
 import kotlinx.coroutines.launch
 
@@ -54,34 +57,33 @@ fun DiscoverScreen(
     onEventClick: (String) -> Unit,
     onDayClick: (Long, Set<EventSourceType>, Set<EventCategory>) -> Unit,
     onCreateEventClick: (Long?) -> Unit = {},
-    onSettingsClick: () -> Unit = {},
-    initialLocationFilter: String? = null,
+    focusPlaceId: String? = null,
+    initialTab: DiscoverTab = DiscoverTab.EVENTS,
     modifier: Modifier = Modifier,
     viewModel: DiscoverViewModel = hiltViewModel(),
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
-    var selectedTab by rememberSaveable { mutableStateOf(DiscoverTab.EVENTS) }
+    var selectedTab by rememberSaveable { mutableStateOf(initialTab) }
 
     var showFilterSheet by remember { mutableStateOf(false) }
     val filterSheetState = rememberModalBottomSheetState()
     val activeSourceTypes by viewModel.activeSourceTypes.collectAsStateWithLifecycle()
     val selectedCategories by viewModel.selectedCategories.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val focusedPlace by viewModel.focusedPlace.collectAsStateWithLifecycle()
 
     val onDayHeaderClick: (Long) -> Unit = { epochDay ->
         onDayClick(epochDay, activeSourceTypes, selectedCategories)
     }
 
-    LaunchedEffect(initialLocationFilter) {
-        initialLocationFilter?.takeIf { it.isNotBlank() }?.let { selectedLocationName ->
-            viewModel.setSearchQuery(selectedLocationName)
-        }
+    LaunchedEffect(focusPlaceId) {
+        viewModel.setFocusedPlaceId(focusPlaceId)
     }
 
     Scaffold(
-        modifier = modifier,
+        modifier,
         floatingActionButton = {
             if (selectedTab == DiscoverTab.EVENTS) {
                 Column(
@@ -117,9 +119,11 @@ fun DiscoverScreen(
                 }
             }
         },
-    ) {
+    ) { paddingValues ->
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
         ) {
             DiscoverTabStrip(
                 selected = selectedTab,
@@ -137,6 +141,8 @@ fun DiscoverScreen(
                     searchQuery = searchQuery,
                     activeSourceTypes = activeSourceTypes,
                     selectedCategories = selectedCategories,
+                    focusedPlace = focusedPlace,
+                    onClearFocusedPlace = { viewModel.setFocusedPlaceId(null) },
                     onOpenFilters = { showFilterSheet = true },
                     onEventClick = onEventClick,
                     onDayClick = onDayHeaderClick,
@@ -210,6 +216,8 @@ private fun EventsTabContent(
     searchQuery: String,
     activeSourceTypes: Set<EventSourceType>,
     selectedCategories: Set<EventCategory>,
+    focusedPlace: Place?,
+    onClearFocusedPlace: () -> Unit,
     onOpenFilters: () -> Unit,
     onEventClick: (String) -> Unit,
     onDayClick: (Long) -> Unit,
@@ -253,12 +261,53 @@ private fun EventsTabContent(
         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
     )
 
+    focusedPlace?.let { place ->
+        FocusedPlaceChip(
+            place = place,
+            onClear = onClearFocusedPlace,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+    }
+
     DiscoverEventsList(
         viewModel = viewModel,
         onEventClick = onEventClick,
         onDayClick = onDayClick,
         listState = listState,
         modifier = Modifier.fillMaxSize(),
+    )
+}
+
+@Composable
+private fun FocusedPlaceChip(
+    place: Place,
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    InputChip(
+        selected = true,
+        onClick = onClear,
+        label = { Text(place.name) },
+        leadingIcon = {
+            Icon(
+                imageVector = EkhoIcons.Place,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+            )
+        },
+        trailingIcon = {
+            Icon(
+                imageVector = EkhoIcons.Close,
+                contentDescription = "Clear location filter",
+                modifier = Modifier.size(18.dp),
+            )
+        },
+        colors = InputChipDefaults.inputChipColors(
+            selectedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            selectedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            selectedTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        ),
+        modifier = modifier,
     )
 }
 
