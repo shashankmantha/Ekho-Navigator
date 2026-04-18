@@ -43,4 +43,6 @@ dependencies {
     ksp(libs.hilt.compiler)
 
     implementation(libs.room.ktx)
+
+    testImplementation(libs.junit)
 }
