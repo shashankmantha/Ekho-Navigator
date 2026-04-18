@@ -18,6 +18,9 @@ data class CalendarEvent(
     val ownerUid: String? = null,
     val pendingSync: Boolean = false,
     val myRsvpStatus: RsvpStatus? = null,
+    val eventName: String = "",
+    val organization: String = "",
+    val eventType: String = "",
 ) {
     val primaryCategory: EventCategory
         get() = categories.firstOrNull() ?: EventCategory.GENERAL

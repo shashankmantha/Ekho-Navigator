@@ -11,8 +11,11 @@ import java.time.Instant
 data class NetworkCalendarEvent(
     val uid: String,
     val summary: String,
+    val eventName: String,
     val description: String,
     val location: String,
+    val organization: String,
+    val eventType: String,
     val dtStart: Instant,
     val dtEnd: Instant,
     val categories: List<EventCategory>,

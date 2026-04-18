@@ -27,6 +27,9 @@ fun NetworkCalendarEvent.toEntity(
     status = status,
     isBookmarked = existingBookmark,
     lastSyncedAt = syncedAt,
+    eventName = eventName,
+    organization = organization,
+    eventType = eventType,
 )
 
 /**
@@ -51,6 +54,9 @@ fun CalendarEvent.toCustomEventEntity(
     source = EventSource.USER_CREATED,
     ownerUid = ownerUid,
     pendingSync = true,
+    eventName = eventName,
+    organization = organization,
+    eventType = eventType,
 )
 
 /**
@@ -91,5 +97,8 @@ fun firestoreDocToEntity(
         source = source,
         ownerUid = doc.getString("ownerUid"),
         pendingSync = false,
+        eventName = doc.getString("eventName") ?: "",
+        organization = doc.getString("organization") ?: "",
+        eventType = doc.getString("eventType") ?: "",
     )
 }

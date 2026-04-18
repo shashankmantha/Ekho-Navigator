@@ -7,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import net.fortuna.ical4j.data.CalendarBuilder
 import net.fortuna.ical4j.model.Component
+import net.fortuna.ical4j.model.Parameter
 import net.fortuna.ical4j.model.Property
 import net.fortuna.ical4j.model.component.VEvent
 import net.fortuna.ical4j.model.property.Description
@@ -17,6 +18,7 @@ import net.fortuna.ical4j.model.property.Status
 import net.fortuna.ical4j.model.property.Summary
 import net.fortuna.ical4j.model.property.Uid
 import net.fortuna.ical4j.model.property.Url
+import net.fortuna.ical4j.model.property.XProperty
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.StringReader
@@ -118,18 +120,17 @@ class ICalFeedDataSource @Inject constructor(
         //   X-TRUMBA-CUSTOMFIELD;NAME="Categories";ID=23227;TYPE=Enumeration:Staff
         // Multi-category events use escaped commas in the raw .ics (\,) which iCal4j
         // unescapes to regular commas, e.g. "Student Organizations, University Life, Alumni"
-        val categories = event.getProperties<net.fortuna.ical4j.model.property.XProperty>(
-            "X-TRUMBA-CUSTOMFIELD",
-        ).filter { prop ->
-            prop.getParameter<net.fortuna.ical4j.model.Parameter>("NAME")
-                ?.orElse(null)?.value == "Categories"
-        }.flatMap { prop ->
-            // Values may contain HTML entities (e.g. "Academics &amp; Research")
-            // so decode before matching against our enum.
-            prop.value.split(",").map { decodeHtmlEntities(it) }
-                .map { EventCategory.fromTrumbaCategory(it) }
-        }.distinct()
+        val categories = event.getProperties<XProperty>("X-TRUMBA-CUSTOMFIELD")
+            .filter { it.getParameter<Parameter>("NAME")?.orElse(null)?.value == "Categories" }
+            .flatMap { prop ->
+                prop.value.split(",").map { decodeHtmlEntities(it) }
+                    .map { EventCategory.fromTrumbaCategory(it) }
+            }.distinct()
             .ifEmpty { listOf(EventCategory.GENERAL) }
+
+        val eventName = event.trumbaCustomField("Event Name")
+        val organization = event.trumbaCustomField("Organization")
+        val eventType = event.trumbaCustomField("Event Type")
 
         val url = event.getProperty<Url>(Property.URL).orElse(null)?.value.orEmpty()
         val status = event.getProperty<Status>(Property.STATUS).orElse(null)?.value ?: "CONFIRMED"
@@ -137,8 +138,11 @@ class ICalFeedDataSource @Inject constructor(
         return NetworkCalendarEvent(
             uid = uid,
             summary = summary,
+            eventName = eventName,
             description = description,
             location = location,
+            organization = organization,
+            eventType = eventType,
             dtStart = dtStart,
             dtEnd = dtEnd,
             categories = categories,
@@ -146,6 +150,18 @@ class ICalFeedDataSource @Inject constructor(
             status = status,
         )
     }
+
+    /**
+     * Pulls a single-value X-TRUMBA-CUSTOMFIELD by its NAME parameter. Returns empty
+     * when missing — keeps the data pipeline faithful without pushing nulls through
+     * the downstream layers.
+     */
+    private fun VEvent.trumbaCustomField(name: String): String =
+        getProperties<XProperty>("X-TRUMBA-CUSTOMFIELD")
+            .firstOrNull { it.getParameter<Parameter>("NAME")?.orElse(null)?.value == name }
+            ?.value
+            ?.let { decodeHtmlEntities(it) }
+            ?: ""
 
     /**
      * iCal4j can return different Temporal types depending on how the .ics

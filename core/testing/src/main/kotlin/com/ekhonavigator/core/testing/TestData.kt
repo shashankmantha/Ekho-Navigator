@@ -46,6 +46,9 @@ fun testCalendarEvent(
     ownerUid: String? = null,
     pendingSync: Boolean = false,
     myRsvpStatus: RsvpStatus? = null,
+    eventName: String = "",
+    organization: String = "",
+    eventType: String = "",
 ): CalendarEvent = CalendarEvent(
     id = id,
     title = title,
@@ -62,4 +65,7 @@ fun testCalendarEvent(
     ownerUid = ownerUid,
     pendingSync = pendingSync,
     myRsvpStatus = myRsvpStatus,
+    eventName = eventName,
+    organization = organization,
+    eventType = eventType,
 )
