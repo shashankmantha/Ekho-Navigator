@@ -59,6 +59,7 @@ fun EkhoEventRow(
     onBookmarkClick: () -> Unit,
     modifier: Modifier = Modifier,
     isPending: Boolean = false,
+    organization: String = "",
 ) {
     val accent = when (state) {
         EkhoEventRowState.NONE -> MaterialTheme.colorScheme.outlineVariant
@@ -85,15 +86,9 @@ fun EkhoEventRow(
         Spacer(Modifier.width(14.dp))
 
         Column(modifier = Modifier.weight(1f)) {
-            if (monograms.isNotEmpty() || isPending) {
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    monograms.take(5).forEach { EkhoMonogramBadge(monogram = it) }
-                    if (isPending) PendingChip()
-                }
-                Spacer(Modifier.height(4.dp))
+            if (organization.isNotBlank()) {
+                OrganizationByline(organization)
+                Spacer(Modifier.height(2.dp))
             }
 
             Text(
@@ -125,6 +120,19 @@ fun EkhoEventRow(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
+                }
+            }
+
+            val hasChips = monograms.isNotEmpty() || isPending
+            if (hasChips) {
+                Spacer(Modifier.height(6.dp))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    itemVerticalAlignment = Alignment.CenterVertically,
+                ) {
+                    monograms.take(5).forEach { EkhoMonogramBadge(monogram = it) }
+                    if (isPending) PendingChip()
                 }
             }
         }
@@ -247,6 +255,20 @@ private fun PendingChip() {
             color = error,
         )
     }
+}
+
+@Composable
+private fun OrganizationByline(organization: String) {
+    Text(
+        text = organization,
+        style = MaterialTheme.typography.labelSmall.copy(
+            fontSize = 10.sp,
+            letterSpacing = 0.04.em,
+        ),
+        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
 }
 
 @Composable

@@ -175,7 +175,7 @@ fun HomeScreen(
 
                 dayEvents.forEach { event ->
                     EkhoEventRow(
-                        title = event.title,
+                        title = event.eventName.ifEmpty { event.title },
                         startTime = event.startTime,
                         endTime = event.endTime,
                         zone = zone,
@@ -183,6 +183,7 @@ fun HomeScreen(
                         monograms = event.categories.map { it.monogram },
                         state = event.toRowState(),
                         isPending = event.myRsvpStatus == RsvpStatus.PENDING,
+                        organization = event.organization,
                         onClick = { onEventClick(event.id) },
                         onBookmarkClick = { viewModel.toggleBookmark(event.id) },
                     )
