@@ -42,6 +42,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -91,9 +94,13 @@ fun CreateEventScreen(
         OutlinedTextField(
             value = uiState.title,
             onValueChange = viewModel::setTitle,
-            label = { Text("Title") },
+            label = { RequiredLabel("Title") },
             placeholder = { Text("Study session, club meeting...") },
             singleLine = true,
+            isError = uiState.titleError,
+            supportingText = if (uiState.titleError) {
+                { Text("Required") }
+            } else null,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
         )
@@ -103,6 +110,9 @@ fun CreateEventScreen(
             label = "Date",
             placeholder = "Tap to pick a date",
             onClick = { showDatePicker = true },
+            isRequired = true,
+            isError = uiState.dateError,
+            errorText = "Required",
         )
 
         Row(
@@ -115,6 +125,9 @@ fun CreateEventScreen(
                 placeholder = "Start time",
                 onClick = { showStartTimePicker = true },
                 modifier = Modifier.weight(1f),
+                isRequired = true,
+                isError = uiState.startTimeError,
+                errorText = "Required",
             )
             PickerField(
                 value = uiState.endTime?.format(timeFormatter) ?: "",
@@ -122,6 +135,9 @@ fun CreateEventScreen(
                 placeholder = "End time",
                 onClick = { showEndTimePicker = true },
                 modifier = Modifier.weight(1f),
+                isRequired = true,
+                isError = uiState.endTimeError,
+                errorText = "Required",
             )
         }
 
@@ -260,7 +276,7 @@ fun CreateEventScreen(
 
         Button(
             onClick = viewModel::save,
-            enabled = uiState.canSave && !uiState.isSaving,
+            enabled = !uiState.isSaving,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
         ) {
@@ -323,16 +339,25 @@ private fun PickerField(
     placeholder: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isRequired: Boolean = false,
+    isError: Boolean = false,
+    errorText: String? = null,
 ) {
     Box(modifier = modifier) {
         OutlinedTextField(
             value = value,
             onValueChange = {},
-            label = { Text(label) },
+            label = {
+                if (isRequired) RequiredLabel(label) else Text(label)
+            },
             placeholder = { Text(placeholder) },
             readOnly = true,
             singleLine = true,
             enabled = false,
+            isError = isError,
+            supportingText = if (isError && errorText != null) {
+                { Text(errorText) }
+            } else null,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
         )
@@ -342,6 +367,19 @@ private fun PickerField(
                 .clickable(onClick = onClick),
         )
     }
+}
+
+@Composable
+private fun RequiredLabel(text: String) {
+    val errorColor = MaterialTheme.colorScheme.error
+    Text(
+        buildAnnotatedString {
+            append(text)
+            withStyle(SpanStyle(color = errorColor)) {
+                append(" *")
+            }
+        },
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

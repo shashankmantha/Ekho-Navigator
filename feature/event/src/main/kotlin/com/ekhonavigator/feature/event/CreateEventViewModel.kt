@@ -33,9 +33,15 @@ data class CreateEventUiState(
     val selectedFriendUids: Set<String> = emptySet(),
     val isSaving: Boolean = false,
     val isSaved: Boolean = false,
+    val showValidationErrors: Boolean = false,
 ) {
     val canSave: Boolean
         get() = title.isNotBlank() && date != null && startTime != null && endTime != null
+
+    val titleError: Boolean get() = showValidationErrors && title.isBlank()
+    val dateError: Boolean get() = showValidationErrors && date == null
+    val startTimeError: Boolean get() = showValidationErrors && startTime == null
+    val endTimeError: Boolean get() = showValidationErrors && endTime == null
 }
 
 @HiltViewModel
@@ -104,7 +110,10 @@ class CreateEventViewModel @Inject constructor(
     fun save() {
         val ownerUid = authRepository.getCurrentUserUid() ?: return
         val state = _uiState.value
-        if (!state.canSave) return
+        if (!state.canSave) {
+            _uiState.update { it.copy(showValidationErrors = true) }
+            return
+        }
 
         val zone = ZoneId.of("America/Los_Angeles")
         val startInstant = state.date!!.atTime(state.startTime!!).atZone(zone).toInstant()
