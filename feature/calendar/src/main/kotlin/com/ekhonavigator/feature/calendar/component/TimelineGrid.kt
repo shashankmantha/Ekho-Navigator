@@ -23,6 +23,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -33,6 +37,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventSource
+import com.ekhonavigator.core.model.RsvpStatus
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -213,10 +218,30 @@ private fun TimelineEventBlock(
         else -> colors.primaryContainer to colors.onPrimaryContainer
     }
 
+    val isPendingInvite = event.myRsvpStatus == RsvpStatus.PENDING
+    val pendingBorder = colors.error
+    val effectiveBg = if (isPendingInvite) bgColor.copy(alpha = 0.35f) else bgColor
+    val effectiveText = if (isPendingInvite) textColor.copy(alpha = 0.75f) else textColor
+
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(4.dp))
-            .background(bgColor)
+            .background(effectiveBg)
+            .drawBehind {
+                if (isPendingInvite) {
+                    drawRoundRect(
+                        color = pendingBorder,
+                        cornerRadius = CornerRadius(4.dp.toPx()),
+                        style = Stroke(
+                            width = 1.5.dp.toPx(),
+                            pathEffect = PathEffect.dashPathEffect(
+                                floatArrayOf(5.dp.toPx(), 3.dp.toPx()),
+                                0f,
+                            ),
+                        ),
+                    )
+                }
+            }
             .clickable { onClick() }
             .padding(horizontal = 4.dp, vertical = 2.dp),
     ) {
@@ -224,7 +249,7 @@ private fun TimelineEventBlock(
             Text(
                 text = event.title,
                 style = MaterialTheme.typography.labelSmall,
-                color = textColor,
+                color = effectiveText,
                 maxLines = 4,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -232,7 +257,7 @@ private fun TimelineEventBlock(
                 Text(
                     text = event.location,
                     style = MaterialTheme.typography.labelSmall,
-                    color = textColor.copy(alpha = 0.7f),
+                    color = effectiveText.copy(alpha = 0.7f),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )

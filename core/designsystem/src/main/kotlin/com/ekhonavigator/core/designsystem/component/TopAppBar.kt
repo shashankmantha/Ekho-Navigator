@@ -1,6 +1,7 @@
 package com.ekhonavigator.core.designsystem.component
 
 import androidx.annotation.StringRes
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -32,6 +33,7 @@ fun EkhoTopAppBar(
     onActionClick: () -> Unit = {},
     onSecondaryActionClick: () -> Unit = {},
     scrollBehavior: TopAppBarScrollBehavior? = null,
+    leadingActions: @Composable RowScope.() -> Unit = {},
 ) {
     EkhoTopAppBar(
         title = stringResource(id = titleRes),
@@ -47,6 +49,7 @@ fun EkhoTopAppBar(
         onActionClick = onActionClick,
         onSecondaryActionClick = onSecondaryActionClick,
         scrollBehavior = scrollBehavior,
+        leadingActions = leadingActions,
     )
 }
 
@@ -66,6 +69,7 @@ fun EkhoTopAppBar(
     onActionClick: () -> Unit = {},
     onSecondaryActionClick: () -> Unit = {},
     scrollBehavior: TopAppBarScrollBehavior? = null,
+    leadingActions: @Composable RowScope.() -> Unit = {},
 ) {
     CenterAlignedTopAppBar(
         title = { Text(text = title) },
@@ -81,15 +85,7 @@ fun EkhoTopAppBar(
             }
         },
         actions = {
-            if (secondaryActionIcon != null) {
-                IconButton(onClick = onSecondaryActionClick) {
-                    Icon(
-                        imageVector = secondaryActionIcon,
-                        contentDescription = secondaryActionIconContentDescription,
-                        tint = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-            }
+            leadingActions()
             if (actionIcon != null) {
                 IconButton(onClick = onActionClick) {
                     Icon(

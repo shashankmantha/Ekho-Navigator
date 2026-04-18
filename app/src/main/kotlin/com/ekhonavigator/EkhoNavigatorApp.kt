@@ -51,7 +51,12 @@ import com.ekhonavigator.feature.event.EventScreen
 import com.ekhonavigator.feature.event.navigation.CreateEventNavKey
 import com.ekhonavigator.feature.event.navigation.EventNavKey
 import com.ekhonavigator.feature.event.navigation.navigateToCreateEvent
+import com.ekhonavigator.feature.event.InvitesActionIcon
+import com.ekhonavigator.feature.event.InvitesScreen
+import com.ekhonavigator.feature.event.navigation.EventNavKey
+import com.ekhonavigator.feature.event.navigation.InvitesNavKey
 import com.ekhonavigator.feature.event.navigation.navigateToEvent
+import com.ekhonavigator.feature.event.navigation.navigateToInvites
 import com.ekhonavigator.feature.home.HomeScreen
 import com.ekhonavigator.feature.home.navigation.HomeNavKey
 import com.ekhonavigator.feature.map.MapScreen
@@ -111,9 +116,9 @@ fun EkhoNavigatorApp(
                 onActionClick = {
                     navigator.navigateToAccount()
                 },
-                onSecondaryActionClick = {
-                    navigator.navigateToSettings()
-                }
+                leadingActions = {
+                    InvitesActionIcon(onClick = { navigator.navigateToInvites() })
+                },
             )
         },
         bottomBar = {
@@ -293,6 +298,12 @@ fun EkhoNavigatorApp(
                                 // normally the top nav bar handles all back functionality
                                 onBack = navigator::goBack,
                             )
+                        }
+                    }
+
+                    is InvitesNavKey -> {
+                        NavEntry(key) {
+                            InvitesScreen(onEventClick = navigator::navigateToEvent)
                         }
                     }
 

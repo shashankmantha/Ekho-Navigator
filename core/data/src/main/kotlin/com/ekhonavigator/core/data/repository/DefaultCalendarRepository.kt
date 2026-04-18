@@ -5,12 +5,18 @@ import com.ekhonavigator.core.data.model.toEntity
 import com.ekhonavigator.core.data.sync.DailyEventNotificationManager
 import com.ekhonavigator.core.data.util.SyncResult
 import com.ekhonavigator.core.database.dao.CalendarEventDao
+import com.ekhonavigator.core.database.dao.EventAttendeeDao
+import com.ekhonavigator.core.database.model.CalendarEventEntity
 import com.ekhonavigator.core.database.model.toDomainModel
 import com.ekhonavigator.core.model.CalendarEvent
+import com.ekhonavigator.core.model.RsvpStatus
 import com.ekhonavigator.core.network.ICalFeedDataSource
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 import java.net.URLDecoder
@@ -22,6 +28,7 @@ import javax.inject.Singleton
 @Singleton
 class DefaultCalendarRepository @Inject constructor(
     private val calendarEventDao: CalendarEventDao,
+    private val eventAttendeeDao: EventAttendeeDao,
     private val iCalFeedDataSource: ICalFeedDataSource,
     private val authRepository: AuthRepository,
     private val dailyEventNotificationManager: DailyEventNotificationManager,
@@ -29,26 +36,77 @@ class DefaultCalendarRepository @Inject constructor(
 
     private val firestore = FirebaseFirestore.getInstance()
 
+    /**
+     * Never-completing empty-map source used when signed out. A one-shot `flowOf`
+     * would finish and cause `combine` to cancel the upstream events flow, so the
+     * UI would stop updating after the first emission.
+     */
+    private val emptyRsvpMap = MutableStateFlow(emptyMap<String, RsvpStatus>()).asStateFlow()
+
+    /**
+     * My RSVP status per eventId. Evaluates UID at subscription time so flows started
+     * before sign-in become populated as soon as something collects post-sign-in.
+     */
+    private val myRsvpByEventId: Flow<Map<String, RsvpStatus>>
+        get() = authRepository.getCurrentUserUid()?.let { uid ->
+            eventAttendeeDao.observeAllForUser(uid)
+                .map { rows -> rows.associate { it.eventId to it.rsvpStatus } }
+        } ?: emptyRsvpMap
+
+    private fun List<CalendarEventEntity>.joinMyRsvp(
+        rsvps: Map<String, RsvpStatus>,
+    ): List<CalendarEvent> = map { it.toDomainModel(myRsvpStatus = rsvps[it.uid]) }
+
+    private fun List<CalendarEvent>.excludeDeclined(): List<CalendarEvent> =
+        filter { it.myRsvpStatus != RsvpStatus.NOT_GOING }
+
     override fun observeEvents(): Flow<List<CalendarEvent>> =
-        calendarEventDao.observeAllEvents().map { entities ->
-            entities.map { it.toDomainModel() }
+        combine(calendarEventDao.observeAllEvents(), myRsvpByEventId) { entities, rsvps ->
+            entities.joinMyRsvp(rsvps).excludeDeclined()
         }
 
     override fun observeBookmarkedEvents(): Flow<List<CalendarEvent>> =
-        calendarEventDao.observeBookmarkedEvents().map { entities ->
-            entities.map { it.toDomainModel() }
+        combine(calendarEventDao.observeBookmarkedEvents(), myRsvpByEventId) { entities, rsvps ->
+            entities.joinMyRsvp(rsvps).excludeDeclined()
         }
 
     override fun observeEventsByDateRange(
         start: Instant,
         end: Instant,
     ): Flow<List<CalendarEvent>> =
-        calendarEventDao.observeEventsByDateRange(start, end).map { entities ->
-            entities.map { it.toDomainModel() }
+        combine(
+            calendarEventDao.observeEventsByDateRange(start, end),
+            myRsvpByEventId,
+        ) { entities, rsvps ->
+            entities.joinMyRsvp(rsvps).excludeDeclined()
         }
 
     override fun observeEventById(id: String): Flow<CalendarEvent?> =
-        calendarEventDao.observeEventById(id).map { it?.toDomainModel() }
+        combine(calendarEventDao.observeEventById(id), myRsvpByEventId) { entity, rsvps ->
+            entity?.toDomainModel(myRsvpStatus = rsvps[entity.uid])
+        }
+
+    override fun observePendingInvites(): Flow<List<CalendarEvent>> =
+        combine(calendarEventDao.observeAllEvents(), myRsvpByEventId) { entities, rsvps ->
+            val myUid = authRepository.getCurrentUserUid()
+            val now = Instant.now()
+            entities.joinMyRsvp(rsvps).filter {
+                it.myRsvpStatus == RsvpStatus.PENDING &&
+                        it.ownerUid != myUid &&
+                        it.endTime > now
+            }
+        }
+
+    override fun observeDeclinedInvites(): Flow<List<CalendarEvent>> =
+        combine(calendarEventDao.observeAllEvents(), myRsvpByEventId) { entities, rsvps ->
+            val myUid = authRepository.getCurrentUserUid()
+            val now = Instant.now()
+            entities.joinMyRsvp(rsvps).filter {
+                it.myRsvpStatus == RsvpStatus.NOT_GOING &&
+                        it.ownerUid != myUid &&
+                        it.endTime > now
+            }
+        }
 
     override suspend fun toggleBookmark(eventId: String) {
         val event = calendarEventDao.getEventById(eventId) ?: return

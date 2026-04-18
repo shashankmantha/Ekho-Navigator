@@ -1,15 +1,21 @@
 package com.ekhonavigator.core.data.sync
 
+import androidx.room.withTransaction
 import com.ekhonavigator.core.data.auth.AuthRepository
 import com.ekhonavigator.core.data.model.firestoreDocToEntity
+import com.ekhonavigator.core.database.EkhoDatabase
 import com.ekhonavigator.core.database.dao.CalendarEventDao
+import com.ekhonavigator.core.database.dao.EventAttendeeDao
+import com.ekhonavigator.core.database.model.EventAttendeeEntity
 import com.ekhonavigator.core.model.EventSource
+import com.ekhonavigator.core.model.RsvpStatus
 import com.google.firebase.firestore.DocumentChange
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -22,7 +28,9 @@ import javax.inject.Singleton
  */
 @Singleton
 class SharedEventSyncService @Inject constructor(
+    private val database: EkhoDatabase,
     private val calendarEventDao: CalendarEventDao,
+    private val eventAttendeeDao: EventAttendeeDao,
     private val authRepository: AuthRepository,
 ) {
     private var listenerRegistration: ListenerRegistration? = null
@@ -83,7 +91,35 @@ class SharedEventSyncService @Inject constructor(
                                 val source =
                                     if (ownerUid == uid) EventSource.USER_CREATED else EventSource.SHARED
                                 val entity = firestoreDocToEntity(doc, source) ?: continue
-                                calendarEventDao.upsertEvent(entity)
+
+                                // Batch the event + optimistic PENDING attendee in one transaction
+                                // so Room's invalidation tracker emits once. Otherwise the combined
+                                // flow sees the event first (without an RSVP row), renders a plain
+                                // blue pill, then ghost-styles on the next emission — visible flicker
+                                // until the user triggers a recomposition by navigating back.
+                                database.withTransaction {
+                                    calendarEventDao.upsertEvent(entity)
+                                    if (source == EventSource.SHARED) {
+                                        val existingRsvp = eventAttendeeDao.getAttendee(doc.id, uid)
+                                        if (existingRsvp == null) {
+                                            eventAttendeeDao.upsertAttendee(
+                                                EventAttendeeEntity(
+                                                    eventId = doc.id,
+                                                    userId = uid,
+                                                    displayName = authRepository.getCurrentUserDisplayName()
+                                                        ?: "",
+                                                    rsvpStatus = RsvpStatus.PENDING,
+                                                ),
+                                            )
+                                        }
+                                    }
+                                }
+
+                                // Confirm true status from Firestore (e.g. the user already RSVP'd
+                                // on another device).
+                                if (source == EventSource.SHARED) {
+                                    syncMyAttendee(eventId = doc.id, userId = uid)
+                                }
                             }
                         }
                     }
@@ -94,6 +130,35 @@ class SharedEventSyncService @Inject constructor(
     fun stopListening() {
         listenerRegistration?.remove()
         listenerRegistration = null
+    }
+
+    private suspend fun syncMyAttendee(eventId: String, userId: String) {
+        try {
+            val doc = FirebaseFirestore.getInstance()
+                .collection("events")
+                .document(eventId)
+                .collection("attendees")
+                .document(userId)
+                .get()
+                .await()
+            if (!doc.exists()) return
+
+            val statusName = doc.getString("rsvpStatus") ?: RsvpStatus.PENDING.name
+            val status = runCatching { RsvpStatus.valueOf(statusName) }
+                .getOrDefault(RsvpStatus.PENDING)
+
+            eventAttendeeDao.upsertAttendee(
+                EventAttendeeEntity(
+                    eventId = eventId,
+                    userId = userId,
+                    displayName = doc.getString("displayName") ?: "",
+                    rsvpStatus = status,
+                ),
+            )
+        } catch (_: Exception) {
+            // Offline — Room keeps whatever was last synced; event will still render
+            // with null myRsvpStatus until we recover.
+        }
     }
 
     /** Stop listening and clear all user-specific events from Room. Call on sign-out. */

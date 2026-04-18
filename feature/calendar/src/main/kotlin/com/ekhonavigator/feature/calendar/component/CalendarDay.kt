@@ -17,7 +17,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -25,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventSource
+import com.ekhonavigator.core.model.RsvpStatus
 import com.kizitonwose.calendar.core.CalendarDay
 import com.kizitonwose.calendar.core.DayPosition
 
@@ -135,12 +139,31 @@ fun DayContent(
                         onCampusMuted = onCampusMutedPillColor,
                         onCampusBookmarked = onCampusBookmarkedPillColor,
                     )
+                    val isPendingInvite = event.myRsvpStatus == RsvpStatus.PENDING
+                    val pendingBorder = MaterialTheme.colorScheme.error
 
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(2.dp))
-                            .background(pillBg)
+                            .background(
+                                if (isPendingInvite) pillBg.copy(alpha = 0.35f) else pillBg,
+                            )
+                            .drawBehind {
+                                if (isPendingInvite) {
+                                    drawRoundRect(
+                                        color = pendingBorder,
+                                        cornerRadius = CornerRadius(2.dp.toPx()),
+                                        style = Stroke(
+                                            width = 1.2.dp.toPx(),
+                                            pathEffect = PathEffect.dashPathEffect(
+                                                floatArrayOf(2.5.dp.toPx(), 1.5.dp.toPx()),
+                                                0f,
+                                            ),
+                                        ),
+                                    )
+                                }
+                            }
                             .padding(horizontal = 1.dp),
                     ) {
                         Text(
@@ -150,7 +173,7 @@ fun DayContent(
                                 lineHeight = 11.sp,
                                 fontWeight = FontWeight.Medium,
                             ),
-                            color = pillText,
+                            color = if (isPendingInvite) pillText.copy(alpha = 0.75f) else pillText,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )

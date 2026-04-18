@@ -5,6 +5,7 @@ import androidx.room.PrimaryKey
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSource
+import com.ekhonavigator.core.model.RsvpStatus
 import java.time.Instant
 
 @Entity(tableName = "calendar_events")
@@ -26,7 +27,9 @@ data class CalendarEventEntity(
     val pendingSync: Boolean = false,
 )
 
-fun CalendarEventEntity.toDomainModel(): CalendarEvent = CalendarEvent(
+fun CalendarEventEntity.toDomainModel(
+    myRsvpStatus: RsvpStatus? = null,
+): CalendarEvent = CalendarEvent(
     id = uid,
     title = title,
     description = description,
@@ -41,4 +44,5 @@ fun CalendarEventEntity.toDomainModel(): CalendarEvent = CalendarEvent(
     source = source,
     ownerUid = ownerUid,
     pendingSync = pendingSync,
+    myRsvpStatus = myRsvpStatus,
 )

@@ -26,6 +26,7 @@ import com.ekhonavigator.core.designsystem.component.EkhoEventCard
 import com.ekhonavigator.core.designsystem.component.EkhoSectionHeader
 import com.ekhonavigator.core.designsystem.component.sourceAccentColor
 import com.ekhonavigator.core.model.EventSource
+import com.ekhonavigator.core.model.RsvpStatus
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -115,6 +116,7 @@ internal fun DiscoverEventsList(
                             accentColor = sourceAccentColor(event.source.name, event.isBookmarked),
                             isBookmarked = event.isBookmarked,
                             showBookmark = event.source == EventSource.ICAL_FEED,
+                            isPending = event.myRsvpStatus == RsvpStatus.PENDING,
                             onBookmarkClick = { viewModel.toggleBookmark(event.id) },
                             onClick = { onEventClick(event.id) },
                             modifier = Modifier.padding(horizontal = 16.dp),

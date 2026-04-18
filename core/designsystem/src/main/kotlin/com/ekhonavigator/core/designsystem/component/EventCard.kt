@@ -22,7 +22,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -50,15 +54,39 @@ fun EkhoEventCard(
     modifier: Modifier = Modifier,
     isBookmarked: Boolean = false,
     showBookmark: Boolean = true,
+    isPending: Boolean = false,
 ) {
+    val cornerRadius = 16.dp
+    val dashColor = MaterialTheme.colorScheme.error
+    val pendingOutline: Modifier = if (isPending) {
+        Modifier.drawBehind {
+            drawRoundRect(
+                color = dashColor,
+                cornerRadius = CornerRadius(cornerRadius.toPx()),
+                style = Stroke(
+                    width = 1.5.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(
+                        floatArrayOf(8.dp.toPx(), 5.dp.toPx()),
+                        0f,
+                    ),
+                ),
+            )
+        }
+    } else {
+        Modifier
+    }
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(cornerRadius))
+            .then(pendingOutline)
             .clickable(onClick = onClick),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        tonalElevation = 2.dp,
-        shadowElevation = 2.dp
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(
+            alpha = if (isPending) 0.55f else 1f,
+        ),
+        tonalElevation = if (isPending) 0.dp else 2.dp,
+        shadowElevation = if (isPending) 0.dp else 2.dp,
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
