@@ -207,15 +207,15 @@ private fun TimelineEventBlock(
     val colors = MaterialTheme.colorScheme
     val (bgColor, textColor) = when {
         event.source == EventSource.ICAL_FEED && event.isBookmarked ->
-            colors.tertiaryContainer to colors.onTertiaryContainer
+            colors.tertiary to colors.onTertiary
 
         event.source == EventSource.ICAL_FEED ->
             colors.surfaceContainerHighest to colors.onSurfaceVariant
 
         event.source == EventSource.USER_CREATED || event.source == EventSource.SHARED ->
-            colors.secondaryContainer to colors.onSecondaryContainer
+            colors.secondary to colors.onSecondary
 
-        else -> colors.primaryContainer to colors.onPrimaryContainer
+        else -> colors.primary to colors.onPrimary
     }
 
     val isPendingInvite = event.myRsvpStatus == RsvpStatus.PENDING
