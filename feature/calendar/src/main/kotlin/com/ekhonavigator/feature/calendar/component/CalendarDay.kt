@@ -167,7 +167,7 @@ fun DayContent(
                             .padding(horizontal = 1.dp),
                     ) {
                         Text(
-                            text = event.title,
+                            text = event.eventName.ifEmpty { event.title },
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontSize = 8.sp,
                                 lineHeight = 11.sp,

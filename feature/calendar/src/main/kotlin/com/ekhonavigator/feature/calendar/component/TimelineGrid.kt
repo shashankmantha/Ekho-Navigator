@@ -247,7 +247,7 @@ private fun TimelineEventBlock(
     ) {
         Column {
             Text(
-                text = event.title,
+                text = event.eventName.ifEmpty { event.title },
                 style = MaterialTheme.typography.labelSmall,
                 color = effectiveText,
                 maxLines = 4,
