@@ -22,9 +22,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.navigation3.ui.NavDisplay
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.ui.NavDisplay
 import com.ekhonavigator.core.designsystem.component.EkhoNavigationBar
 import com.ekhonavigator.core.designsystem.component.EkhoNavigationBarItem
 import com.ekhonavigator.core.designsystem.component.EkhoTopAppBar
@@ -32,28 +32,28 @@ import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.navigation.Navigator
 import com.ekhonavigator.core.navigation.rememberNavigationState
 import com.ekhonavigator.core.navigation.toEntries
-import com.ekhonavigator.feature.map.MapScreen
-import com.ekhonavigator.feature.map.navigation.MapNavKey
-import com.ekhonavigator.feature.account.navigation.navigateToAccount
 import com.ekhonavigator.feature.account.AccountScreen
 import com.ekhonavigator.feature.account.navigation.AccountNavKey
-import com.ekhonavigator.feature.social.SocialScreen
-import com.ekhonavigator.feature.social.UserProfileScreen
-import com.ekhonavigator.feature.social.navigation.SocialNavKey
-import com.ekhonavigator.feature.social.navigation.UserProfileNavKey
-import com.ekhonavigator.feature.schedule.CreateEventScreen
-import com.ekhonavigator.feature.schedule.navigation.CreateEventNavKey
-import com.ekhonavigator.feature.schedule.navigation.navigateToCreateEvent
+import com.ekhonavigator.feature.account.navigation.navigateToAccount
 import com.ekhonavigator.feature.event.EventScreen
 import com.ekhonavigator.feature.event.navigation.EventNavKey
 import com.ekhonavigator.feature.event.navigation.navigateToEvent
 import com.ekhonavigator.feature.home.HomeScreen
 import com.ekhonavigator.feature.home.navigation.HomeNavKey
+import com.ekhonavigator.feature.map.MapScreen
+import com.ekhonavigator.feature.map.navigation.MapNavKey
+import com.ekhonavigator.feature.schedule.CreateEventScreen
 import com.ekhonavigator.feature.schedule.DayScreen
 import com.ekhonavigator.feature.schedule.ScheduleScreen
+import com.ekhonavigator.feature.schedule.navigation.CreateEventNavKey
 import com.ekhonavigator.feature.schedule.navigation.DayNavKey
 import com.ekhonavigator.feature.schedule.navigation.ScheduleNavKey
+import com.ekhonavigator.feature.schedule.navigation.navigateToCreateEvent
 import com.ekhonavigator.feature.schedule.navigation.navigateToDay
+import com.ekhonavigator.feature.social.SocialScreen
+import com.ekhonavigator.feature.social.UserProfileScreen
+import com.ekhonavigator.feature.social.navigation.SocialNavKey
+import com.ekhonavigator.feature.social.navigation.UserProfileNavKey
 import com.ekhonavigator.navigation.TOP_LEVEL_NAV_ITEMS
 import com.ekhonavigator.feature.social.ChatScreen
 import com.ekhonavigator.feature.social.navigation.ChatNavKey
@@ -70,8 +70,10 @@ fun EkhoNavigatorApp(
     val navigator = Navigator(navigationState)
 
     val currentKey = navigationState.currentKey
-    val topLevelDestination = TOP_LEVEL_NAV_ITEMS[currentKey]
+    val topLevelDestination =
+        TOP_LEVEL_NAV_ITEMS.entries.find { (key, _) -> key::class == currentKey::class }?.value
     val isTopLevelDestination = topLevelDestination != null
+    val isPureDestination = TOP_LEVEL_NAV_ITEMS.containsKey(currentKey)
 
     val topAppBarState = rememberTopAppBarState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(topAppBarState)
@@ -89,11 +91,11 @@ fun EkhoNavigatorApp(
             EkhoTopAppBar(
                 titleRes = titleRes,
                 scrollBehavior = scrollBehavior,
-                navigationIcon = if (isTopLevelDestination) null else EkhoIcons.ArrowBack,
+                navigationIcon = if (isPureDestination) null else EkhoIcons.ArrowBack,
                 actionIcon = EkhoIcons.AccountCircle,
-                navigationIconContentDescription = if (isTopLevelDestination) null else "Back",
+                navigationIconContentDescription = if (isPureDestination) null else "Back",
                 onNavigationClick = {
-                    if (!isTopLevelDestination) {
+                    if (!isPureDestination) {
                         navigator.goBack()
                     }
                 },
@@ -106,7 +108,8 @@ fun EkhoNavigatorApp(
             if (isTopLevelDestination) {
                 EkhoBottomBar(
                     onNavigateToNavKey = navigator::navigate,
-                    currentTopLevelKey = navigationState.currentTopLevelKey
+                    // used currentKey so the bar knows exactly which screen is active
+                    currentTopLevelKey = currentKey
                 )
             }
         }
@@ -141,6 +144,7 @@ fun EkhoNavigatorApp(
                                 onCreateEventClick = { epochDay ->
                                     navigator.navigateToCreateEvent(epochDay)
                                 },
+                                initialLocationFilter = key.initialLocationFilter
                             )
                         }
                     }
@@ -170,7 +174,12 @@ fun EkhoNavigatorApp(
 
                     is MapNavKey -> {
                         NavEntry(key) {
-                            MapScreen(onEventClick = navigator::navigateToEvent)
+                            MapScreen(
+                                onEventClick = navigator::navigateToEvent,
+                                onOpenScheduleForLocation = { selectedCampusPlaceName ->
+                                    navigator.navigate(ScheduleNavKey(initialLocationFilter = selectedCampusPlaceName))
+                                }
+                            )
                         }
                     }
 
@@ -251,7 +260,7 @@ private fun EkhoBottomBar(
 ) {
     EkhoNavigationBar {
         TOP_LEVEL_NAV_ITEMS.forEach { (navKey, item) ->
-            val selected = navKey == currentTopLevelKey
+            val selected = navKey::class == currentTopLevelKey::class     // matched by class so the icon highlights for any version of the tab
             EkhoNavigationBarItem(
                 selected = selected,
                 onClick = { onNavigateToNavKey(navKey) },

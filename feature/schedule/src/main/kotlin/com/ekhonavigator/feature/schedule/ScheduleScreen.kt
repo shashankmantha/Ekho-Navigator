@@ -61,6 +61,7 @@ fun ScheduleScreen(
     onEventClick: (String) -> Unit,
     onDayClick: (Long, Set<ScheduleSourceType>, Set<EventCategory>) -> Unit,
     onCreateEventClick: (Long?) -> Unit = {},
+    initialLocationFilter: String? = null,
     modifier: Modifier = Modifier,
     viewModel: ScheduleViewModel = hiltViewModel(),
 ) {
@@ -69,6 +70,14 @@ fun ScheduleScreen(
         initialPage = ScheduleTab.DAY.ordinal,
         pageCount = { tabs.size },
     )
+
+    MapLocationEventsBridge(
+        selectedLocationFilter = initialLocationFilter,
+        scheduleViewModel = viewModel,
+        schedulePagerState = pagerState,
+        discoverPageIndex = ScheduleTab.DISCOVER.ordinal
+    )
+
     val scope = rememberCoroutineScope()
     var daySnapTrigger by remember { mutableStateOf(0) }
     var weekSnapTrigger by remember { mutableStateOf(0) }

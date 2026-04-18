@@ -64,10 +64,12 @@ class MapViewModel @Inject constructor(
 
     fun updateMarkerLabel(markerIdToUpdate: Long, newMarkerCommentText: String) {
         val userId = currentUserId ?: return
-        val markerIndexToUpdate = droppedMarkers.indexOfFirst { currentMarker -> currentMarker.id == markerIdToUpdate }
+        val markerIndexToUpdate =
+            droppedMarkers.indexOfFirst { currentMarker -> currentMarker.id == markerIdToUpdate }
 
         if (markerIndexToUpdate != -1) {
-            val updatedMarker = droppedMarkers[markerIndexToUpdate].copy(markerLabelComment = newMarkerCommentText)
+            val updatedMarker =
+                droppedMarkers[markerIndexToUpdate].copy(markerLabelComment = newMarkerCommentText)
             droppedMarkers[markerIndexToUpdate] = updatedMarker
 
             viewModelScope.launch {
