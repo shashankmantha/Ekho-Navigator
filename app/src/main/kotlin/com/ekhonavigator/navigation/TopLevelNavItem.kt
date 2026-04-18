@@ -60,7 +60,6 @@ val TOP_LEVEL_NAV_ITEMS: Map<NavKey, TopLevelNavItem> = mapOf(
     CalendarNavKey to CALENDAR,
     DiscoverNavKey() to DISCOVER,
     SocialNavKey to SOCIAL,
-    MapNavKey to MAP,
     StudyNavKey to STUDY,
     MapNavKey() to MAP,
 )
