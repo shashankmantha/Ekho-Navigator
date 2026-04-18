@@ -59,6 +59,7 @@ import com.ekhonavigator.feature.event.navigation.navigateToEvent
 import com.ekhonavigator.feature.event.navigation.navigateToInvites
 import com.ekhonavigator.feature.home.HomeScreen
 import com.ekhonavigator.feature.home.navigation.HomeNavKey
+import com.ekhonavigator.feature.map.CampusPlacesData
 import com.ekhonavigator.feature.map.MapScreen
 import com.ekhonavigator.feature.map.navigation.MapNavKey
 import com.ekhonavigator.feature.social.ChatScreen
@@ -245,7 +246,13 @@ fun EkhoNavigatorApp(
 
                     is StudyNavKey -> {
                         NavEntry(key) {
-                            StudyScreen()
+                            StudyScreen(
+                                onViewLibraryOnMap = {
+                                    navigator.navigateAsDetour(
+                                        MapNavKey(focusPlaceId = CampusPlacesData.BROOME_LIBRARY_ID),
+                                    )
+                                },
+                            )
                         }
                     }
 

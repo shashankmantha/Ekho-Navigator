@@ -18,12 +18,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -42,6 +44,7 @@ private const val STUDY_ROOM_URL = "https://csuci.libcal.com/spaces"
 
 @Composable
 fun StudyScreen(
+    onViewLibraryOnMap: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -50,18 +53,34 @@ fun StudyScreen(
     Scaffold(
         modifier = modifier,
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { openBookingInCustomTab(context, primaryToolbarColor) },
-                icon = {
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                SmallFloatingActionButton(
+                    onClick = onViewLibraryOnMap,
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                ) {
                     Icon(
-                        imageVector = EkhoIcons.OpenInNew,
-                        contentDescription = null,
+                        imageVector = EkhoIcons.Place,
+                        contentDescription = "View library on map",
+                        modifier = Modifier.size(20.dp),
                     )
-                },
-                text = { Text("Book a Room") },
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
+                }
+                ExtendedFloatingActionButton(
+                    onClick = { openBookingInCustomTab(context, primaryToolbarColor) },
+                    icon = {
+                        Icon(
+                            imageVector = EkhoIcons.OpenInNew,
+                            contentDescription = null,
+                        )
+                    },
+                    text = { Text("Book") },
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
         },
     ) { paddingValues ->
         Column(

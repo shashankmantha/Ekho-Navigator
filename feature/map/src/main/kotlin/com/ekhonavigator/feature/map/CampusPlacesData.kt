@@ -3,10 +3,12 @@ package com.ekhonavigator.feature.map
 import com.google.android.gms.maps.model.LatLng
 
 object CampusPlacesData {
+    const val BROOME_LIBRARY_ID = "broome_library"
+
     val places = listOf(
         // BUILDINGS
         CampusPlace(
-            id = "broome_library",
+            id = BROOME_LIBRARY_ID,
             name = "Broome Library",
             position = LatLng(34.16269924567034, -119.04095431988378),
             category = PlaceCategory.BUILDINGS,
