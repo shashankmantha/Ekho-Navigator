@@ -117,7 +117,7 @@ fun DiscoverScreen(
                 }
             }
         },
-    ) { _ ->
+    ) {
         Column(
             modifier = Modifier.fillMaxSize(),
         ) {
