@@ -8,6 +8,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -42,14 +43,16 @@ import com.ekhonavigator.feature.home.HomeScreen
 import com.ekhonavigator.feature.home.navigation.HomeNavKey
 import com.ekhonavigator.feature.map.MapScreen
 import com.ekhonavigator.feature.map.navigation.MapNavKey
-import com.ekhonavigator.feature.schedule.CreateEventScreen
-import com.ekhonavigator.feature.schedule.DayScreen
-import com.ekhonavigator.feature.schedule.ScheduleScreen
-import com.ekhonavigator.feature.schedule.navigation.CreateEventNavKey
-import com.ekhonavigator.feature.schedule.navigation.DayNavKey
-import com.ekhonavigator.feature.schedule.navigation.ScheduleNavKey
-import com.ekhonavigator.feature.schedule.navigation.navigateToCreateEvent
-import com.ekhonavigator.feature.schedule.navigation.navigateToDay
+import com.ekhonavigator.feature.event.CreateEventScreen
+import com.ekhonavigator.feature.calendar.DayScreen
+import com.ekhonavigator.feature.discover.DiscoverScreen
+import com.ekhonavigator.feature.event.navigation.CreateEventNavKey
+import com.ekhonavigator.feature.calendar.navigation.CalendarNavKey
+import com.ekhonavigator.feature.calendar.CalendarScreen
+import com.ekhonavigator.feature.calendar.navigation.DayNavKey
+import com.ekhonavigator.feature.discover.navigation.DiscoverNavKey
+import com.ekhonavigator.feature.event.navigation.navigateToCreateEvent
+import com.ekhonavigator.feature.calendar.navigation.navigateToDay
 import com.ekhonavigator.feature.social.SocialScreen
 import com.ekhonavigator.feature.social.UserProfileScreen
 import com.ekhonavigator.feature.social.navigation.SocialNavKey
@@ -115,7 +118,9 @@ fun EkhoNavigatorApp(
         }
     ) { paddingValues ->
         NavDisplay(
-            modifier = Modifier.padding(paddingValues),
+            modifier = Modifier
+                .padding(paddingValues)
+                .consumeWindowInsets(paddingValues),
             transitionSpec = {
                 slideInHorizontally(initialOffsetX = { it }) + fadeIn() togetherWith
                         slideOutHorizontally(targetOffsetX = { -it / 2 }) + fadeOut()
@@ -136,9 +141,21 @@ fun EkhoNavigatorApp(
                         }
                     }
 
-                    is ScheduleNavKey -> {
+                    is CalendarNavKey -> {
                         NavEntry(key) {
-                            ScheduleScreen(
+                            CalendarScreen(
+                                onEventClick = navigator::navigateToEvent,
+                                onDayClick = navigator::navigateToDay,
+                                onCreateEventClick = { epochDay ->
+                                    navigator.navigateToCreateEvent(epochDay)
+                                }
+                            )
+                        }
+                    }
+
+                    is DiscoverNavKey -> {
+                        NavEntry(key) {
+                            DiscoverScreen(
                                 onEventClick = navigator::navigateToEvent,
                                 onDayClick = navigator::navigateToDay,
                                 onCreateEventClick = { epochDay ->
@@ -176,8 +193,8 @@ fun EkhoNavigatorApp(
                         NavEntry(key) {
                             MapScreen(
                                 onEventClick = navigator::navigateToEvent,
-                                onOpenScheduleForLocation = { selectedCampusPlaceName ->
-                                    navigator.navigate(ScheduleNavKey(initialLocationFilter = selectedCampusPlaceName))
+                                onOpenDiscoverForLocation = { selectedCampusPlaceName ->
+                                    navigator.navigate(DiscoverNavKey(initialLocationFilter = selectedCampusPlaceName))
                                 }
                             )
                         }
