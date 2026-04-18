@@ -1,12 +1,14 @@
 package com.ekhonavigator.feature.social.navigation
 
+
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
-import kotlinx.serialization.Serializable
 import com.ekhonavigator.core.navigation.Navigator
 import com.ekhonavigator.feature.social.ChatScreen
 import com.ekhonavigator.feature.social.SocialScreen
 import com.ekhonavigator.feature.social.UserProfileScreen
+import com.ekhonavigator.core.model.SharedLocation
+import kotlinx.serialization.Serializable
 
 @Serializable
 object SocialNavKey : NavKey
@@ -21,6 +23,7 @@ data class ChatNavKey(
     val friendUserId: String,
     val friendDisplayName: String,
     val friendAvatarId: String,
+    val sharedLocation: SharedLocation? = null
 ) : NavKey
 
 fun EntryProviderScope<NavKey>.socialEntry(navigator: Navigator) {
@@ -51,7 +54,8 @@ fun EntryProviderScope<NavKey>.socialEntry(navigator: Navigator) {
         ChatScreen(
             friendUserId = key.friendUserId,
             friendDisplayName = key.friendDisplayName,
-            friendAvatarId = key.friendAvatarId
+            friendAvatarId = key.friendAvatarId,
+            sharedLocation = key.sharedLocation
         )
     }
 }

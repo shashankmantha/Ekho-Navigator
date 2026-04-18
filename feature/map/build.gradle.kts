@@ -64,6 +64,8 @@ dependencies {
     // Runtime library for JSON serialization
     implementation(libs.kotlinx.serialization.json)
 
+    implementation(project(":core:model"))
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
