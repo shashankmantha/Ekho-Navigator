@@ -48,6 +48,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ekhonavigator.core.designsystem.component.EkhoMonogramBadge
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.EventCategory
 import java.time.Instant
@@ -174,7 +175,6 @@ fun CreateEventScreen(
         ) {
             EventCategory.entries.forEach { category ->
                 val isSelected = category == uiState.category
-                val categoryColor = Color(category.color)
 
                 FilterChip(
                     selected = isSelected,
@@ -182,23 +182,26 @@ fun CreateEventScreen(
                     label = {
                         Text(
                             category.displayName,
-                            style = MaterialTheme.typography.labelSmall
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                    },
+                    leadingIcon = {
+                        EkhoMonogramBadge(
+                            monogram = category.monogram,
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            contentColor = if (isSelected) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
                         )
                     },
                     shape = RoundedCornerShape(12.dp),
                     colors = FilterChipDefaults.filterChipColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                         labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        selectedContainerColor = categoryColor.copy(alpha = 0.15f),
-                        selectedLabelColor = categoryColor,
-                    ),
-                    border = FilterChipDefaults.filterChipBorder(
-                        enabled = true,
-                        selected = isSelected,
-                        borderColor = Color.Transparent,
-                        selectedBorderColor = categoryColor.copy(alpha = 0.3f),
-                        borderWidth = 1.dp,
-                        selectedBorderWidth = 1.dp,
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     ),
                 )
             }
