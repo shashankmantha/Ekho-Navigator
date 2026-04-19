@@ -1,3 +1,24 @@
 <resources>
     <string name="default_web_client_id">YOUR_WEB_CLIENT_ID.apps.googleusercontent.com</string>
+    <string name="account_loading">Loading…</string>
+    <string name="account_welcome_title">Welcome to Ekho Navigator</string>
+    <string name="account_welcome_subtitle">Sign in to have full access to all features.</string>
+    <string name="account_sign_in_google">Sign in with Google</string>
+    <string name="account_sign_in_later_info">You can sign in later from your account settings.</string>
+    <string name="account_save_success">Saved successfully</string>
+    <string name="account_undo">Undo</string>
+    <string name="account_profile_display_name">Display Name</string>
+    <string name="account_profile_major">Major</string>
+    <string name="account_profile_description">Description</string>
+    <string name="account_profile_links">Links</string>
+    <string name="account_profile_social_search">Social Search</string>
+    <string name="account_profile_appear_in_search">Appear in search</string>
+    <string name="account_profile_social_search_info">Turn this off to make your profile unsearchable in the Social tab.</string>
+    <string name="account_profile_save">Save Profile</string>
+    <string name="account_sign_out">Sign Out</string>
+    <string name="account_close">Close</string>
+    <string name="account_choose_avatar">Choose an Avatar</string>
+    <string name="account_profile_avatar_content_description">Profile avatar</string>
+    <string name="account_edit_profile_title">Edit Profile</string>
+    <string name="account_profile_visible">Visible</string>
 </resources>

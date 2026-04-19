@@ -42,3 +42,5 @@ include(":feature:discover")
 include(":feature:event")
 include(":feature:social")
 include(":feature:map")
+
+include(":feature:study")

@@ -63,6 +63,8 @@ import com.ekhonavigator.feature.social.navigation.UserProfileNavKey
 import com.ekhonavigator.navigation.TOP_LEVEL_NAV_ITEMS
 import com.ekhonavigator.feature.social.ChatScreen
 import com.ekhonavigator.feature.social.navigation.ChatNavKey
+import com.ekhonavigator.feature.study.StudyScreen
+import com.ekhonavigator.feature.study.navigation.StudyNavKey
 
 @Composable
 fun EkhoNavigatorApp(
@@ -206,6 +208,12 @@ fun EkhoNavigatorApp(
                                     navigator.navigate(DiscoverNavKey(initialLocationFilter = selectedCampusPlaceName))
                                 }
                             )
+                        }
+                    }
+
+                    is StudyNavKey -> {
+                        NavEntry(key) {
+                            StudyScreen()
                         }
                     }
 
