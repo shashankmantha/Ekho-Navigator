@@ -37,6 +37,7 @@ import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.ui.NavDisplay
 import com.ekhonavigator.core.designsystem.component.EkhoNavigationSuiteScaffold
+import com.ekhonavigator.core.designsystem.component.EkhoAppBarIcon
 import com.ekhonavigator.core.designsystem.component.EkhoTopAppBar
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.navigation.Navigator
@@ -144,19 +145,22 @@ fun EkhoNavigatorApp(
                 EkhoTopAppBar(
                     titleRes = titleRes,
                     scrollBehavior = scrollBehavior,
-                    navigationIcon = if (isDefaultTopLevel) null else EkhoIcons.ArrowBack,
-                    actionIcon = EkhoIcons.AccountCircle,
-                    navigationIconContentDescription = if (isDefaultTopLevel) null else "Back",
-                    onNavigationClick = {
+                    navigationIcon = {
                         if (!isDefaultTopLevel) {
-                            navigator.goBack()
+                            EkhoAppBarIcon(
+                                icon = EkhoIcons.ArrowBack,
+                                contentDescription = "Back",
+                                onClick = { navigator.goBack() },
+                            )
                         }
                     },
-                    onActionClick = {
-                        navigator.navigateToAccount()
-                    },
-                    leadingActions = {
+                    actions = {
                         InvitesActionIcon(onClick = { navigator.navigateToInvites() })
+                        EkhoAppBarIcon(
+                            icon = EkhoIcons.AccountCircle,
+                            contentDescription = null,
+                            onClick = { navigator.navigateToAccount() },
+                        )
                     },
                 )
             },

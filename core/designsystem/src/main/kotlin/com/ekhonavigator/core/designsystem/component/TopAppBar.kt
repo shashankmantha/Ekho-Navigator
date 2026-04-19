@@ -22,34 +22,18 @@ import androidx.compose.ui.res.stringResource
 fun EkhoTopAppBar(
     @StringRes titleRes: Int,
     modifier: Modifier = Modifier,
-    navigationIcon: ImageVector? = null,
-    navigationIconContentDescription: String? = null,
-    actionIcon: ImageVector? = null,
-    actionIconContentDescription: String? = null,
-    secondaryActionIcon: ImageVector? = null,
-    secondaryActionIconContentDescription: String? = null,
+    navigationIcon: @Composable () -> Unit = {},
+    actions: @Composable RowScope.() -> Unit = {},
     colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(),
-    onNavigationClick: () -> Unit = {},
-    onActionClick: () -> Unit = {},
-    onSecondaryActionClick: () -> Unit = {},
     scrollBehavior: TopAppBarScrollBehavior? = null,
-    leadingActions: @Composable RowScope.() -> Unit = {},
 ) {
     EkhoTopAppBar(
         title = stringResource(id = titleRes),
         modifier = modifier,
         navigationIcon = navigationIcon,
-        navigationIconContentDescription = navigationIconContentDescription,
-        actionIcon = actionIcon,
-        actionIconContentDescription = actionIconContentDescription,
-        secondaryActionIcon = secondaryActionIcon,
-        secondaryActionIconContentDescription = secondaryActionIconContentDescription,
+        actions = actions,
         colors = colors,
-        onNavigationClick = onNavigationClick,
-        onActionClick = onActionClick,
-        onSecondaryActionClick = onSecondaryActionClick,
         scrollBehavior = scrollBehavior,
-        leadingActions = leadingActions,
     )
 }
 
@@ -58,46 +42,36 @@ fun EkhoTopAppBar(
 fun EkhoTopAppBar(
     title: String,
     modifier: Modifier = Modifier,
-    navigationIcon: ImageVector? = null,
-    navigationIconContentDescription: String? = null,
-    actionIcon: ImageVector? = null,
-    actionIconContentDescription: String? = null,
-    secondaryActionIcon: ImageVector? = null,
-    secondaryActionIconContentDescription: String? = null,
+    navigationIcon: @Composable () -> Unit = {},
+    actions: @Composable RowScope.() -> Unit = {},
     colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(),
-    onNavigationClick: () -> Unit = {},
-    onActionClick: () -> Unit = {},
-    onSecondaryActionClick: () -> Unit = {},
     scrollBehavior: TopAppBarScrollBehavior? = null,
-    leadingActions: @Composable RowScope.() -> Unit = {},
 ) {
     CenterAlignedTopAppBar(
         title = { Text(text = title) },
-        navigationIcon = {
-            if (navigationIcon != null) {
-                IconButton(onClick = onNavigationClick) {
-                    Icon(
-                        imageVector = navigationIcon,
-                        contentDescription = navigationIconContentDescription,
-                        tint = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-            }
-        },
-        actions = {
-            leadingActions()
-            if (actionIcon != null) {
-                IconButton(onClick = onActionClick) {
-                    Icon(
-                        imageVector = actionIcon,
-                        contentDescription = actionIconContentDescription,
-                        tint = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-            }
-        },
+        navigationIcon = navigationIcon,
+        actions = actions,
         colors = colors,
         modifier = modifier.testTag("ekhoTopAppBar"),
         scrollBehavior = scrollBehavior,
     )
+}
+
+/**
+ * Themed icon button for use inside [EkhoTopAppBar]'s navigationIcon or actions slot.
+ * Applies the design system's onSurface tint so callers don't re-derive it.
+ */
+@Composable
+fun EkhoAppBarIcon(
+    icon: ImageVector,
+    contentDescription: String?,
+    onClick: () -> Unit,
+) {
+    IconButton(onClick = onClick) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = MaterialTheme.colorScheme.onSurface,
+        )
+    }
 }
