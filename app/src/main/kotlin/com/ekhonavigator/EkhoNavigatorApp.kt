@@ -112,7 +112,29 @@ fun EkhoNavigatorApp(
         topAppBarState.contentOffset = 0f
     }
 
-    val innerShell: @Composable () -> Unit = {
+    EkhoNavigationSuiteScaffold(
+        navigationSuiteItems = {
+            TOP_LEVEL_NAV_ITEMS.forEach { (navKey, navItem) ->
+                item(
+                    selected = navKey::class == currentKey::class,
+                    onClick = { navigator.navigate(navKey) },
+                    icon = {
+                        Icon(
+                            imageVector = navItem.unselectedIcon,
+                            contentDescription = null,
+                        )
+                    },
+                    selectedIcon = {
+                        Icon(
+                            imageVector = navItem.selectedIcon,
+                            contentDescription = null,
+                        )
+                    },
+                    label = { Text(navItem.label) },
+                )
+            }
+        },
+    ) {
         Scaffold(
             modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
             containerColor = Color.Transparent,
@@ -334,36 +356,6 @@ fun EkhoNavigatorApp(
             onBack = { navigator.goBack() }
         )
     }
-    }
-
-    if (isTopLevelDestination) {
-        EkhoNavigationSuiteScaffold(
-            navigationSuiteItems = {
-                TOP_LEVEL_NAV_ITEMS.forEach { (navKey, navItem) ->
-                    item(
-                        selected = navKey::class == currentKey::class,
-                        onClick = { navigator.navigate(navKey) },
-                        icon = {
-                            Icon(
-                                imageVector = navItem.unselectedIcon,
-                                contentDescription = null,
-                            )
-                        },
-                        selectedIcon = {
-                            Icon(
-                                imageVector = navItem.selectedIcon,
-                                contentDescription = null,
-                            )
-                        },
-                        label = { Text(navItem.label) },
-                    )
-                }
-            },
-        ) {
-            innerShell()
-        }
-    } else {
-        innerShell()
     }
 }
 
