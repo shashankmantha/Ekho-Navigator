@@ -73,7 +73,7 @@ fun HomeScreen(
             if (date.isAfter(cutoff)) break
             result[date] = events
             total += events.size
-            if (total >= 4) break
+            if (total >= 3) break
         }
         result
     }
