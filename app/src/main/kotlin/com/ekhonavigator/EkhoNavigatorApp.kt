@@ -2,6 +2,14 @@
 
 package com.ekhonavigator
 
+import com.ekhonavigator.feature.calendar.CalendarScreen
+import com.ekhonavigator.feature.calendar.DayScreen
+import com.ekhonavigator.feature.calendar.navigation.CalendarNavKey
+import com.ekhonavigator.feature.calendar.navigation.DayNavKey
+import com.ekhonavigator.feature.calendar.navigation.navigateToDay
+import com.ekhonavigator.feature.discover.DiscoverScreen
+import com.ekhonavigator.feature.discover.navigation.DiscoverNavKey
+import com.ekhonavigator.feature.event.CreateEventScreen
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -40,31 +48,23 @@ import com.ekhonavigator.feature.account.navigation.SettingsNavKey
 import com.ekhonavigator.feature.account.navigation.navigateToAccount
 import com.ekhonavigator.feature.account.navigation.navigateToSettings
 import com.ekhonavigator.feature.event.EventScreen
+import com.ekhonavigator.feature.event.navigation.CreateEventNavKey
 import com.ekhonavigator.feature.event.navigation.EventNavKey
+import com.ekhonavigator.feature.event.navigation.navigateToCreateEvent
 import com.ekhonavigator.feature.event.navigation.navigateToEvent
 import com.ekhonavigator.feature.home.HomeScreen
 import com.ekhonavigator.feature.home.navigation.HomeNavKey
 import com.ekhonavigator.feature.map.MapScreen
 import com.ekhonavigator.feature.map.navigation.MapNavKey
-import com.ekhonavigator.feature.event.CreateEventScreen
-import com.ekhonavigator.feature.calendar.DayScreen
-import com.ekhonavigator.feature.discover.DiscoverScreen
-import com.ekhonavigator.feature.event.navigation.CreateEventNavKey
-import com.ekhonavigator.feature.calendar.navigation.CalendarNavKey
-import com.ekhonavigator.feature.calendar.CalendarScreen
-import com.ekhonavigator.feature.calendar.navigation.DayNavKey
-import com.ekhonavigator.feature.discover.navigation.DiscoverNavKey
-import com.ekhonavigator.feature.event.navigation.navigateToCreateEvent
-import com.ekhonavigator.feature.calendar.navigation.navigateToDay
+import com.ekhonavigator.feature.social.ChatScreen
 import com.ekhonavigator.feature.social.SocialScreen
 import com.ekhonavigator.feature.social.UserProfileScreen
+import com.ekhonavigator.feature.social.navigation.ChatNavKey
 import com.ekhonavigator.feature.social.navigation.SocialNavKey
 import com.ekhonavigator.feature.social.navigation.UserProfileNavKey
-import com.ekhonavigator.navigation.TOP_LEVEL_NAV_ITEMS
-import com.ekhonavigator.feature.social.ChatScreen
-import com.ekhonavigator.feature.social.navigation.ChatNavKey
 import com.ekhonavigator.feature.study.StudyScreen
 import com.ekhonavigator.feature.study.navigation.StudyNavKey
+import com.ekhonavigator.navigation.TOP_LEVEL_NAV_ITEMS
 
 @Composable
 fun EkhoNavigatorApp(
@@ -206,6 +206,16 @@ fun EkhoNavigatorApp(
                                 onEventClick = navigator::navigateToEvent,
                                 onOpenDiscoverForLocation = { selectedCampusPlaceName ->
                                     navigator.navigate(DiscoverNavKey(initialLocationFilter = selectedCampusPlaceName))
+                                },
+                                onShareLocationToChat = { friendId, friendName, location ->
+                                    navigator.navigate(
+                                        ChatNavKey(
+                                            friendUserId = friendId,
+                                            friendDisplayName = friendName,
+                                            friendAvatarId = "",
+                                            sharedLocation = location
+                                        )
+                                    )
                                 }
                             )
                         }
@@ -250,6 +260,10 @@ fun EkhoNavigatorApp(
                                 friendUserId = key.friendUserId,
                                 friendDisplayName = key.friendDisplayName,
                                 friendAvatarId = key.friendAvatarId,
+                                sharedLocation = key.sharedLocation,
+                                onNavigateToMap = {
+                                    navigator.navigate(MapNavKey)
+                                }
                             )
                         }
                     }
@@ -301,7 +315,8 @@ private fun EkhoBottomBar(
 ) {
     EkhoNavigationBar {
         TOP_LEVEL_NAV_ITEMS.forEach { (navKey, item) ->
-            val selected = navKey::class == currentTopLevelKey::class     // matched by class so the icon highlights for any version of the tab
+            val selected =
+                navKey::class == currentTopLevelKey::class     // matched by class so the icon highlights for any version of the tab
             EkhoNavigationBarItem(
                 selected = selected,
                 onClick = { onNavigateToNavKey(navKey) },

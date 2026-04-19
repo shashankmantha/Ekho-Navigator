@@ -1,5 +1,7 @@
 package com.ekhonavigator.feature.map
 
+import com.ekhonavigator.core.model.SharedLocation
+import com.ekhonavigator.feature.map.FriendInfo
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
@@ -54,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.compose.navigation
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
@@ -69,6 +72,7 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
 
 data class UserMarker(
     val id: Long,
@@ -140,6 +144,7 @@ fun MapLocationControls(
 fun MapScreen(
     onEventClick: (String) -> Unit,
     onOpenDiscoverForLocation: (String) -> Unit,
+    onShareLocationToChat: (friendId: String, friendName: String, SharedLocation) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: MapViewModel = hiltViewModel()
 ) {
@@ -212,6 +217,7 @@ fun MapScreen(
     }
 
     var selectedDroppedMarkerForOptions by remember { mutableStateOf<UserMarker?>(null) }
+    var showFriendPickerForMarker by remember { mutableStateOf<UserMarker?>(null) }
     var markerBeingEdited by remember { mutableStateOf<UserMarker?>(null) }
     var editLabelText by remember { mutableStateOf("") }
     var markerPendingRemoval by remember { mutableStateOf<UserMarker?>(null) }
@@ -442,6 +448,11 @@ fun MapScreen(
                             selectedDroppedMarkerForOptions = null
                             markerPendingRemoval = selectedMarker
                         }) { Text("Remove") }
+
+                        TextButton(onClick = {
+                            selectedDroppedMarkerForOptions = null
+                            showFriendPickerForMarker = selectedMarker
+                        }) { Text("Send to Friend") }
                     }
                 },
                 confirmButton = {
@@ -493,6 +504,25 @@ fun MapScreen(
                 }
             )
         }
+
+        if (showFriendPickerForMarker != null) {
+            val marker = showFriendPickerForMarker!!
+            FriendPickerCard(
+                markerLabel = marker.markerLabelComment.ifBlank { "Dropped Marker" },
+                friends = viewModel.friends,
+                onFriendSelected = { friend ->
+                    showFriendPickerForMarker = null
+                    val sharedLoc = SharedLocation(
+                        title = marker.markerLabelComment.ifBlank { "Dropped Marker" },
+                        latitude = marker.droppedMarkerLocation.latitude,
+                        longitude = marker.droppedMarkerLocation.longitude
+                    )
+                    onShareLocationToChat(friend.id, friend.name, sharedLoc)
+                },
+                onDismiss = { showFriendPickerForMarker = null }
+            )
+        }
+
         selectedCampusPlace?.let { place ->
             CampusPlaceDetailCard(
                 place = place,

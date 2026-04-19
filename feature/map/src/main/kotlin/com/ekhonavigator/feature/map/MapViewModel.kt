@@ -14,10 +14,13 @@ import javax.inject.Inject
 @HiltViewModel
 class MapViewModel @Inject constructor(
     private val authRepository: AuthRepository,
-    private val markerRepository: MarkerRepository
+    private val markerRepository: MarkerRepository,
+    private val socialRepository: com.ekhonavigator.core.data.social.SocialRepository
 ) : ViewModel() {
 
     val droppedMarkers = mutableStateListOf<UserMarker>()
+
+    val friends = androidx.compose.runtime.mutableStateListOf<FriendInfo>()
 
     private val currentUserId: String?
         get() = authRepository.getCurrentUserUid()
@@ -27,20 +30,31 @@ class MapViewModel @Inject constructor(
             authRepository.userFlow().collect { userId ->
                 if (userId != null) {
                     loadUserMarkers()
+                    loadFriends(userId) // Fetch friends when user is logged in
                 } else {
                     droppedMarkers.clear()
+                    friends.clear()
                 }
             }
+        }
+    }
+
+    private fun loadFriends(userId: String) {
+        viewModelScope.launch {
+            // SocialRepository.getFriends returns a List, so we just call it.
+            val friendList = socialRepository.getFriends(userId)
+            friends.clear()
+            friends.addAll(friendList.map { FriendInfo(it.uid, it.displayName) })
         }
     }
 
     private fun loadUserMarkers() {
         val userId = currentUserId ?: return
         viewModelScope.launch {
-            val remoteMarkers = markerRepository.getUserMarkers(userId)
-
-            droppedMarkers.clear()
-            droppedMarkers.addAll(remoteMarkers.map { remoteMarker -> remoteMarker.toUserMarker() })
+            markerRepository.observeUserMarkers(userId).collect { remoteMarkers ->
+                droppedMarkers.clear()
+                droppedMarkers.addAll(remoteMarkers.map { it.toUserMarker() })
+            }
         }
     }
 

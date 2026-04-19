@@ -3,30 +3,34 @@ package com.ekhonavigator.feature.social
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ekhonavigator.core.data.auth.AuthRepository
+import com.ekhonavigator.core.data.markers.MarkerRepository
 import com.ekhonavigator.core.data.social.ChatMessage
 import com.ekhonavigator.core.data.social.ChatRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
-import kotlinx.coroutines.flow.catch
+import javax.inject.Inject
 
 data class ChatUiState(
     val isLoading: Boolean = true,
     val messages: List<ChatMessage> = emptyList(),
     val draftMessage: String = "",
+    val pendingSharedLocation: com.ekhonavigator.core.model.SharedLocation? = null,
     val errorMessage: String? = null,
+    val infoMessage: String? = null,
 )
 
 @HiltViewModel
 class ChatViewModel @Inject constructor(
     private val chatRepository: ChatRepository,
     private val authRepository: AuthRepository,
+    private val markerRepository: MarkerRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChatUiState())
@@ -115,15 +119,30 @@ class ChatViewModel @Inject constructor(
         _uiState.update { it.copy(draftMessage = value) }
     }
 
+    fun stageSharedLocation(location: com.ekhonavigator.core.model.SharedLocation) {
+        _uiState.update { it.copy(pendingSharedLocation = location) }
+    }
+
+    fun clearPendingSharedLocation() {
+        _uiState.update { it.copy(pendingSharedLocation = null) }
+    }
+
+    fun dismissInfoMessage() {
+        _uiState.update { it.copy(infoMessage = null) }
+    }
+
     fun sendMessage(
         friendUserId: String,
         friendDisplayName: String,
     ) {
         val currentUserId = authRepository.getCurrentUserUid() ?: return
         val currentUserName = authRepository.getCurrentUserDisplayName() ?: "Unknown"
-        val draft = uiState.value.draftMessage.trim()
 
-        if (draft.isBlank()) return
+        val currentState = uiState.value
+        val draft = currentState.draftMessage.trim()
+        val pendingLoc = currentState.pendingSharedLocation
+
+        if (draft.isBlank() && pendingLoc == null) return
 
         val clientMessageId = UUID.randomUUID().toString()
 
@@ -140,25 +159,73 @@ class ChatViewModel @Inject constructor(
                     conversationId = conversation.id,
                     senderId = currentUserId,
                     senderName = currentUserName,
-                    text = draft,
+                    text = draft.ifBlank { "Shared a location: ${pendingLoc?.title}" },
                     clientMessageId = clientMessageId,
+                    sharedLocation = pendingLoc
                 )
             }.onSuccess {
                 _uiState.update {
                     it.copy(
                         draftMessage = "",
+                        pendingSharedLocation = null,
                         errorMessage = null,
                     )
                 }
             }.onFailure { e ->
                 _uiState.update {
                     it.copy(
-                        errorMessage = e.message ?: "Failed to send message",
+                        infoMessage = e.message ?: "Failed to send message",
                     )
+                }
+                viewModelScope.launch {
+                    kotlinx.coroutines.delay(5000)
+                    _uiState.update { it.copy(infoMessage = null) }
                 }
             }
         }
     }
 
     fun getCurrentUserId(): String? = authRepository.getCurrentUserUid()
+
+    fun saveSharedLocationToMap(
+        location: com.ekhonavigator.core.model.SharedLocation,
+        onSaved: () -> Unit
+    ) {
+        val userId = authRepository.getCurrentUserUid() ?: return
+        viewModelScope.launch {
+            runCatching {
+                val existingMarkers = markerRepository.getUserMarkers(userId)
+                val isDuplicate = existingMarkers.any {
+                    it.latitude == location.latitude && it.longitude == location.longitude
+                }
+
+                if (isDuplicate) {
+                    _uiState.update {
+                        it.copy(infoMessage = "You already have a copy of this marker.")
+                    }
+                    viewModelScope.launch {
+                        kotlinx.coroutines.delay(5000)
+                        _uiState.update { it.copy(infoMessage = null) }
+                    }
+                } else {
+                    val marker = com.ekhonavigator.core.data.markers.UserDroppedMarker(
+                        id = System.currentTimeMillis().toString(),
+                        latitude = location.latitude,
+                        longitude = location.longitude,
+                        comment = location.title
+                    )
+                    markerRepository.saveMarker(userId, marker)
+
+                    onSaved()
+                }
+            }.onFailure { e ->
+                _uiState.update { it.copy(infoMessage = "Failed to save marker: ${e.message}") }
+
+                viewModelScope.launch {
+                    kotlinx.coroutines.delay(5000)
+                    _uiState.update { it.copy(infoMessage = null) }
+                }
+            }
+        }
+    }
 }

@@ -1,7 +1,11 @@
 package com.ekhonavigator.feature.social
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,10 +23,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -61,6 +71,68 @@ private fun ChatAvatar(
     )
 }
 
+@Composable
+private fun LocationPreviewCard(
+    location: com.ekhonavigator.core.model.SharedLocation,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    onDismiss: (() -> Unit)? = null
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .background(
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                shape = MaterialTheme.shapes.medium
+            )
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Place,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Column {
+                    Text(
+                        text = "Sharing Location:",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    Text(
+                        text = location.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+            }
+            // Optional Dismiss "X" Button
+            if (onDismiss != null) {
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Dismiss",
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ChatScreen(
@@ -68,6 +140,8 @@ fun ChatScreen(
     friendDisplayName: String,
     friendAvatarId: String,
     modifier: Modifier = Modifier,
+    sharedLocation: com.ekhonavigator.core.model.SharedLocation? = null,
+    onNavigateToMap: () -> Unit = {},
     viewModel: ChatViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -81,6 +155,9 @@ fun ChatScreen(
             friendUserId = friendUserId,
             friendDisplayName = friendDisplayName,
         )
+        if (sharedLocation != null) {
+            viewModel.stageSharedLocation(sharedLocation)
+        }
     }
 
     LaunchedEffect(uiState.messages.size) {
@@ -183,14 +260,28 @@ fun ChatScreen(
                                         )
                                         .padding(12.dp),
                                 ) {
-                                    Text(
-                                        text = message.text,
-                                        color = if (isMine) {
-                                            MaterialTheme.colorScheme.onPrimaryContainer
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                        },
-                                    )
+                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        message.sharedLocation?.let { location ->
+                                            LocationPreviewCard(
+                                                location = location,
+                                                modifier = Modifier.padding(bottom = 4.dp),
+                                                onClick = {
+                                                    viewModel.saveSharedLocationToMap(
+                                                        location = location,
+                                                        onSaved = onNavigateToMap
+                                                    )
+                                                }
+                                            )
+                                        }
+                                        Text(
+                                            text = message.text,
+                                            color = if (isMine) {
+                                                MaterialTheme.colorScheme.onPrimaryContainer
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                            },
+                                        )
+                                    }
                                 }
 
                                 if (isMine) {
@@ -207,6 +298,58 @@ fun ChatScreen(
                 }
             }
         }
+
+        AnimatedVisibility(
+            visible = uiState.infoMessage != null,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.padding(horizontal = 8.dp)
+        ) {
+            Surface(
+                onClick = { viewModel.dismissInfoMessage() },
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                shape = MaterialTheme.shapes.medium,
+                tonalElevation = 4.dp,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(
+                        start = 12.dp,
+                        end = 4.dp,
+                        top = 4.dp,
+                        bottom = 4.dp
+                    ),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = uiState.infoMessage ?: "",
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.labelLarge,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    IconButton( // <-- ADDED IconButton
+                        onClick = { viewModel.dismissInfoMessage() },
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Dismiss",
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        uiState.pendingSharedLocation?.let { location ->
+            LocationPreviewCard(
+                location = location,
+                modifier = Modifier.padding(horizontal = 8.dp),
+                onDismiss = { viewModel.clearPendingSharedLocation() }
+            )
+        }
+
 
         Row(
             modifier = Modifier

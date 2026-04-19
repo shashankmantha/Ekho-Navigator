@@ -1,13 +1,13 @@
 package com.ekhonavigator.core.data.social
 
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
-import javax.inject.Inject
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
-import com.google.firebase.firestore.FieldValue
+import javax.inject.Inject
 
 class ChatRepository @Inject constructor() {
 
@@ -69,14 +69,26 @@ class ChatRepository @Inject constructor() {
                         else -> doc.getLong("clientTimestamp") ?: 0L
                     }
 
+                    val sharedLocationData = doc.get("sharedLocation") as? Map<String, Any>
+                    val sharedLocation = sharedLocationData?.let {
+                        com.ekhonavigator.core.model.SharedLocation(
+                            title = it["title"] as? String ?: "",
+                            latitude = (it["latitude"] as? Number)?.toDouble() ?: 0.0,
+                            longitude = (it["longitude"] as? Number)?.toDouble() ?: 0.0,
+                            details = it["details"] as? String ?: ""
+                        )
+                    }
+
                     ChatMessage(
                         id = doc.id,
                         senderId = doc.getString("senderId") ?: "",
                         senderName = doc.getString("senderName") ?: "",
                         text = doc.getString("text") ?: "",
                         timestamp = timestampMillis,
-                        readBy = (doc.get("readBy") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
+                        readBy = (doc.get("readBy") as? List<*>)?.filterIsInstance<String>()
+                            ?: emptyList(),
                         clientMessageId = doc.getString("clientMessageId") ?: "",
+                        sharedLocation = sharedLocation
                     )
                 }
                     ?.sortedBy { it.timestamp }
@@ -94,15 +106,16 @@ class ChatRepository @Inject constructor() {
         senderName: String,
         text: String,
         clientMessageId: String,
+        sharedLocation: com.ekhonavigator.core.model.SharedLocation? = null
     ) {
         val trimmed = text.trim()
-        if (trimmed.isBlank()) return
+        if (trimmed.isBlank() && sharedLocation == null) return
 
         val now = System.currentTimeMillis()
         val conversationRef = firestore.collection("conversations").document(conversationId)
         val messageRef = conversationRef.collection("messages").document()
 
-        val messageData = mapOf(
+        val messageData = mutableMapOf<String, Any?>(
             "senderId" to senderId,
             "senderName" to senderName,
             "text" to trimmed,
@@ -111,6 +124,10 @@ class ChatRepository @Inject constructor() {
             "readBy" to listOf(senderId),
             "clientMessageId" to clientMessageId,
         )
+
+        if (sharedLocation != null) {
+            messageData["sharedLocation"] = sharedLocation
+        }
 
         val batch = firestore.batch()
         batch.set(messageRef, messageData)
