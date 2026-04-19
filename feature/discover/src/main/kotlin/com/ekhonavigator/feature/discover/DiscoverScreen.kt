@@ -63,7 +63,7 @@ fun DiscoverScreen(
     onCreateEventClick: (Long?) -> Unit = {},
     onViewLibraryOnMap: () -> Unit = {},
     focusPlaceId: String? = null,
-    initialTab: DiscoverTab = DiscoverTab.EVENTS,
+    initialTab: DiscoverTab = DiscoverTab.STUDY,
     modifier: Modifier = Modifier,
     viewModel: DiscoverViewModel = hiltViewModel(),
 ) {
@@ -177,8 +177,8 @@ fun DiscoverScreen(
 }
 
 enum class DiscoverTab(val title: String) {
-    EVENTS("Events"),
     STUDY("Study"),
+    EVENTS("Events")
 }
 
 @Composable

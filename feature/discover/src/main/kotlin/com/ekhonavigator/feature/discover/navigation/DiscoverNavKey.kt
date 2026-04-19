@@ -7,5 +7,5 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class DiscoverNavKey(
     val focusPlaceId: String? = null,
-    val initialTab: DiscoverTab = DiscoverTab.EVENTS,
+    val initialTab: DiscoverTab = DiscoverTab.STUDY,
 ) : NavKey
