@@ -97,21 +97,9 @@ fun SettingsScreen(
             }
 
             if (uiState is AccountUiState.SignedIn) {
-                val state = uiState as AccountUiState.SignedIn
-
-                var searchable by rememberSaveable(state.searchable) {
-                    mutableStateOf(state.searchable)
-                }
-                var showOnlineStatus by rememberSaveable(state.showOnlineStatus) {
-                    mutableStateOf(state.showOnlineStatus)
-                }
-
-                val hasChanges = searchable != state.searchable ||
-                        showOnlineStatus != state.showOnlineStatus
-
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text(
-                        text = "Privacy",
+                        text = "General",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.primary,
@@ -119,47 +107,11 @@ fun SettingsScreen(
 
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-                    // Social Search Preference
-                    SettingsFieldCard(
-                        title = "Social Search",
-                        description = "Turn this off to make your profile unsearchable in the Social tab.",
-                        checked = searchable,
-                        onCheckedChange = { searchable = it }
+                    Text(
+                        text = "More settings coming soon. You can manage your privacy and activity status directly from your profile page.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-
-                    // Online Status Preference
-                    SettingsFieldCard(
-                        title = "Activity Status",
-                        description = "Turn this off to hide your green activity dot from other users.",
-                        checked = showOnlineStatus,
-                        onCheckedChange = { showOnlineStatus = it }
-                    )
-
-                    if (hasChanges) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedButton(
-                            onClick = {
-                                viewModel.saveProfile(
-                                    displayName = state.displayName,
-                                    major = state.major,
-                                    description = state.description,
-                                    links = state.links,
-                                    majorVisible = state.majorVisible,
-                                    descriptionVisible = state.descriptionVisible,
-                                    linksVisible = state.linksVisible,
-                                    avatarId = state.avatarId,
-                                    searchable = searchable,
-                                    showOnlineStatus = showOnlineStatus,
-                                    onlineStatus = state.onlineStatus,
-                                )
-                                showSavedMessage = true
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                        ) {
-                            Text("Save Privacy Settings")
-                        }
-                    }
                 }
             } else {
                 Text(

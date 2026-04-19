@@ -216,6 +216,76 @@ fun EditProfileScreen(
             }
         }
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ProfileFieldCard(label = "Social Search") {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(
+                        text = "Appear in search",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = "Turn this off to make your profile unsearchable in the Social tab.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                Spacer(modifier = Modifier.size(12.dp))
+
+                Switch(
+                    checked = searchable,
+                    onCheckedChange = { searchable = it },
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ProfileFieldCard(label = "Activity Status") {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(
+                        text = "Show when you are online",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = "Turn this off to always appear offline to others.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                Spacer(modifier = Modifier.size(12.dp))
+
+                Switch(
+                    checked = showOnlineStatus,
+                    onCheckedChange = { showOnlineStatus = it },
+                )
+            }
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
 
         OutlinedButton(
