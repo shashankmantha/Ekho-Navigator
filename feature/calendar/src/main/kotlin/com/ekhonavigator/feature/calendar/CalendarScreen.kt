@@ -112,38 +112,25 @@ fun CalendarScreen(
                     )
                 }
 
-                if (viewModel.isSignedIn) {
-                    SmallFloatingActionButton(
-                        onClick = onSettingsClick,
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    ) {
-                        Icon(
-                            imageVector = EkhoIcons.Settings,
-                            contentDescription = "Settings",
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
-
-                    val selectedDate by viewModel.selectedDate.collectAsStateWithLifecycle()
-                    FloatingActionButton(
-                        onClick = {
-                            val epochDay = if (pagerState.currentPage == CalendarTab.DAY.ordinal) {
-                                selectedDate.toEpochDay()
-                            } else {
-                                null
-                            }
-                            onCreateEventClick(epochDay)
-                        },
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    ) {
-                        Icon(
-                            imageVector = EkhoIcons.Add,
-                            contentDescription = "Create event",
-                        )
-                    }
+                val selectedDate by viewModel.selectedDate.collectAsStateWithLifecycle()
+                FloatingActionButton(
+                    onClick = {
+                        val epochDay = if (pagerState.currentPage == CalendarTab.DAY.ordinal) {
+                            selectedDate.toEpochDay()
+                        } else {
+                            null
+                        }
+                        onCreateEventClick(epochDay)
+                    },
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                ) {
+                    Icon(
+                        imageVector = EkhoIcons.Add,
+                        contentDescription = "Create event",
+                    )
                 }
+
             }
         },
     ) { _ ->
