@@ -1,6 +1,5 @@
 package com.ekhonavigator.core.network
 
-import android.text.Html
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.network.model.NetworkCalendarEvent
 import kotlinx.coroutines.Dispatchers
@@ -36,6 +35,10 @@ import javax.inject.Singleton
  *
  * The feed URL is expected to be a publicly accessible 25Live Publisher URL like:
  * https://25livepub.collegenet.com/calendars/{calendar-name}.ics
+ *
+ * The parsing side is deliberately kept as top-level [parseICalFeed] /
+ * [decodeHtmlEntities] so unit tests can exercise it without constructing
+ * an [OkHttpClient] (which touches Android platform APIs at class init).
  */
 @Singleton
 class ICalFeedDataSource @Inject constructor(
@@ -59,127 +62,152 @@ class ICalFeedDataSource @Inject constructor(
 
             parseICalFeed(response.body.string())
         }
-
-    /**
-     * iCal4j 4.x tries to register a custom ZoneRulesProvider when parsing
-     * VTIMEZONE components. Android blocks this API (hidden platform method).
-     * Stripping VTIMEZONE blocks avoids the crash. Date parsing still works
-     * because temporalToInstant() handles all Temporal types, and Android's
-     * built-in timezone database knows "America/Los_Angeles" natively.
-     */
-    private val vtimezonePattern = Regex(
-        "BEGIN:VTIMEZONE.*?END:VTIMEZONE\\r?\\n",
-        RegexOption.DOT_MATCHES_ALL,
-    )
-
-    private fun parseICalFeed(icsContent: String): List<NetworkCalendarEvent> {
-        return try {
-            val cleanedContent = vtimezonePattern.replace(icsContent, "")
-            val builder = CalendarBuilder()
-            val calendar = builder.build(StringReader(cleanedContent))
-
-            calendar.getComponents<VEvent>(Component.VEVENT).mapNotNull { event ->
-                try {
-                    parseEvent(event)
-                } catch (_: Exception) {
-                    null // Skip malformed events rather than failing the whole sync
-                }
-            }
-        } catch (_: Exception) {
-            emptyList()
-        }
-    }
-
-    /**
-     * Decodes HTML entities (e.g. `&#39;` → `'`, `&amp;` → `&`) from plain-text
-     * fields. The 25Live Publisher feed embeds HTML entities in SUMMARY, LOCATION, etc.
-     * Uses Android's built-in Html parser which handles all standard HTML entities.
-     */
-    private fun decodeHtmlEntities(text: String): String =
-        Html.fromHtml(text, Html.FROM_HTML_MODE_COMPACT).toString().trim()
-
-    /**
-     * iCal4j 4.x returns Optional<T> from property accessors.
-     */
-    private fun parseEvent(event: VEvent): NetworkCalendarEvent? {
-        val uid = event.getProperty<Uid>(Property.UID).orElse(null)?.value ?: return null
-        val summary = event.getProperty<Summary>(Property.SUMMARY).orElse(null)?.value.orEmpty()
-            .let { decodeHtmlEntities(it) }
-        val description =
-            event.getProperty<Description>(Property.DESCRIPTION).orElse(null)?.value.orEmpty()
-        val location = event.getProperty<Location>(Property.LOCATION).orElse(null)?.value.orEmpty()
-            .let { decodeHtmlEntities(it) }
-
-        val dtStart = event.getProperty<DtStart<*>>(Property.DTSTART).orElse(null)?.date
-            ?.let { temporalToInstant(it) } ?: return null
-        val dtEnd = event.getProperty<DtEnd<*>>(Property.DTEND).orElse(null)?.date
-            ?.let { temporalToInstant(it) } ?: dtStart
-
-        // The standard CATEGORIES property just says "CSUCI Events Calendar 25Live"
-        // for every event (useless). The real categories live in Trumba custom fields:
-        //   X-TRUMBA-CUSTOMFIELD;NAME="Categories";ID=23227;TYPE=Enumeration:Staff
-        // Multi-category events use escaped commas in the raw .ics (\,) which iCal4j
-        // unescapes to regular commas, e.g. "Student Organizations, University Life, Alumni"
-        val categories = event.getProperties<XProperty>("X-TRUMBA-CUSTOMFIELD")
-            .filter { it.getParameter<Parameter>("NAME")?.orElse(null)?.value == "Categories" }
-            .flatMap { prop ->
-                prop.value.split(",").map { decodeHtmlEntities(it) }
-                    .map { EventCategory.fromTrumbaCategory(it) }
-            }.distinct()
-            .ifEmpty { listOf(EventCategory.GENERAL) }
-
-        val eventName = event.trumbaCustomField("Event Name")
-        val organization = event.trumbaCustomField("Organization")
-        val eventType = event.trumbaCustomField("Event Type")
-
-        val url = event.getProperty<Url>(Property.URL).orElse(null)?.value.orEmpty()
-        val status = event.getProperty<Status>(Property.STATUS).orElse(null)?.value ?: "CONFIRMED"
-
-        return NetworkCalendarEvent(
-            uid = uid,
-            summary = summary,
-            eventName = eventName,
-            description = description,
-            location = location,
-            organization = organization,
-            eventType = eventType,
-            dtStart = dtStart,
-            dtEnd = dtEnd,
-            categories = categories,
-            url = url,
-            status = status,
-        )
-    }
-
-    /**
-     * Pulls a single-value X-TRUMBA-CUSTOMFIELD by its NAME parameter. Returns empty
-     * when missing — keeps the data pipeline faithful without pushing nulls through
-     * the downstream layers.
-     */
-    private fun VEvent.trumbaCustomField(name: String): String =
-        getProperties<XProperty>("X-TRUMBA-CUSTOMFIELD")
-            .firstOrNull { it.getParameter<Parameter>("NAME")?.orElse(null)?.value == name }
-            ?.value
-            ?.let { decodeHtmlEntities(it) }
-            ?: ""
-
-    /**
-     * iCal4j can return different Temporal types depending on how the .ics
-     * encodes dates:
-     *   - ZonedDateTime → DTSTART;TZID=America/Los_Angeles:20260105T110000
-     *   - Instant       → DTSTART:20260105T190000Z (UTC suffix)
-     *   - LocalDateTime  → DTSTART:20260105T110000 (no timezone, floating)
-     *   - LocalDate      → DTSTART;VALUE=DATE:20260105 (all-day event)
-     *
-     * This safely converts any of them to Instant.
-     */
-    private fun temporalToInstant(temporal: Temporal): Instant = when (temporal) {
-        is Instant -> temporal
-        is ZonedDateTime -> temporal.toInstant()
-        is LocalDateTime -> temporal.atZone(ZoneId.systemDefault()).toInstant()
-        is LocalDate -> temporal.atStartOfDay(ZoneId.systemDefault()).toInstant()
-        else -> Instant.from(temporal) // fallback, may throw
-    }
 }
 
 class ICalFetchException(message: String, cause: Throwable? = null) : Exception(message, cause)
+
+/**
+ * iCal4j 4.x tries to register a custom ZoneRulesProvider when parsing
+ * VTIMEZONE components. Android blocks this API (hidden platform method).
+ * Stripping VTIMEZONE blocks avoids the crash. Date parsing still works
+ * because temporalToInstant() handles all Temporal types, and Android's
+ * built-in timezone database knows "America/Los_Angeles" natively.
+ */
+private val vtimezonePattern = Regex(
+    "BEGIN:VTIMEZONE.*?END:VTIMEZONE\\r?\\n",
+    RegexOption.DOT_MATCHES_ALL,
+)
+
+internal fun parseICalFeed(icsContent: String): List<NetworkCalendarEvent> {
+    return try {
+        val cleanedContent = vtimezonePattern.replace(icsContent, "")
+        val builder = CalendarBuilder()
+        val calendar = builder.build(StringReader(cleanedContent))
+
+        calendar.getComponents<VEvent>(Component.VEVENT).mapNotNull { event ->
+            try {
+                parseEvent(event)
+            } catch (_: Exception) {
+                null // Skip malformed events rather than failing the whole sync
+            }
+        }
+    } catch (_: Exception) {
+        emptyList()
+    }
+}
+
+/**
+ * iCal4j 4.x returns Optional<T> from property accessors.
+ */
+private fun parseEvent(event: VEvent): NetworkCalendarEvent? {
+    val uid = event.getProperty<Uid>(Property.UID).orElse(null)?.value ?: return null
+    val summary = event.getProperty<Summary>(Property.SUMMARY).orElse(null)?.value.orEmpty()
+        .let { decodeHtmlEntities(it) }
+    val description =
+        event.getProperty<Description>(Property.DESCRIPTION).orElse(null)?.value.orEmpty()
+    val location = event.getProperty<Location>(Property.LOCATION).orElse(null)?.value.orEmpty()
+        .let { decodeHtmlEntities(it) }
+
+    val dtStart = event.getProperty<DtStart<*>>(Property.DTSTART).orElse(null)?.date
+        ?.let { temporalToInstant(it) } ?: return null
+    val dtEnd = event.getProperty<DtEnd<*>>(Property.DTEND).orElse(null)?.date
+        ?.let { temporalToInstant(it) } ?: dtStart
+
+    // The standard CATEGORIES property just says "CSUCI Events Calendar 25Live"
+    // for every event (useless). The real categories live in Trumba custom fields:
+    //   X-TRUMBA-CUSTOMFIELD;NAME="Categories";ID=23227;TYPE=Enumeration:Staff
+    // Multi-category events use escaped commas in the raw .ics (\,) which iCal4j
+    // unescapes to regular commas, e.g. "Student Organizations, University Life, Alumni"
+    val categories = event.getProperties<XProperty>("X-TRUMBA-CUSTOMFIELD")
+        .filter { it.getParameter<Parameter>("NAME")?.orElse(null)?.value == "Categories" }
+        .flatMap { prop ->
+            prop.value.split(",").map { decodeHtmlEntities(it) }
+                .map { EventCategory.fromTrumbaCategory(it) }
+        }.distinct()
+        .ifEmpty { listOf(EventCategory.GENERAL) }
+
+    val eventName = event.trumbaCustomField("Event Name")
+    val organization = event.trumbaCustomField("Organization")
+    val eventType = event.trumbaCustomField("Event Type")
+
+    val url = event.getProperty<Url>(Property.URL).orElse(null)?.value.orEmpty()
+    val status = event.getProperty<Status>(Property.STATUS).orElse(null)?.value ?: "CONFIRMED"
+
+    return NetworkCalendarEvent(
+        uid = uid,
+        summary = summary,
+        eventName = eventName,
+        description = description,
+        location = location,
+        organization = organization,
+        eventType = eventType,
+        dtStart = dtStart,
+        dtEnd = dtEnd,
+        categories = categories,
+        url = url,
+        status = status,
+    )
+}
+
+/**
+ * Pulls a single-value X-TRUMBA-CUSTOMFIELD by its NAME parameter. Returns empty
+ * when missing — keeps the data pipeline faithful without pushing nulls through
+ * the downstream layers.
+ */
+private fun VEvent.trumbaCustomField(name: String): String =
+    getProperties<XProperty>("X-TRUMBA-CUSTOMFIELD")
+        .firstOrNull { it.getParameter<Parameter>("NAME")?.orElse(null)?.value == name }
+        ?.value
+        ?.let { decodeHtmlEntities(it) }
+        ?: ""
+
+/**
+ * iCal4j can return different Temporal types depending on how the .ics
+ * encodes dates:
+ *   - ZonedDateTime → DTSTART;TZID=America/Los_Angeles:20260105T110000
+ *   - Instant       → DTSTART:20260105T190000Z (UTC suffix)
+ *   - LocalDateTime  → DTSTART:20260105T110000 (no timezone, floating)
+ *   - LocalDate      → DTSTART;VALUE=DATE:20260105 (all-day event)
+ *
+ * This safely converts any of them to Instant.
+ */
+private fun temporalToInstant(temporal: Temporal): Instant = when (temporal) {
+    is Instant -> temporal
+    is ZonedDateTime -> temporal.toInstant()
+    is LocalDateTime -> temporal.atZone(ZoneId.systemDefault()).toInstant()
+    is LocalDate -> temporal.atStartOfDay(ZoneId.systemDefault()).toInstant()
+    else -> Instant.from(temporal) // fallback, may throw
+}
+
+/**
+ * Decodes HTML entities (e.g. `&#39;` → `'`, `&amp;` → `&`) from plain-text
+ * fields. The 25Live Publisher feed embeds HTML entities in SUMMARY, LOCATION, etc.
+ *
+ * Pure-JVM implementation so the parser is unit-testable without Robolectric.
+ * Handles the named entities and numeric references (decimal and hex) that
+ * actually appear in Trumba feeds. Unknown entities are left intact.
+ */
+internal fun decodeHtmlEntities(text: String): String =
+    htmlEntityPattern.replace(text) { match ->
+        val entity = match.groupValues[1]
+        when {
+            entity.startsWith("#x") || entity.startsWith("#X") ->
+                entity.substring(2).toIntOrNull(16)
+                    ?.let { Character.toString(it) } ?: match.value
+            entity.startsWith("#") ->
+                entity.substring(1).toIntOrNull()
+                    ?.let { Character.toString(it) } ?: match.value
+            else -> namedHtmlEntities[entity] ?: match.value
+        }
+    }.trim()
+
+private val htmlEntityPattern = Regex("&(#x?[0-9a-fA-F]+|[a-zA-Z]+);")
+
+private val namedHtmlEntities = mapOf(
+    "amp" to "&",
+    "lt" to "<",
+    "gt" to ">",
+    "quot" to "\"",
+    "apos" to "'",
+    "nbsp" to " ",
+)
