@@ -123,6 +123,10 @@ class ChatViewModel @Inject constructor(
         _uiState.update { it.copy(pendingSharedLocation = location) }
     }
 
+    fun clearPendingSharedLocation() {
+        _uiState.update { it.copy(pendingSharedLocation = null) }
+    }
+
     fun dismissInfoMessage() {
         _uiState.update { it.copy(infoMessage = null) }
     }
