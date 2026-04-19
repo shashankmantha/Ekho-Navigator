@@ -17,8 +17,9 @@ import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteItemColors
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScope
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
+import androidx.window.core.layout.WindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -174,8 +175,17 @@ fun EkhoNavigationSuiteScaffold(
     windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfo(),
     content: @Composable () -> Unit,
 ) {
-    val layoutType = NavigationSuiteScaffoldDefaults
-        .calculateFromAdaptiveInfo(windowAdaptiveInfo)
+    // Override SDK default: it keeps a Bar on Compact-height landscape phones for thumb
+    // reach, but we'd rather reclaim the 80dp of vertical space the Bar eats.
+    val layoutType = if (
+        windowAdaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(
+            WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND,
+        )
+    ) {
+        NavigationSuiteType.NavigationRail
+    } else {
+        NavigationSuiteType.NavigationBar
+    }
     val navigationSuiteItemColors = NavigationSuiteItemColors(
         navigationBarItemColors = NavigationBarItemDefaults.colors(
             selectedIconColor = EkhoNavigationDefaults.navigationSelectedItemColor(),

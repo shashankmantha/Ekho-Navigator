@@ -34,8 +34,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.ui.NavDisplay
-import com.ekhonavigator.core.designsystem.component.EkhoNavigationBar
-import com.ekhonavigator.core.designsystem.component.EkhoNavigationBarItem
+import com.ekhonavigator.core.designsystem.component.EkhoNavigationSuiteScaffold
 import com.ekhonavigator.core.designsystem.component.EkhoTopAppBar
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.navigation.Navigator
@@ -109,39 +108,31 @@ fun EkhoNavigatorApp(
         topAppBarState.contentOffset = 0f
     }
 
-    Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = {
-            val titleRes = topLevelDestination?.titleRes ?: R.string.app_name
-            EkhoTopAppBar(
-                titleRes = titleRes,
-                scrollBehavior = scrollBehavior,
-                navigationIcon = if (isDefaultTopLevel) null else EkhoIcons.ArrowBack,
-                actionIcon = EkhoIcons.AccountCircle,
-                navigationIconContentDescription = if (isDefaultTopLevel) null else "Back",
-                onNavigationClick = {
-                    if (!isDefaultTopLevel) {
-                        navigator.goBack()
-                    }
-                },
-                onActionClick = {
-                    navigator.navigateToAccount()
-                },
-                leadingActions = {
-                    InvitesActionIcon(onClick = { navigator.navigateToInvites() })
-                },
-            )
-        },
-        bottomBar = {
-            if (isTopLevelDestination) {
-                EkhoBottomBar(
-                    onNavigateToNavKey = navigator::navigate,
-                    // used currentKey so the bar knows exactly which screen is active
-                    currentTopLevelKey = currentKey
+    val innerShell: @Composable () -> Unit = {
+        Scaffold(
+            modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+            topBar = {
+                val titleRes = topLevelDestination?.titleRes ?: R.string.app_name
+                EkhoTopAppBar(
+                    titleRes = titleRes,
+                    scrollBehavior = scrollBehavior,
+                    navigationIcon = if (isDefaultTopLevel) null else EkhoIcons.ArrowBack,
+                    actionIcon = EkhoIcons.AccountCircle,
+                    navigationIconContentDescription = if (isDefaultTopLevel) null else "Back",
+                    onNavigationClick = {
+                        if (!isDefaultTopLevel) {
+                            navigator.goBack()
+                        }
+                    },
+                    onActionClick = {
+                        navigator.navigateToAccount()
+                    },
+                    leadingActions = {
+                        InvitesActionIcon(onClick = { navigator.navigateToInvites() })
+                    },
                 )
-            }
-        }
-    ) { paddingValues ->
+            },
+        ) { paddingValues ->
         NavDisplay(
             modifier = Modifier
                 .padding(paddingValues)
@@ -344,35 +335,36 @@ fun EkhoNavigatorApp(
             onBack = { navigator.goBack() }
         )
     }
-}
+    }
 
-@Composable
-private fun EkhoBottomBar(
-    onNavigateToNavKey: (NavKey) -> Unit,
-    currentTopLevelKey: NavKey,
-) {
-    EkhoNavigationBar {
-        TOP_LEVEL_NAV_ITEMS.forEach { (navKey, item) ->
-            val selected =
-                navKey::class == currentTopLevelKey::class     // matched by class so the icon highlights for any version of the tab
-            EkhoNavigationBarItem(
-                selected = selected,
-                onClick = { onNavigateToNavKey(navKey) },
-                icon = {
-                    Icon(
-                        imageVector = item.unselectedIcon,
-                        contentDescription = null,
+    if (isTopLevelDestination) {
+        EkhoNavigationSuiteScaffold(
+            navigationSuiteItems = {
+                TOP_LEVEL_NAV_ITEMS.forEach { (navKey, navItem) ->
+                    item(
+                        selected = navKey::class == currentKey::class,
+                        onClick = { navigator.navigate(navKey) },
+                        icon = {
+                            Icon(
+                                imageVector = navItem.unselectedIcon,
+                                contentDescription = null,
+                            )
+                        },
+                        selectedIcon = {
+                            Icon(
+                                imageVector = navItem.selectedIcon,
+                                contentDescription = null,
+                            )
+                        },
+                        label = { Text(navItem.label) },
                     )
-                },
-                selectedIcon = {
-                    Icon(
-                        imageVector = item.selectedIcon,
-                        contentDescription = null,
-                    )
-                },
-                label = { Text(item.label) },
-            )
+                }
+            },
+        ) {
+            innerShell()
         }
+    } else {
+        innerShell()
     }
 }
 
