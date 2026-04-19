@@ -20,13 +20,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.window.core.layout.WindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,16 +42,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import androidx.core.net.toUri
 
 private const val STUDY_ROOM_URL = "https://csuci.libcal.com/spaces"
 
 @Composable
 fun StudyScreen(
     onViewLibraryOnMap: () -> Unit = {},
-    modifier: Modifier = Modifier,
+    @SuppressLint("ModifierParameter") modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val primaryToolbarColor = MaterialTheme.colorScheme.primary.toArgb()
+    val isCompactWidth = !currentWindowAdaptiveInfo()
+        .windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
 
     Scaffold(
         modifier = modifier,
@@ -68,18 +74,16 @@ fun StudyScreen(
                         modifier = Modifier.size(20.dp),
                     )
                 }
-                ExtendedFloatingActionButton(
+                FloatingActionButton(
                     onClick = { openBookingInCustomTab(context, primaryToolbarColor) },
-                    icon = {
-                        Icon(
-                            imageVector = EkhoIcons.OpenInNew,
-                            contentDescription = null,
-                        )
-                    },
-                    text = { Text("Book") },
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
+                ) {
+                    Icon(
+                        imageVector = EkhoIcons.OpenInNew,
+                        contentDescription = "Book a room",
+                    )
+                }
             }
         },
     ) { paddingValues ->
@@ -95,9 +99,10 @@ fun StudyScreen(
             AvailabilityWebView(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 12.dp)
-                    // Bottom padding for ExtendedFAB clearance — Scaffold's paddingValues omits it.
-                    .padding(bottom = 80.dp),
+                    .padding(
+                        start = 12.dp,
+                        end = 12.dp,
+                    ),
             )
         }
     }
@@ -178,14 +183,13 @@ private fun openBookingInCustomTab(context: Context, toolbarColorArgb: Int) {
         .setShowTitle(true)
         .setDefaultColorSchemeParams(colorScheme)
         .build()
-        .launchUrl(context, Uri.parse(STUDY_ROOM_URL))
+        .launchUrl(context, STUDY_ROOM_URL.toUri())
 }
 
 @SuppressLint("SetJavaScriptEnabled")
 private fun WebView.configureForEmbeddedWidget() {
     settings.javaScriptEnabled = true
     settings.domStorageEnabled = true
-    settings.databaseEnabled = true
     settings.loadsImagesAutomatically = true
     settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
     settings.useWideViewPort = true
@@ -218,6 +222,7 @@ private fun injectLayoutTweaks(webView: WebView?) {
               }
               html, body {
                 background: transparent !important;
+                min-height: 100% !important;
               }
               body, .container, .container-fluid,
               #s-lc-public-main, #s-lc-public-page-content,
@@ -228,6 +233,7 @@ private fun injectLayoutTweaks(webView: WebView?) {
                 width: 100% !important;
                 max-width: 100% !important;
                 float: none !important;
+                min-height: 100% !important;
               }
               .s-lc-spaces-setup-info {
                 padding: 8px !important;
@@ -266,6 +272,13 @@ private fun injectLayoutTweaks(webView: WebView?) {
               .fc .fc-cell-text {
                 min-height: 44px !important;
                 font-size: 12px !important;
+              }
+              /* Extra space for our floating action buttons */
+              @media (orientation: portrait) {
+                body { padding-bottom: 36px !important; }
+              }
+              @media (orientation: landscape) {
+                body { padding-bottom: 44px !important; }
               }
             `;
             document.head.appendChild(style);
