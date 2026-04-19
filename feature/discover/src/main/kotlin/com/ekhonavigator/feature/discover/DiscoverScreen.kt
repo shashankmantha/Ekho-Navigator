@@ -2,6 +2,7 @@
 
 package com.ekhonavigator.feature.discover
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,7 +35,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -223,43 +226,49 @@ private fun EventsTabContent(
     onDayClick: (Long) -> Unit,
     listState: LazyListState,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = viewModel::setSearchQuery,
-            modifier = Modifier.weight(1f),
-            label = { Text("Search events") },
-            singleLine = true,
-        )
+    val showSearch = listState.isScrollingUp()
 
-        Spacer(modifier = Modifier.width(8.dp))
+    AnimatedVisibility(visible = showSearch) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = viewModel::setSearchQuery,
+                    modifier = Modifier.weight(1f),
+                    label = { Text("Search events") },
+                    singleLine = true,
+                )
 
-        val allSourcesActive = activeSourceTypes.size == EventSourceType.entries.size
-        val hasActiveFilters = selectedCategories.isNotEmpty() || !allSourcesActive
-        IconButton(
-            onClick = onOpenFilters,
-            modifier = Modifier.size(48.dp),
-        ) {
-            Icon(
-                imageVector = EkhoIcons.Tune,
-                contentDescription = "Filters",
-                tint = if (hasActiveFilters) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
+                Spacer(modifier = Modifier.width(8.dp))
+
+                val allSourcesActive = activeSourceTypes.size == EventSourceType.entries.size
+                val hasActiveFilters = selectedCategories.isNotEmpty() || !allSourcesActive
+                IconButton(
+                    onClick = onOpenFilters,
+                    modifier = Modifier.size(48.dp),
+                ) {
+                    Icon(
+                        imageVector = EkhoIcons.Tune,
+                        contentDescription = "Filters",
+                        tint = if (hasActiveFilters) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                }
+            }
+
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
             )
         }
     }
-
-    HorizontalDivider(
-        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-    )
 
     focusedPlace?.let { place ->
         FocusedPlaceChip(
@@ -338,5 +347,23 @@ private fun RoomsTabPlaceholder() {
             )
         }
     }
+}
+
+@Composable
+private fun LazyListState.isScrollingUp(): Boolean {
+    var previousIndex by remember(this) { mutableIntStateOf(firstVisibleItemIndex) }
+    var previousScrollOffset by remember(this) { mutableIntStateOf(firstVisibleItemScrollOffset) }
+    return remember(this) {
+        derivedStateOf {
+            if (previousIndex != firstVisibleItemIndex) {
+                previousIndex > firstVisibleItemIndex
+            } else {
+                previousScrollOffset >= firstVisibleItemScrollOffset
+            }.also {
+                previousIndex = firstVisibleItemIndex
+                previousScrollOffset = firstVisibleItemScrollOffset
+            }
+        }
+    }.value
 }
 
