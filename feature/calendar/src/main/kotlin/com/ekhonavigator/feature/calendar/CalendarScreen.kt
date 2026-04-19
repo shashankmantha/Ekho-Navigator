@@ -133,9 +133,11 @@ fun CalendarScreen(
 
             }
         },
-    ) { _ ->
+    ) { paddingValues ->
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
         ) {
             Row(
                 modifier = Modifier

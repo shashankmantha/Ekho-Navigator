@@ -105,12 +105,14 @@ fun DayScreen(
                 }
             }
         },
-    ) { _ ->
+    ) { paddingValues ->
         DayTimelineContent(
             initialDate = initialDate,
             viewModel = viewModel,
             onEventClick = onEventClick,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
         )
     }
 }
