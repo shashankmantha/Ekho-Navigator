@@ -1,6 +1,7 @@
 package com.ekhonavigator.feature.social
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -71,13 +73,34 @@ fun UserProfileScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Image(
-                    painter = painterResource(id = avatarIdToRes(user.avatarId)),
-                    contentDescription = "Profile avatar",
-                    modifier = Modifier
-                        .size(110.dp)
-                        .clip(CircleShape),
-                )
+                Box(
+                    contentAlignment = Alignment.BottomEnd,
+                ) {
+                    Image(
+                        painter = painterResource(id = avatarIdToRes(user.avatarId)),
+                        contentDescription = "Profile avatar",
+                        modifier = Modifier
+                            .size(110.dp)
+                            .clip(CircleShape),
+                    )
+
+                    if (user.showOnlineStatus && uiState.isOnline) {
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surface)
+                                .padding(4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF34C759))
+                            )
+                        }
+                    }
+                }
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),

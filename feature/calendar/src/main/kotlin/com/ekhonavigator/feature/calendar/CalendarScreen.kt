@@ -62,6 +62,7 @@ fun CalendarScreen(
     onEventClick: (String) -> Unit,
     onDayClick: (Long, Set<EventSourceType>, Set<EventCategory>) -> Unit,
     onCreateEventClick: (Long?) -> Unit = {},
+    onSettingsClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: CalendarViewModel = hiltViewModel(),
 ) {
@@ -112,6 +113,18 @@ fun CalendarScreen(
                 }
 
                 if (viewModel.isSignedIn) {
+                    SmallFloatingActionButton(
+                        onClick = onSettingsClick,
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    ) {
+                        Icon(
+                            imageVector = EkhoIcons.Settings,
+                            contentDescription = "Settings",
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+
                     val selectedDate by viewModel.selectedDate.collectAsStateWithLifecycle()
                     FloatingActionButton(
                         onClick = {

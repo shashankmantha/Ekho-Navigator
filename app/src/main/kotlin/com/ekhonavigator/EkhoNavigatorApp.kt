@@ -34,8 +34,11 @@ import com.ekhonavigator.core.navigation.Navigator
 import com.ekhonavigator.core.navigation.rememberNavigationState
 import com.ekhonavigator.core.navigation.toEntries
 import com.ekhonavigator.feature.account.AccountScreen
+import com.ekhonavigator.feature.account.SettingsScreen
 import com.ekhonavigator.feature.account.navigation.AccountNavKey
+import com.ekhonavigator.feature.account.navigation.SettingsNavKey
 import com.ekhonavigator.feature.account.navigation.navigateToAccount
+import com.ekhonavigator.feature.account.navigation.navigateToSettings
 import com.ekhonavigator.feature.event.EventScreen
 import com.ekhonavigator.feature.event.navigation.EventNavKey
 import com.ekhonavigator.feature.event.navigation.navigateToEvent
@@ -96,6 +99,7 @@ fun EkhoNavigatorApp(
                 scrollBehavior = scrollBehavior,
                 navigationIcon = if (isPureDestination) null else EkhoIcons.ArrowBack,
                 actionIcon = EkhoIcons.AccountCircle,
+                secondaryActionIcon = EkhoIcons.Settings,
                 navigationIconContentDescription = if (isPureDestination) null else "Back",
                 onNavigationClick = {
                     if (!isPureDestination) {
@@ -104,6 +108,9 @@ fun EkhoNavigatorApp(
                 },
                 onActionClick = {
                     navigator.navigateToAccount()
+                },
+                onSecondaryActionClick = {
+                    navigator.navigateToSettings()
                 }
             )
         },
@@ -137,7 +144,9 @@ fun EkhoNavigatorApp(
                 when (key) {
                     is HomeNavKey -> {
                         NavEntry(key) {
-                            HomeScreen(onEventClick = navigator::navigateToEvent)
+                            HomeScreen(
+                                onEventClick = navigator::navigateToEvent,
+                            )
                         }
                     }
 
@@ -148,7 +157,7 @@ fun EkhoNavigatorApp(
                                 onDayClick = navigator::navigateToDay,
                                 onCreateEventClick = { epochDay ->
                                     navigator.navigateToCreateEvent(epochDay)
-                                }
+                                },
                             )
                         }
                     }
@@ -242,7 +251,14 @@ fun EkhoNavigatorApp(
                             AccountScreen(
                                 onSignIn = onSignIn,
                                 onSignOut = onSignOut,
+                                onSettingsClick = navigator::navigateToSettings,
                             )
+                        }
+                    }
+
+                    is SettingsNavKey -> {
+                        NavEntry(key) {
+                            SettingsScreen()
                         }
                     }
 

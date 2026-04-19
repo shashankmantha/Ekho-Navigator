@@ -1,5 +1,6 @@
 package com.ekhonavigator.feature.social
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,9 +10,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -31,6 +34,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
@@ -136,6 +141,8 @@ fun SocialScreen(
                         displayName = friend.displayName,
                         avatarId = friend.avatarId,
                         major = friend.major,
+                        showOnlineStatus = friend.showOnlineStatus,
+                        online = friend.online,
                         onMessageClick = { uid, displayName, avatarId ->
                             onMessageClick(uid, displayName, avatarId)
                         },
@@ -269,6 +276,8 @@ private fun FriendRow(
     displayName: String,
     avatarId: String,
     major: String,
+    showOnlineStatus: Boolean,
+    online: Boolean,
     onMessageClick: (String, String, String) -> Unit,
     onViewProfileClick: (String) -> Unit,
     onRemoveFriendClick: (String) -> Unit,
@@ -285,6 +294,43 @@ private fun FriendRow(
                 .clickable {
                     showMenu = true
                 },
+            leadingContent = {
+                Box(
+                    modifier = Modifier.size(40.dp),
+                    contentAlignment = Alignment.BottomEnd,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = displayName.take(1).uppercase(),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+                    }
+
+                    if (showOnlineStatus && online) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surface)
+                                .padding(2.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF34C759))
+                            )
+                        }
+                    }
+                }
+            },
             headlineContent = {
                 Text(displayName)
             },
