@@ -243,7 +243,10 @@ fun EkhoNavigatorApp(
                                 friendUserId = key.friendUserId,
                                 friendDisplayName = key.friendDisplayName,
                                 friendAvatarId = key.friendAvatarId,
-                                sharedLocation = key.sharedLocation
+                                sharedLocation = key.sharedLocation,
+                                onNavigateToMap = {
+                                    navigator.navigate(MapNavKey)
+                                }
                             )
                         }
                     }

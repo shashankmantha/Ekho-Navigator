@@ -115,6 +115,7 @@ fun ChatScreen(
     friendAvatarId: String,
     modifier: Modifier = Modifier,
     sharedLocation: com.ekhonavigator.core.model.SharedLocation? = null,
+    onNavigateToMap: () -> Unit = {},
     viewModel: ChatViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -240,7 +241,8 @@ fun ChatScreen(
                                                 modifier = Modifier.padding(bottom = 4.dp),
                                                 onClick = {
                                                     viewModel.saveSharedLocationToMap(
-                                                        location
+                                                        location = location,
+                                                        onSaved = onNavigateToMap
                                                     )
                                                 }
                                             )

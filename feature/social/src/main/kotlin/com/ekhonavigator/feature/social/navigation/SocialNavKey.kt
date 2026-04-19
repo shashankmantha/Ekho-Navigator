@@ -1,13 +1,12 @@
 package com.ekhonavigator.feature.social.navigation
 
-
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
+import com.ekhonavigator.core.model.SharedLocation
 import com.ekhonavigator.core.navigation.Navigator
 import com.ekhonavigator.feature.social.ChatScreen
 import com.ekhonavigator.feature.social.SocialScreen
 import com.ekhonavigator.feature.social.UserProfileScreen
-import com.ekhonavigator.core.model.SharedLocation
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -26,7 +25,7 @@ data class ChatNavKey(
     val sharedLocation: SharedLocation? = null
 ) : NavKey
 
-fun EntryProviderScope<NavKey>.socialEntry(navigator: Navigator) {
+fun EntryProviderScope<NavKey>.socialEntry(navigator: Navigator, onNavigateToMap: () -> Unit) {
     entry<SocialNavKey> {
         SocialScreen(
             onProfileClick = { userId ->
@@ -55,7 +54,8 @@ fun EntryProviderScope<NavKey>.socialEntry(navigator: Navigator) {
             friendUserId = key.friendUserId,
             friendDisplayName = key.friendDisplayName,
             friendAvatarId = key.friendAvatarId,
-            sharedLocation = key.sharedLocation
+            sharedLocation = key.sharedLocation,
+            onNavigateToMap = onNavigateToMap
         )
     }
 }

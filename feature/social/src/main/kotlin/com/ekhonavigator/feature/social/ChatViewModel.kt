@@ -174,17 +174,33 @@ class ChatViewModel @Inject constructor(
 
     fun getCurrentUserId(): String? = authRepository.getCurrentUserUid()
 
-    fun saveSharedLocationToMap(location: com.ekhonavigator.core.model.SharedLocation) {
+    fun saveSharedLocationToMap(
+        location: com.ekhonavigator.core.model.SharedLocation,
+        onSaved: () -> Unit
+    ) {
         val userId = authRepository.getCurrentUserUid() ?: return
         viewModelScope.launch {
             runCatching {
-                val marker = com.ekhonavigator.core.data.markers.UserDroppedMarker(
-                    id = java.util.UUID.randomUUID().toString(),
-                    latitude = location.latitude,
-                    longitude = location.longitude,
-                    comment = location.title
-                )
-                markerRepository.saveMarker(userId, marker)
+                val existingMarkers = markerRepository.getUserMarkers(userId)
+                val isDuplicate = existingMarkers.any {
+                    it.latitude == location.latitude && it.longitude == location.longitude
+                }
+
+                if (isDuplicate) {
+                    _uiState.update {
+                        it.copy(errorMessage = "You already have a copy of this marker.")
+                    }
+                } else {
+                    val marker = com.ekhonavigator.core.data.markers.UserDroppedMarker(
+                        id = UUID.randomUUID().toString(),
+                        latitude = location.latitude,
+                        longitude = location.longitude,
+                        comment = location.title
+                    )
+                    markerRepository.saveMarker(userId, marker)
+
+                    onSaved()
+                }
             }.onFailure { e ->
                 _uiState.update { it.copy(errorMessage = "Failed to save marker: ${e.message}") }
             }
