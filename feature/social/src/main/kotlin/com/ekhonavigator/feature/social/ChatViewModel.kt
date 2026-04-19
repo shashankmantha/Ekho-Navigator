@@ -23,6 +23,7 @@ data class ChatUiState(
     val draftMessage: String = "",
     val pendingSharedLocation: com.ekhonavigator.core.model.SharedLocation? = null,
     val errorMessage: String? = null,
+    val infoMessage: String? = null,
 )
 
 @HiltViewModel
@@ -122,6 +123,10 @@ class ChatViewModel @Inject constructor(
         _uiState.update { it.copy(pendingSharedLocation = location) }
     }
 
+    fun dismissInfoMessage() {
+        _uiState.update { it.copy(infoMessage = null) }
+    }
+
     fun sendMessage(
         friendUserId: String,
         friendDisplayName: String,
@@ -165,8 +170,12 @@ class ChatViewModel @Inject constructor(
             }.onFailure { e ->
                 _uiState.update {
                     it.copy(
-                        errorMessage = e.message ?: "Failed to send message",
+                        infoMessage = e.message ?: "Failed to send message",
                     )
+                }
+                viewModelScope.launch {
+                    kotlinx.coroutines.delay(5000)
+                    _uiState.update { it.copy(infoMessage = null) }
                 }
             }
         }
@@ -188,7 +197,11 @@ class ChatViewModel @Inject constructor(
 
                 if (isDuplicate) {
                     _uiState.update {
-                        it.copy(errorMessage = "You already have a copy of this marker.")
+                        it.copy(infoMessage = "You already have a copy of this marker.")
+                    }
+                    viewModelScope.launch {
+                        kotlinx.coroutines.delay(5000)
+                        _uiState.update { it.copy(infoMessage = null) }
                     }
                 } else {
                     val marker = com.ekhonavigator.core.data.markers.UserDroppedMarker(
@@ -202,7 +215,12 @@ class ChatViewModel @Inject constructor(
                     onSaved()
                 }
             }.onFailure { e ->
-                _uiState.update { it.copy(errorMessage = "Failed to save marker: ${e.message}") }
+                _uiState.update { it.copy(infoMessage = "Failed to save marker: ${e.message}") }
+
+                viewModelScope.launch {
+                    kotlinx.coroutines.delay(5000)
+                    _uiState.update { it.copy(infoMessage = null) }
+                }
             }
         }
     }

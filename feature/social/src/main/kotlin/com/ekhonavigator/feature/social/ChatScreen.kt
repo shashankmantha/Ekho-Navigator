@@ -1,5 +1,9 @@
 package com.ekhonavigator.feature.social
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.material3.Surface
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -273,12 +277,36 @@ fun ChatScreen(
             }
         }
 
+        AnimatedVisibility(
+            visible = uiState.infoMessage != null,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.padding(horizontal = 8.dp)
+        ) {
+            Surface(
+                onClick = { viewModel.dismissInfoMessage() },
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                shape = MaterialTheme.shapes.medium,
+                tonalElevation = 4.dp,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = uiState.infoMessage ?: "",
+                    modifier = Modifier.padding(12.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+        }
+
         uiState.pendingSharedLocation?.let { location ->
             LocationPreviewCard(
                 location = location,
                 modifier = Modifier.padding(horizontal = 8.dp)
             )
         }
+
 
         Row(
             modifier = Modifier
