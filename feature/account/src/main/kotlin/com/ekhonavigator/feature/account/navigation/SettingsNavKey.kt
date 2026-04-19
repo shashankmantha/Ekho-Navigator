@@ -5,8 +5,8 @@ import kotlinx.serialization.Serializable
 import com.ekhonavigator.core.navigation.Navigator
 
 @Serializable
-object AccountNavKey : NavKey
+object SettingsNavKey : NavKey
 
-fun Navigator.navigateToAccount() {
-    navigate(AccountNavKey)
+fun Navigator.navigateToSettings() {
+    navigate(SettingsNavKey)
 }

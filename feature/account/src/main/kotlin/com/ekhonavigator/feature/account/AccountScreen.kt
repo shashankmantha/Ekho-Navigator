@@ -18,7 +18,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -38,19 +41,21 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import com.ekhonavigator.core.model.OnlineStatus
 import kotlinx.coroutines.launch
 
 @Composable
 fun AccountScreen(
     onSignIn: () -> Unit = {},
     onSignOut: () -> Unit = {},
+    onSettingsClick: () -> Unit = {},
     modifier: Modifier = Modifier,
+    viewModel: AccountViewModel = hiltViewModel(),
 ) {
-    val viewModel: AccountViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
 
-    // Trigger sync when user signs in
     LaunchedEffect(uiState) {
         if (uiState is AccountUiState.SignedIn) onSignIn()
     }
@@ -61,11 +66,36 @@ fun AccountScreen(
     val context = LocalContext.current
     val clientId = stringResource(R.string.default_web_client_id)
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-    ) {
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier
+                    .padding(top = 16.dp, start = 16.dp, end = 16.dp),
+            )
+        },
+        floatingActionButton = {
+            if (uiState is AccountUiState.SignedIn) {
+                FloatingActionButton(
+                    onClick = onSettingsClick,
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                ) {
+                    Icon(
+                        imageVector = EkhoIcons.Settings,
+                        contentDescription = "Settings",
+                    )
+                }
+            }
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .background(MaterialTheme.colorScheme.background),
+        ) {
         when (val state = uiState) {
             AccountUiState.Loading -> {
                 Box(
@@ -197,8 +227,10 @@ fun AccountScreen(
                     initialDescriptionVisible = state.descriptionVisible,
                     initialLinksVisible = state.linksVisible,
                     initialSearchable = state.searchable,
+                    initialShowOnlineStatus = state.showOnlineStatus,
+                    initialOnlineStatus = state.onlineStatus,
                     avatarId = state.avatarId,
-                    onSaveClick = { displayName, major, description, links, majorVisible, descriptionVisible, linksVisible, searchable, avatarId ->
+                    onSaveClick = { displayName, major, description, links, majorVisible, descriptionVisible, linksVisible, searchable, showOnlineStatus, onlineStatus, avatarId ->
                         val oldDisplayName = state.displayName
                         val oldMajor = state.major
                         val oldDescription = state.description
@@ -206,8 +238,10 @@ fun AccountScreen(
                         val oldMajorVisible = state.majorVisible
                         val oldDescriptionVisible = state.descriptionVisible
                         val oldLinksVisible = state.linksVisible
-                        val oldAvatarId = state.avatarId
                         val oldSearchable = state.searchable
+                        val oldShowOnlineStatus = state.showOnlineStatus
+                        val oldOnlineStatus = state.onlineStatus
+                        val oldAvatarId = state.avatarId
 
                         viewModel.saveProfile(
                             displayName = displayName,
@@ -219,6 +253,8 @@ fun AccountScreen(
                             linksVisible = linksVisible,
                             avatarId = avatarId,
                             searchable = searchable,
+                            showOnlineStatus = showOnlineStatus,
+                            onlineStatus = onlineStatus,
                         )
 
                         scope.launch {
@@ -241,6 +277,8 @@ fun AccountScreen(
                                     linksVisible = oldLinksVisible,
                                     avatarId = oldAvatarId,
                                     searchable = oldSearchable,
+                                    showOnlineStatus = oldShowOnlineStatus,
+                                    onlineStatus = oldOnlineStatus,
                                 )
                             }
                         }
@@ -254,11 +292,6 @@ fun AccountScreen(
             }
         }
 
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 16.dp, start = 16.dp, end = 16.dp),
-        )
+        }
     }
 }

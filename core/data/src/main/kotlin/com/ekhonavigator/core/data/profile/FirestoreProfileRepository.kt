@@ -1,10 +1,14 @@
 package com.ekhonavigator.core.data.profile
 
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.toObject
 import kotlinx.coroutines.tasks.await
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class FirestoreProfileRepository : ProfileRepository {
+@Singleton
+class FirestoreProfileRepository @Inject constructor() : ProfileRepository {
 
     private val firestore = FirebaseFirestore.getInstance()
 
@@ -22,7 +26,7 @@ class FirestoreProfileRepository : ProfileRepository {
 
         firestore.collection("users")
             .document(uid)
-            .set(normalizedProfile)
+            .set(normalizedProfile, SetOptions.merge())
             .await()
     }
 }

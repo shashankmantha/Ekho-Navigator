@@ -44,6 +44,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ekhonavigator.core.designsystem.R as DesignSystemR
 
+import androidx.compose.ui.graphics.Color
+import com.ekhonavigator.core.model.OnlineStatus
+
 private val avatarOptions = listOf(
     "avatar_default",
     "avatar_dolphin",
@@ -62,9 +65,11 @@ fun EditProfileScreen(
     initialDescriptionVisible: Boolean,
     initialLinksVisible: Boolean,
     initialSearchable: Boolean,
+    initialShowOnlineStatus: Boolean,
+    initialOnlineStatus: OnlineStatus,
     avatarId: String,
     onSaveClick: (
-        String, String, String, String, Boolean, Boolean, Boolean, Boolean, String
+        String, String, String, String, Boolean, Boolean, Boolean, Boolean, Boolean, OnlineStatus, String
     ) -> Unit,
     onSignOutClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -78,6 +83,10 @@ fun EditProfileScreen(
     var descriptionVisible by rememberSaveable { mutableStateOf(initialDescriptionVisible) }
     var linksVisible by rememberSaveable { mutableStateOf(initialLinksVisible) }
     var searchable by rememberSaveable { mutableStateOf(initialSearchable) }
+    var showOnlineStatus by rememberSaveable { mutableStateOf(initialShowOnlineStatus) }
+    var onlineStatusPreference by rememberSaveable {
+        mutableStateOf(initialOnlineStatus)
+    }
 
     var selectedAvatarId by rememberSaveable { mutableStateOf(avatarId) }
     var showAvatarDialog by rememberSaveable { mutableStateOf(false) }
@@ -157,9 +166,59 @@ fun EditProfileScreen(
                 shape = RoundedCornerShape(14.dp),
             )
         }
+
         Spacer(modifier = Modifier.height(16.dp))
 
-        ProfileFieldCard(label = stringResource(R.string.account_profile_social_search)) {
+        ProfileFieldCard(label = "Status Mode") {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OnlineStatus.entries.forEach { status ->
+                    val isSelected = onlineStatusPreference == status
+                    val color = when (status) {
+                        OnlineStatus.ONLINE -> Color(0xFF4CAF50)
+                        OnlineStatus.AWAY -> Color(0xFFFFC107)
+                        OnlineStatus.BUSY -> Color(0xFFF44336)
+                    }
+
+                    OutlinedButton(
+                        onClick = { onlineStatusPreference = status },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = if (isSelected) {
+                            androidx.compose.foundation.BorderStroke(2.dp, color)
+                        } else {
+                            androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                        },
+                        colors = if (isSelected) {
+                            androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                                containerColor = color.copy(alpha = 0.1f)
+                            )
+                        } else {
+                            androidx.compose.material3.ButtonDefaults.outlinedButtonColors()
+                        }
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(
+                                modifier = Modifier
+                                    .size(12.dp)
+                                    .background(color, CircleShape)
+                            )
+                            Text(
+                                text = status.name.lowercase().replaceFirstChar { it.uppercase() },
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (isSelected) color else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ProfileFieldCard(label = "Social Search") {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -169,7 +228,7 @@ fun EditProfileScreen(
                     modifier = Modifier.weight(1f),
                 ) {
                     Text(
-                        text = stringResource(R.string.account_profile_appear_in_search),
+                        text = "Appear in search",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -177,7 +236,7 @@ fun EditProfileScreen(
                     Spacer(modifier = Modifier.height(4.dp))
 
                     Text(
-                        text = stringResource(R.string.account_profile_social_search_info),
+                        text = "Turn this off to make your profile unsearchable in the Social tab.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -188,6 +247,41 @@ fun EditProfileScreen(
                 Switch(
                     checked = searchable,
                     onCheckedChange = { searchable = it },
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ProfileFieldCard(label = "Activity Status") {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(
+                        text = "Show when you are online",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = "Turn this off to always appear offline to others.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                Spacer(modifier = Modifier.size(12.dp))
+
+                Switch(
+                    checked = showOnlineStatus,
+                    onCheckedChange = { showOnlineStatus = it },
                 )
             }
         }
@@ -205,6 +299,8 @@ fun EditProfileScreen(
                     descriptionVisible,
                     linksVisible,
                     searchable,
+                    showOnlineStatus,
+                    onlineStatusPreference,
                     selectedAvatarId,
                 )
             },
