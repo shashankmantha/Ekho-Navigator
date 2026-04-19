@@ -1,6 +1,9 @@
 package com.ekhonavigator.core.data.markers
 
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
@@ -27,10 +30,24 @@ class MarkerRepository @Inject constructor() {
             .await()
     }
 
+    fun observeUserMarkers(userId: String): Flow<List<UserDroppedMarker>> = callbackFlow {
+        val registration = getUserMarkersCollection(userId).addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                close(error)
+                return@addSnapshotListener
+            }
+            if (snapshot != null) {
+                val markers = snapshot.toObjects(UserDroppedMarker::class.java)
+                trySend(markers)
+            }
+        }
+        awaitClose { registration.remove() }
+    }
+
     suspend fun getUserMarkers(userId: String): List<UserDroppedMarker> {
         return try {
             val markersSnapshot = getUserMarkersCollection(userId)
-                .get()
+                .get(com.google.firebase.firestore.Source.SERVER)
                 .await()
 
             markersSnapshot.toObjects(UserDroppedMarker::class.java)

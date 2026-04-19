@@ -51,10 +51,10 @@ class MapViewModel @Inject constructor(
     private fun loadUserMarkers() {
         val userId = currentUserId ?: return
         viewModelScope.launch {
-            val remoteMarkers = markerRepository.getUserMarkers(userId)
-
-            droppedMarkers.clear()
-            droppedMarkers.addAll(remoteMarkers.map { remoteMarker -> remoteMarker.toUserMarker() })
+            markerRepository.observeUserMarkers(userId).collect { remoteMarkers ->
+                droppedMarkers.clear()
+                droppedMarkers.addAll(remoteMarkers.map { it.toUserMarker() })
+            }
         }
     }
 

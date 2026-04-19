@@ -209,7 +209,7 @@ class ChatViewModel @Inject constructor(
                     }
                 } else {
                     val marker = com.ekhonavigator.core.data.markers.UserDroppedMarker(
-                        id = UUID.randomUUID().toString(),
+                        id = System.currentTimeMillis().toString(),
                         latitude = location.latitude,
                         longitude = location.longitude,
                         comment = location.title
