@@ -43,6 +43,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import com.ekhonavigator.core.model.OnlineStatus
 import kotlinx.coroutines.launch
 
 @Composable
@@ -225,8 +226,11 @@ fun AccountScreen(
                     initialMajorVisible = state.majorVisible,
                     initialDescriptionVisible = state.descriptionVisible,
                     initialLinksVisible = state.linksVisible,
+                    initialSearchable = state.searchable,
+                    initialShowOnlineStatus = state.showOnlineStatus,
+                    initialOnlineStatus = state.onlineStatus,
                     avatarId = state.avatarId,
-                    onSaveClick = { displayName, major, description, links, majorVisible, descriptionVisible, linksVisible, avatarId ->
+                    onSaveClick = { displayName, major, description, links, majorVisible, descriptionVisible, linksVisible, searchable, showOnlineStatus, onlineStatus, avatarId ->
                         val oldDisplayName = state.displayName
                         val oldMajor = state.major
                         val oldDescription = state.description
@@ -234,6 +238,9 @@ fun AccountScreen(
                         val oldMajorVisible = state.majorVisible
                         val oldDescriptionVisible = state.descriptionVisible
                         val oldLinksVisible = state.linksVisible
+                        val oldSearchable = state.searchable
+                        val oldShowOnlineStatus = state.showOnlineStatus
+                        val oldOnlineStatus = state.onlineStatus
                         val oldAvatarId = state.avatarId
 
                         viewModel.saveProfile(
@@ -245,8 +252,9 @@ fun AccountScreen(
                             descriptionVisible = descriptionVisible,
                             linksVisible = linksVisible,
                             avatarId = avatarId,
-                            searchable = state.searchable,
-                            showOnlineStatus = state.showOnlineStatus,
+                            searchable = searchable,
+                            showOnlineStatus = showOnlineStatus,
+                            onlineStatus = onlineStatus,
                         )
 
                         scope.launch {
@@ -268,8 +276,9 @@ fun AccountScreen(
                                     descriptionVisible = oldDescriptionVisible,
                                     linksVisible = oldLinksVisible,
                                     avatarId = oldAvatarId,
-                                    searchable = state.searchable,
-                                    showOnlineStatus = state.showOnlineStatus,
+                                    searchable = oldSearchable,
+                                    showOnlineStatus = oldShowOnlineStatus,
+                                    onlineStatus = oldOnlineStatus,
                                 )
                             }
                         }

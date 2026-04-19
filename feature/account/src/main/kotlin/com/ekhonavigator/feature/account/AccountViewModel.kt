@@ -55,6 +55,7 @@ class AccountViewModel @Inject constructor(
                     avatarId = profile?.avatarId ?: "avatar_default",
                     searchable = profile?.searchable ?: true,
                     showOnlineStatus = profile?.showOnlineStatus ?: true,
+                    onlineStatus = profile?.onlineStatus ?: com.ekhonavigator.core.model.OnlineStatus.ONLINE,
                 )
             } catch (e: Exception) {
                 _uiState.value = AccountUiState.Error(
@@ -90,6 +91,7 @@ class AccountViewModel @Inject constructor(
         avatarId: String,
         searchable: Boolean,
         showOnlineStatus: Boolean,
+        onlineStatus: com.ekhonavigator.core.model.OnlineStatus,
     ) {
         val uid = authRepo.getCurrentUserUid() ?: return
         val email = authRepo.getCurrentUserEmail() ?: ""
@@ -113,11 +115,12 @@ class AccountViewModel @Inject constructor(
                         avatarId = avatarId,
                         searchable = searchable,
                         showOnlineStatus = showOnlineStatus,
+                        onlineStatus = onlineStatus,
                     ),
                 )
 
                 // Update presence repository immediately with the new preference
-                presenceRepo.updateOnlineStatusPreference(showOnlineStatus)
+                presenceRepo.updateOnlineStatusPreference(showOnlineStatus, onlineStatus)
 
                 checkUser()
             } catch (e: Exception) {

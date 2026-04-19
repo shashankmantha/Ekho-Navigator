@@ -1,5 +1,6 @@
 package com.ekhonavigator.core.data.repository
 
+import com.ekhonavigator.core.model.OnlineStatus
 import com.ekhonavigator.core.model.PresenceStatus
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -21,9 +22,11 @@ class DefaultPresenceRepository @Inject constructor() : PresenceRepository {
     private var activeUid: String? = null
     private var connectedListener: ValueEventListener? = null
     private var showOnlineStatusPreference: Boolean = true
+    private var onlineStatusPreference: OnlineStatus = OnlineStatus.ONLINE
 
-    override fun startPresence(uid: String, showOnlineStatus: Boolean) {
+    override fun startPresence(uid: String, showOnlineStatus: Boolean, status: OnlineStatus) {
         this.showOnlineStatusPreference = showOnlineStatus
+        this.onlineStatusPreference = status
         
         if (activeUid == uid) {
             // Just update preference-based state if UID matches
@@ -52,8 +55,9 @@ class DefaultPresenceRepository @Inject constructor() : PresenceRepository {
         connectedRef.addValueEventListener(listener)
     }
 
-    override fun updateOnlineStatusPreference(showOnlineStatus: Boolean) {
+    override fun updateOnlineStatusPreference(showOnlineStatus: Boolean, status: OnlineStatus) {
         this.showOnlineStatusPreference = showOnlineStatus
+        this.onlineStatusPreference = status
         if (activeUid != null) {
             updatePresenceState()
         }
@@ -75,7 +79,11 @@ class DefaultPresenceRepository @Inject constructor() : PresenceRepository {
         val uid = activeUid ?: return
         val userStatusRef = database.getReference("status").child(uid)
 
-        val state = if (showOnlineStatusPreference) "online" else "offline"
+        val state = if (showOnlineStatusPreference) {
+            onlineStatusPreference.name.lowercase()
+        } else {
+            "offline"
+        }
         
         val status = mapOf(
             "state" to state,

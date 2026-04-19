@@ -28,6 +28,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.ekhonavigator.core.designsystem.R
+import com.ekhonavigator.core.model.OnlineStatus
 
 @Composable
 fun UserProfileScreen(
@@ -85,6 +86,11 @@ fun UserProfileScreen(
                     )
 
                     if (user.showOnlineStatus && uiState.isOnline) {
+                        val statusColor = when (uiState.onlineStatus) {
+                            OnlineStatus.ONLINE -> Color(0xFF4CAF50)
+                            OnlineStatus.AWAY -> Color(0xFFFFC107)
+                            OnlineStatus.BUSY -> Color(0xFFF44336)
+                        }
                         Box(
                             modifier = Modifier
                                 .size(28.dp)
@@ -96,7 +102,7 @@ fun UserProfileScreen(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .clip(CircleShape)
-                                    .background(Color(0xFF34C759))
+                                    .background(statusColor)
                             )
                         }
                     }

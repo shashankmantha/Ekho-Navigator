@@ -15,4 +15,5 @@ data class UserProfile(
     val avatarId: String = "avatar_default",
     val searchable: Boolean = true,
     val showOnlineStatus: Boolean = true,
+    val onlineStatus: com.ekhonavigator.core.model.OnlineStatus = com.ekhonavigator.core.model.OnlineStatus.ONLINE,
 )

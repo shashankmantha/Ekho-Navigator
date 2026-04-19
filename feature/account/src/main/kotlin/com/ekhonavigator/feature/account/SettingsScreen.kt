@@ -150,6 +150,7 @@ fun SettingsScreen(
                                     avatarId = state.avatarId,
                                     searchable = searchable,
                                     showOnlineStatus = showOnlineStatus,
+                                    onlineStatus = state.onlineStatus,
                                 )
                                 showSavedMessage = true
                             },

@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import com.ekhonavigator.core.data.social.FriendRequest
 import com.ekhonavigator.core.data.social.FriendUser
 import com.ekhonavigator.core.data.repository.PresenceRepository
+import com.ekhonavigator.core.model.OnlineStatus
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -121,8 +122,15 @@ class SocialViewModel @Inject constructor(
                     val updatedFriends = state.friends.map { friend ->
                         val presence = presenceMap[friend.uid]
                         if (presence != null) {
+                            val statusStr = presence.state.uppercase()
+                            val onlineStatus = try {
+                                OnlineStatus.valueOf(statusStr)
+                            } catch (e: Exception) {
+                                OnlineStatus.ONLINE
+                            }
                             friend.copy(
-                                online = presence.state == "online",
+                                online = presence.state != "offline",
+                                onlineStatus = onlineStatus,
                                 lastChanged = presence.lastChanged
                             )
                         } else {

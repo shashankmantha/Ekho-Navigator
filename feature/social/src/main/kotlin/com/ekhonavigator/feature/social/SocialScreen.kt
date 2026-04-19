@@ -38,6 +38,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.ekhonavigator.core.model.OnlineStatus
 
 @Composable
 fun SocialScreen(
@@ -143,6 +144,7 @@ fun SocialScreen(
                         major = friend.major,
                         showOnlineStatus = friend.showOnlineStatus,
                         online = friend.online,
+                        onlineStatus = friend.onlineStatus,
                         onMessageClick = { uid, displayName, avatarId ->
                             onMessageClick(uid, displayName, avatarId)
                         },
@@ -278,6 +280,7 @@ private fun FriendRow(
     major: String,
     showOnlineStatus: Boolean,
     online: Boolean,
+    onlineStatus: OnlineStatus,
     onMessageClick: (String, String, String) -> Unit,
     onViewProfileClick: (String) -> Unit,
     onRemoveFriendClick: (String) -> Unit,
@@ -314,6 +317,11 @@ private fun FriendRow(
                     }
 
                     if (showOnlineStatus && online) {
+                        val statusColor = when (onlineStatus) {
+                            OnlineStatus.ONLINE -> Color(0xFF4CAF50)
+                            OnlineStatus.AWAY -> Color(0xFFFFC107)
+                            OnlineStatus.BUSY -> Color(0xFFF44336)
+                        }
                         Box(
                             modifier = Modifier
                                 .size(12.dp)
@@ -325,7 +333,7 @@ private fun FriendRow(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .clip(CircleShape)
-                                    .background(Color(0xFF34C759))
+                                    .background(statusColor)
                             )
                         }
                     }

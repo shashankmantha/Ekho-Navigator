@@ -40,6 +40,7 @@ dependencies {
     api(projects.core.navigation)
     implementation(projects.core.designsystem)
     implementation(projects.core.data)
+    implementation(projects.core.model)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.tooling.preview)
