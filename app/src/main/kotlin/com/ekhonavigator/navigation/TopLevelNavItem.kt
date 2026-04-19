@@ -10,6 +10,7 @@ import com.ekhonavigator.feature.calendar.navigation.CalendarNavKey
 import com.ekhonavigator.feature.map.navigation.MapNavKey
 import com.ekhonavigator.feature.discover.navigation.DiscoverNavKey
 import com.ekhonavigator.feature.social.navigation.SocialNavKey
+import com.ekhonavigator.feature.study.navigation.StudyNavKey
 
 /** UI metadata for a top-level navigation destination. */
 data class TopLevelNavItem(
@@ -48,10 +49,17 @@ val MAP = TopLevelNavItem(
     unselectedIcon = EkhoIcons.MapOutlined,
     label = "Map",
 )
+
+val STUDY = TopLevelNavItem(
+    selectedIcon = EkhoIcons.StudyFilled,
+    unselectedIcon = EkhoIcons.StudyOutlined,
+    label = "Study",
+)
 val TOP_LEVEL_NAV_ITEMS: Map<NavKey, TopLevelNavItem> = mapOf(
     HomeNavKey to HOME,
     CalendarNavKey to CALENDAR,
     DiscoverNavKey() to DISCOVER,         // data class (not object) so a locationQuery can be passed in from the map
     SocialNavKey to SOCIAL,
     MapNavKey to MAP,
+    StudyNavKey to STUDY,
 )
