@@ -5,19 +5,6 @@ import com.google.firebase.firestore.FirebaseFirestore
 import javax.inject.Inject
 import kotlinx.coroutines.tasks.await
 
-data class SocialUser(
-    val id: String = "",
-    val displayName: String = "",
-    val email: String = "",
-    val major: String = "",
-    val description: String = "",
-    val links: String = "",
-    val avatarId: String = "avatar_default",
-    val majorVisible: Boolean = false,
-    val descriptionVisible: Boolean = false,
-    val linksVisible: Boolean = false,
-)
-
 class SocialRepository @Inject constructor() {
 
     private val firestore = FirebaseFirestore.getInstance()
@@ -43,6 +30,7 @@ class SocialRepository @Inject constructor() {
             majorVisible = doc.getBoolean("majorVisible") ?: false,
             descriptionVisible = doc.getBoolean("descriptionVisible") ?: false,
             linksVisible = doc.getBoolean("linksVisible") ?: false,
+            showOnlineStatus = doc.getBoolean("showOnlineStatus") ?: true,
         )
     }
 
@@ -98,6 +86,7 @@ class SocialRepository @Inject constructor() {
                 majorVisible = doc.getBoolean("majorVisible") ?: false,
                 descriptionVisible = doc.getBoolean("descriptionVisible") ?: false,
                 linksVisible = doc.getBoolean("linksVisible") ?: false,
+                showOnlineStatus = doc.getBoolean("showOnlineStatus") ?: true,
             )
         }.filter { it.id != currentUserId }
     }
@@ -184,6 +173,7 @@ class SocialRepository @Inject constructor() {
                 displayName = displayName,
                 avatarId = it.getString("avatarId") ?: "avatar_default",
                 major = it.getString("major") ?: "",
+                showOnlineStatus = it.getBoolean("showOnlineStatus") ?: true,
             )
         }
     }
@@ -199,6 +189,7 @@ class SocialRepository @Inject constructor() {
             "displayName" to (currentUserDoc.getString("displayName") ?: ""),
             "avatarId" to (currentUserDoc.getString("avatarId") ?: "avatar_default"),
             "major" to (currentUserDoc.getString("major") ?: ""),
+            "showOnlineStatus" to (currentUserDoc.getBoolean("showOnlineStatus") ?: true),
         )
 
         val fromUserData = mapOf(
@@ -206,6 +197,7 @@ class SocialRepository @Inject constructor() {
             "displayName" to (fromUserDoc.getString("displayName") ?: ""),
             "avatarId" to (fromUserDoc.getString("avatarId") ?: "avatar_default"),
             "major" to (fromUserDoc.getString("major") ?: ""),
+            "showOnlineStatus" to (fromUserDoc.getBoolean("showOnlineStatus") ?: true),
         )
 
         val batch = firestore.batch()

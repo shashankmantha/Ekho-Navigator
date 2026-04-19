@@ -2,6 +2,14 @@
 
 package com.ekhonavigator
 
+import com.ekhonavigator.feature.calendar.CalendarScreen
+import com.ekhonavigator.feature.calendar.DayScreen
+import com.ekhonavigator.feature.calendar.navigation.CalendarNavKey
+import com.ekhonavigator.feature.calendar.navigation.DayNavKey
+import com.ekhonavigator.feature.calendar.navigation.navigateToDay
+import com.ekhonavigator.feature.discover.DiscoverScreen
+import com.ekhonavigator.feature.discover.navigation.DiscoverNavKey
+import com.ekhonavigator.feature.event.CreateEventScreen
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -34,16 +42,11 @@ import com.ekhonavigator.core.navigation.Navigator
 import com.ekhonavigator.core.navigation.rememberNavigationState
 import com.ekhonavigator.core.navigation.toEntries
 import com.ekhonavigator.feature.account.AccountScreen
+import com.ekhonavigator.feature.account.SettingsScreen
 import com.ekhonavigator.feature.account.navigation.AccountNavKey
+import com.ekhonavigator.feature.account.navigation.SettingsNavKey
 import com.ekhonavigator.feature.account.navigation.navigateToAccount
-import com.ekhonavigator.feature.calendar.CalendarScreen
-import com.ekhonavigator.feature.calendar.DayScreen
-import com.ekhonavigator.feature.calendar.navigation.CalendarNavKey
-import com.ekhonavigator.feature.calendar.navigation.DayNavKey
-import com.ekhonavigator.feature.calendar.navigation.navigateToDay
-import com.ekhonavigator.feature.discover.DiscoverScreen
-import com.ekhonavigator.feature.discover.navigation.DiscoverNavKey
-import com.ekhonavigator.feature.event.CreateEventScreen
+import com.ekhonavigator.feature.account.navigation.navigateToSettings
 import com.ekhonavigator.feature.event.EventScreen
 import com.ekhonavigator.feature.event.navigation.CreateEventNavKey
 import com.ekhonavigator.feature.event.navigation.EventNavKey
@@ -59,6 +62,8 @@ import com.ekhonavigator.feature.social.UserProfileScreen
 import com.ekhonavigator.feature.social.navigation.ChatNavKey
 import com.ekhonavigator.feature.social.navigation.SocialNavKey
 import com.ekhonavigator.feature.social.navigation.UserProfileNavKey
+import com.ekhonavigator.feature.study.StudyScreen
+import com.ekhonavigator.feature.study.navigation.StudyNavKey
 import com.ekhonavigator.navigation.TOP_LEVEL_NAV_ITEMS
 
 @Composable
@@ -96,6 +101,7 @@ fun EkhoNavigatorApp(
                 scrollBehavior = scrollBehavior,
                 navigationIcon = if (isPureDestination) null else EkhoIcons.ArrowBack,
                 actionIcon = EkhoIcons.AccountCircle,
+                secondaryActionIcon = EkhoIcons.Settings,
                 navigationIconContentDescription = if (isPureDestination) null else "Back",
                 onNavigationClick = {
                     if (!isPureDestination) {
@@ -104,6 +110,9 @@ fun EkhoNavigatorApp(
                 },
                 onActionClick = {
                     navigator.navigateToAccount()
+                },
+                onSecondaryActionClick = {
+                    navigator.navigateToSettings()
                 }
             )
         },
@@ -137,7 +146,9 @@ fun EkhoNavigatorApp(
                 when (key) {
                     is HomeNavKey -> {
                         NavEntry(key) {
-                            HomeScreen(onEventClick = navigator::navigateToEvent)
+                            HomeScreen(
+                                onEventClick = navigator::navigateToEvent,
+                            )
                         }
                     }
 
@@ -148,7 +159,7 @@ fun EkhoNavigatorApp(
                                 onDayClick = navigator::navigateToDay,
                                 onCreateEventClick = { epochDay ->
                                     navigator.navigateToCreateEvent(epochDay)
-                                }
+                                },
                             )
                         }
                     }
@@ -210,6 +221,12 @@ fun EkhoNavigatorApp(
                         }
                     }
 
+                    is StudyNavKey -> {
+                        NavEntry(key) {
+                            StudyScreen()
+                        }
+                    }
+
                     is SocialNavKey -> {
                         NavEntry(key) {
                             SocialScreen(
@@ -256,7 +273,14 @@ fun EkhoNavigatorApp(
                             AccountScreen(
                                 onSignIn = onSignIn,
                                 onSignOut = onSignOut,
+                                onSettingsClick = navigator::navigateToSettings,
                             )
+                        }
+                    }
+
+                    is SettingsNavKey -> {
+                        NavEntry(key) {
+                            SettingsScreen()
                         }
                     }
 

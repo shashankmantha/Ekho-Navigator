@@ -39,9 +39,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.ekhonavigator.core.designsystem.R
+import com.ekhonavigator.core.designsystem.R as DesignSystemR
+
+import androidx.compose.ui.graphics.Color
+import com.ekhonavigator.core.model.OnlineStatus
 
 private val avatarOptions = listOf(
     "avatar_default",
@@ -61,9 +65,11 @@ fun EditProfileScreen(
     initialDescriptionVisible: Boolean,
     initialLinksVisible: Boolean,
     initialSearchable: Boolean,
+    initialShowOnlineStatus: Boolean,
+    initialOnlineStatus: OnlineStatus,
     avatarId: String,
     onSaveClick: (
-        String, String, String, String, Boolean, Boolean, Boolean, Boolean, String
+        String, String, String, String, Boolean, Boolean, Boolean, Boolean, Boolean, OnlineStatus, String
     ) -> Unit,
     onSignOutClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -77,6 +83,10 @@ fun EditProfileScreen(
     var descriptionVisible by rememberSaveable { mutableStateOf(initialDescriptionVisible) }
     var linksVisible by rememberSaveable { mutableStateOf(initialLinksVisible) }
     var searchable by rememberSaveable { mutableStateOf(initialSearchable) }
+    var showOnlineStatus by rememberSaveable { mutableStateOf(initialShowOnlineStatus) }
+    var onlineStatusPreference by rememberSaveable {
+        mutableStateOf(initialOnlineStatus)
+    }
 
     var selectedAvatarId by rememberSaveable { mutableStateOf(avatarId) }
     var showAvatarDialog by rememberSaveable { mutableStateOf(false) }
@@ -98,7 +108,7 @@ fun EditProfileScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        ProfileFieldCard(label = "Display Name") {
+        ProfileFieldCard(label = stringResource(R.string.account_profile_display_name)) {
             OutlinedTextField(
                 value = displayName,
                 onValueChange = { displayName = it },
@@ -111,7 +121,7 @@ fun EditProfileScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         ProfileFieldCard(
-            label = "Major",
+            label = stringResource(R.string.account_profile_major),
             visible = majorVisible,
             onVisibleChange = { majorVisible = it },
         ) {
@@ -127,7 +137,7 @@ fun EditProfileScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         ProfileFieldCard(
-            label = "Description",
+            label = stringResource(R.string.account_profile_description),
             visible = descriptionVisible,
             onVisibleChange = { descriptionVisible = it },
         ) {
@@ -144,7 +154,7 @@ fun EditProfileScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         ProfileFieldCard(
-            label = "Links",
+            label = stringResource(R.string.account_profile_links),
             visible = linksVisible,
             onVisibleChange = { linksVisible = it },
         ) {
@@ -156,6 +166,56 @@ fun EditProfileScreen(
                 shape = RoundedCornerShape(14.dp),
             )
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ProfileFieldCard(label = "Status Mode") {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OnlineStatus.entries.forEach { status ->
+                    val isSelected = onlineStatusPreference == status
+                    val color = when (status) {
+                        OnlineStatus.ONLINE -> Color(0xFF4CAF50)
+                        OnlineStatus.AWAY -> Color(0xFFFFC107)
+                        OnlineStatus.BUSY -> Color(0xFFF44336)
+                    }
+
+                    OutlinedButton(
+                        onClick = { onlineStatusPreference = status },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = if (isSelected) {
+                            androidx.compose.foundation.BorderStroke(2.dp, color)
+                        } else {
+                            androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                        },
+                        colors = if (isSelected) {
+                            androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                                containerColor = color.copy(alpha = 0.1f)
+                            )
+                        } else {
+                            androidx.compose.material3.ButtonDefaults.outlinedButtonColors()
+                        }
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(
+                                modifier = Modifier
+                                    .size(12.dp)
+                                    .background(color, CircleShape)
+                            )
+                            Text(
+                                text = status.name.lowercase().replaceFirstChar { it.uppercase() },
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (isSelected) color else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         ProfileFieldCard(label = "Social Search") {
@@ -191,6 +251,41 @@ fun EditProfileScreen(
             }
         }
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ProfileFieldCard(label = "Activity Status") {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(
+                        text = "Show when you are online",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = "Turn this off to always appear offline to others.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                Spacer(modifier = Modifier.size(12.dp))
+
+                Switch(
+                    checked = showOnlineStatus,
+                    onCheckedChange = { showOnlineStatus = it },
+                )
+            }
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
 
         OutlinedButton(
@@ -204,6 +299,8 @@ fun EditProfileScreen(
                     descriptionVisible,
                     linksVisible,
                     searchable,
+                    showOnlineStatus,
+                    onlineStatusPreference,
                     selectedAvatarId,
                 )
             },
@@ -213,7 +310,7 @@ fun EditProfileScreen(
             shape = RoundedCornerShape(16.dp),
         ) {
             Text(
-                text = "Save Profile",
+                text = stringResource(R.string.account_profile_save),
                 style = MaterialTheme.typography.titleMedium,
             )
         }
@@ -228,7 +325,7 @@ fun EditProfileScreen(
             shape = RoundedCornerShape(16.dp),
         ) {
             Text(
-                text = "Sign Out",
+                text = stringResource(R.string.account_sign_out),
                 style = MaterialTheme.typography.titleMedium,
             )
         }
@@ -241,11 +338,11 @@ fun EditProfileScreen(
             onDismissRequest = { showAvatarDialog = false },
             confirmButton = {
                 TextButton(onClick = { showAvatarDialog = false }) {
-                    Text("Close")
+                    Text(stringResource(R.string.account_close))
                 }
             },
             title = {
-                Text("Choose an Avatar")
+                Text(stringResource(R.string.account_choose_avatar))
             },
             text = {
                 FlowRow(
@@ -287,7 +384,7 @@ private fun ProfileHeader(
         ) {
             Image(
                 painter = painterResource(id = avatarIdToRes(avatarId)),
-                contentDescription = "Profile avatar",
+                contentDescription = stringResource(R.string.account_profile_avatar_content_description),
                 modifier = Modifier
                     .size(96.dp)
                     .clip(CircleShape)
@@ -313,7 +410,7 @@ private fun ProfileHeader(
         Spacer(modifier = Modifier.height(12.dp))
 
         Text(
-            text = "Edit Profile",
+            text = stringResource(R.string.account_edit_profile_title),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
         )
@@ -330,10 +427,10 @@ private fun ProfileHeader(
 
 private fun avatarIdToRes(avatarId: String): Int {
     return when (avatarId) {
-        "avatar_dolphin" -> R.drawable.avatar_dolphin
-        "avatar_whale" -> R.drawable.avatar_whale
-        "avatar_turtle" -> R.drawable.avatar_turtle
-        else -> R.drawable.avatar_default
+        "avatar_dolphin" -> DesignSystemR.drawable.avatar_dolphin
+        "avatar_whale" -> DesignSystemR.drawable.avatar_whale
+        "avatar_turtle" -> DesignSystemR.drawable.avatar_turtle
+        else -> DesignSystemR.drawable.avatar_default
     }
 }
 
@@ -371,7 +468,7 @@ private fun ProfileFieldCard(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            text = "Visible",
+                            text = stringResource(R.string.account_profile_visible),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.primary,
                         )

@@ -17,6 +17,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import com.ekhonavigator.core.data.social.FriendRequest
 import com.ekhonavigator.core.data.social.FriendUser
+import com.ekhonavigator.core.data.repository.PresenceRepository
+import com.ekhonavigator.core.model.OnlineStatus
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 
 data class SocialUiState(
     val searchQuery: String = "",
@@ -33,6 +38,7 @@ data class SocialUiState(
 class SocialViewModel @Inject constructor(
     private val repository: SocialRepository,
     private val authRepository: AuthRepository,
+    private val presenceRepository: PresenceRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SocialUiState())
@@ -88,11 +94,50 @@ class SocialViewModel @Inject constructor(
                         errorMessage = null,
                     )
                 }
+                observeFriendPresence(friends)
             }.onFailure { e ->
                 _uiState.update {
                     it.copy(
                         errorMessage = e.message ?: "Failed to load social data",
                     )
+                }
+            }
+        }
+    }
+
+    private fun observeFriendPresence(friends: List<FriendUser>) {
+        if (friends.isEmpty()) return
+
+        viewModelScope.launch {
+            val presenceFlows = friends.map { friend ->
+                presenceRepository.observePresence(friend.uid).map { presence ->
+                    friend.uid to presence
+                }
+            }
+
+            combine(presenceFlows) { friendPresences ->
+                friendPresences.toMap()
+            }.collectLatest { presenceMap ->
+                _uiState.update { state ->
+                    val updatedFriends = state.friends.map { friend ->
+                        val presence = presenceMap[friend.uid]
+                        if (presence != null) {
+                            val statusStr = presence.state.uppercase()
+                            val onlineStatus = try {
+                                OnlineStatus.valueOf(statusStr)
+                            } catch (e: Exception) {
+                                OnlineStatus.ONLINE
+                            }
+                            friend.copy(
+                                online = presence.state != "offline",
+                                onlineStatus = onlineStatus,
+                                lastChanged = presence.lastChanged
+                            )
+                        } else {
+                            friend
+                        }
+                    }
+                    state.copy(friends = updatedFriends)
                 }
             }
         }

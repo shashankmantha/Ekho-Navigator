@@ -52,6 +52,7 @@ fun DiscoverScreen(
     onEventClick: (String) -> Unit,
     onDayClick: (Long, Set<EventSourceType>, Set<EventCategory>) -> Unit,
     onCreateEventClick: (Long?) -> Unit = {},
+    onSettingsClick: () -> Unit = {},
     initialLocationFilter: String? = null,
     modifier: Modifier = Modifier,
     viewModel: DiscoverViewModel = hiltViewModel(),
@@ -98,6 +99,18 @@ fun DiscoverScreen(
                 }
 
                 if (viewModel.isSignedIn) {
+                    SmallFloatingActionButton(
+                        onClick = onSettingsClick,
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    ) {
+                        Icon(
+                            imageVector = EkhoIcons.Settings,
+                            contentDescription = "Settings",
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+
                     FloatingActionButton(
                         onClick = { onCreateEventClick(null) },
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
