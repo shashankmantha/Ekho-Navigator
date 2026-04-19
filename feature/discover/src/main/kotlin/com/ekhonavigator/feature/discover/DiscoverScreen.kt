@@ -53,6 +53,7 @@ import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSourceType
 import com.ekhonavigator.core.model.Place
 import com.ekhonavigator.feature.event.component.FilterSheetContent
+import com.ekhonavigator.feature.study.StudyScreen
 import kotlinx.coroutines.launch
 
 @Composable
@@ -60,6 +61,7 @@ fun DiscoverScreen(
     onEventClick: (String) -> Unit,
     onDayClick: (Long, Set<EventSourceType>, Set<EventCategory>) -> Unit,
     onCreateEventClick: (Long?) -> Unit = {},
+    onViewLibraryOnMap: () -> Unit = {},
     focusPlaceId: String? = null,
     initialTab: DiscoverTab = DiscoverTab.EVENTS,
     modifier: Modifier = Modifier,
@@ -152,7 +154,7 @@ fun DiscoverScreen(
                     listState = listState,
                 )
 
-                DiscoverTab.ROOMS -> RoomsTabPlaceholder()
+                DiscoverTab.STUDY -> StudyScreen(onViewLibraryOnMap = onViewLibraryOnMap)
             }
         }
     }
@@ -176,7 +178,7 @@ fun DiscoverScreen(
 
 enum class DiscoverTab(val title: String) {
     EVENTS("Events"),
-    ROOMS("Rooms"),
+    STUDY("Study"),
 }
 
 @Composable
@@ -318,35 +320,6 @@ private fun FocusedPlaceChip(
         ),
         modifier = modifier,
     )
-}
-
-@Composable
-private fun RoomsTabPlaceholder() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                imageVector = EkhoIcons.Place,
-                contentDescription = null,
-                modifier = Modifier.size(40.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-            )
-            Spacer(Modifier.height(10.dp))
-            Text(
-                text = "Study room availability",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = "Coming soon",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
 }
 
 @Composable

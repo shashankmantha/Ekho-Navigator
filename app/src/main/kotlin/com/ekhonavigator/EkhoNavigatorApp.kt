@@ -83,6 +83,8 @@ import com.ekhonavigator.feature.social.navigation.UserProfileNavKey
 import com.ekhonavigator.feature.study.StudyScreen
 import com.ekhonavigator.feature.study.navigation.StudyNavKey
 import com.ekhonavigator.navigation.TOP_LEVEL_NAV_ITEMS
+import com.ekhonavigator.feature.social.ChatScreen
+import com.ekhonavigator.feature.social.navigation.ChatNavKey
 
 @Composable
 fun EkhoNavigatorApp(
@@ -183,6 +185,11 @@ fun EkhoNavigatorApp(
                                 onCreateEventClick = { epochDay ->
                                     navigator.navigateToCreateEvent(epochDay)
                                 },
+                                onViewLibraryOnMap = {
+                                    navigator.navigateAsDetour(
+                                        MapNavKey(focusPlaceId = CampusPlacesData.BROOME_LIBRARY_ID),
+                                    )
+                                },
                                 focusPlaceId = key.focusPlaceId,
                                 initialTab = key.initialTab,
                             )
@@ -235,18 +242,6 @@ fun EkhoNavigatorApp(
                                     )
                                 }
                                 focusPlaceId = key.focusPlaceId,
-                            )
-                        }
-                    }
-
-                    is StudyNavKey -> {
-                        NavEntry(key) {
-                            StudyScreen(
-                                onViewLibraryOnMap = {
-                                    navigator.navigateAsDetour(
-                                        MapNavKey(focusPlaceId = CampusPlacesData.BROOME_LIBRARY_ID),
-                                    )
-                                },
                             )
                         }
                     }

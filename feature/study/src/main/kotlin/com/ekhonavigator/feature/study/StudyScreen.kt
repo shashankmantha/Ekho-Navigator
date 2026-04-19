@@ -14,15 +14,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -37,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -58,6 +57,8 @@ fun StudyScreen(
 
     Scaffold(
         modifier = modifier,
+        containerColor = Color.Transparent,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         floatingActionButton = {
             Column(
                 horizontalAlignment = Alignment.End,
@@ -87,37 +88,13 @@ fun StudyScreen(
             }
         },
     ) { paddingValues ->
-        Column(
+        AvailabilityWebView(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
-        ) {
-            SectionHeader(title = "Live study room availability")
-            HorizontalDivider(
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-            )
-            AvailabilityWebView(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(
-                        start = 12.dp,
-                        end = 12.dp,
-                    ),
-            )
-        }
+                .padding(paddingValues)
+                .padding(horizontal = 12.dp),
+        )
     }
-}
-
-@Composable
-private fun SectionHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-    )
 }
 
 @Composable
@@ -270,8 +247,12 @@ private fun injectLayoutTweaks(webView: WebView?) {
               .fc .fc-datagrid-cell-frame,
               .fc .fc-timeline-slot-frame,
               .fc .fc-cell-text {
-                min-height: 44px !important;
+                min-height: 32px !important;
                 font-size: 12px !important;
+              }
+              .fc .fc-timeline-slot {
+                min-width: 48px !important;
+                width: 48px !important;
               }
               /* Extra space for our floating action buttons */
               @media (orientation: portrait) {
