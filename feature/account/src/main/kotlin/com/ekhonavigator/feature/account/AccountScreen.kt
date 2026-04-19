@@ -43,7 +43,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
-import com.ekhonavigator.core.model.OnlineStatus
 import kotlinx.coroutines.launch
 
 @Composable
@@ -65,6 +64,8 @@ fun AccountScreen(
 
     val context = LocalContext.current
     val clientId = stringResource(R.string.default_web_client_id)
+    val savedSuccessMessage = stringResource(R.string.account_save_success)
+    val undoLabel = stringResource(R.string.account_undo)
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -96,201 +97,199 @@ fun AccountScreen(
                 .padding(paddingValues)
                 .background(MaterialTheme.colorScheme.background),
         ) {
-        when (val state = uiState) {
-            AccountUiState.Loading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = stringResource(R.string.account_loading),
-                        style = MaterialTheme.typography.bodyMedium,
+            when (val state = uiState) {
+                AccountUiState.Loading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.account_loading),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                }
+
+                AccountUiState.SignedOut,
+                is AccountUiState.Error -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(vertical = 24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        item {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 24.dp),
+                                shape = RoundedCornerShape(24.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surface,
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 24.dp, vertical = 32.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center,
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(84.dp)
+                                            .background(
+                                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                                shape = CircleShape,
+                                            ),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(
+                                            text = "\uD83D\uDC2C",
+                                            style = MaterialTheme.typography.headlineLarge,
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(20.dp))
+
+                                    Text(
+                                        text = stringResource(R.string.account_welcome_title),
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        textAlign = TextAlign.Center,
+                                    )
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    Text(
+                                        text = stringResource(R.string.account_welcome_subtitle),
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        textAlign = TextAlign.Center,
+                                    )
+
+                                    Spacer(modifier = Modifier.height(28.dp))
+
+                                    Button(
+                                        onClick = {
+                                            viewModel.onGoogleSignInClick(context, clientId)
+                                        },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(52.dp),
+                                        shape = RoundedCornerShape(14.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.primary,
+                                        ),
+                                    ) {
+                                        Text(
+                                            text = stringResource(R.string.account_sign_in_google),
+                                            style = MaterialTheme.typography.labelLarge,
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(12.dp))
+
+                                    Text(
+                                        text = stringResource(R.string.account_sign_in_later_info),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color.Gray,
+                                        textAlign = TextAlign.Center,
+                                    )
+
+                                    if (state is AccountUiState.Error) {
+                                        Spacer(modifier = Modifier.height(16.dp))
+
+                                        Text(
+                                            text = state.message,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.error,
+                                            textAlign = TextAlign.Center,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        item {
+                            Spacer(modifier = Modifier.height(200.dp))
+                        }
+                    }
+                }
+
+                is AccountUiState.SignedIn -> {
+                    EditProfileScreen(
+                        userEmail = state.email,
+                        initialDisplayName = state.displayName,
+                        initialMajor = state.major,
+                        initialDescription = state.description,
+                        initialLinks = state.links,
+                        initialMajorVisible = state.majorVisible,
+                        initialDescriptionVisible = state.descriptionVisible,
+                        initialLinksVisible = state.linksVisible,
+                        initialSearchable = state.searchable,
+                        initialShowOnlineStatus = state.showOnlineStatus,
+                        initialOnlineStatus = state.onlineStatus,
+                        avatarId = state.avatarId,
+                        onSaveClick = { displayName, major, description, links, majorVisible, descriptionVisible, linksVisible, searchable, showOnlineStatus, onlineStatus, avatarId ->
+                            val oldDisplayName = state.displayName
+                            val oldMajor = state.major
+                            val oldDescription = state.description
+                            val oldLinks = state.links
+                            val oldMajorVisible = state.majorVisible
+                            val oldDescriptionVisible = state.descriptionVisible
+                            val oldLinksVisible = state.linksVisible
+                            val oldSearchable = state.searchable
+                            val oldShowOnlineStatus = state.showOnlineStatus
+                            val oldOnlineStatus = state.onlineStatus
+                            val oldAvatarId = state.avatarId
+
+                            viewModel.saveProfile(
+                                displayName = displayName,
+                                major = major,
+                                description = description,
+                                links = links,
+                                majorVisible = majorVisible,
+                                descriptionVisible = descriptionVisible,
+                                linksVisible = linksVisible,
+                                avatarId = avatarId,
+                                searchable = searchable,
+                                showOnlineStatus = showOnlineStatus,
+                                onlineStatus = onlineStatus,
+                            )
+
+                            scope.launch {
+                                val result = snackbarHostState.showSnackbar(
+                                    message = savedSuccessMessage,
+                                    actionLabel = undoLabel,
+                                    duration = SnackbarDuration.Long,
+                                )
+
+                                if (result == SnackbarResult.ActionPerformed) {
+                                    viewModel.saveProfile(
+                                        displayName = oldDisplayName,
+                                        major = oldMajor,
+                                        description = oldDescription,
+                                        links = oldLinks,
+                                        majorVisible = oldMajorVisible,
+                                        descriptionVisible = oldDescriptionVisible,
+                                        linksVisible = oldLinksVisible,
+                                        avatarId = oldAvatarId,
+                                        searchable = oldSearchable,
+                                        showOnlineStatus = oldShowOnlineStatus,
+                                        onlineStatus = oldOnlineStatus,
+                                    )
+                                }
+                            }
+                        },
+                        onSignOutClick = {
+                            viewModel.onSignOutClick()
+                            onSignOut()
+                        },
+                        modifier = Modifier.fillMaxSize(),
                     )
                 }
             }
-
-            AccountUiState.SignedOut,
-            is AccountUiState.Error -> {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(vertical = 24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    item {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 24.dp),
-                            shape = RoundedCornerShape(24.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surface,
-                            ),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 24.dp, vertical = 32.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center,
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(84.dp)
-                                        .background(
-                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                                            shape = CircleShape,
-                                        ),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text(
-                                        text = "\uD83D\uDC2C",
-                                        style = MaterialTheme.typography.headlineLarge,
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.height(20.dp))
-
-                                Text(
-                                    text = stringResource(R.string.account_welcome_title),
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    textAlign = TextAlign.Center,
-                                )
-
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                Text(
-                                    text = stringResource(R.string.account_welcome_subtitle),
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    textAlign = TextAlign.Center,
-                                )
-
-                                Spacer(modifier = Modifier.height(28.dp))
-
-                                Button(
-                                    onClick = {
-                                        viewModel.onGoogleSignInClick(context, clientId)
-                                    },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(52.dp),
-                                    shape = RoundedCornerShape(14.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.primary,
-                                    ),
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.account_sign_in_google),
-                                        style = MaterialTheme.typography.labelLarge,
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                Text(
-                                    text = stringResource(R.string.account_sign_in_later_info),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.Gray,
-                                    textAlign = TextAlign.Center,
-                                )
-
-                                if (state is AccountUiState.Error) {
-                                    Spacer(modifier = Modifier.height(16.dp))
-
-                                    Text(
-                                        text = state.message,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.error,
-                                        textAlign = TextAlign.Center,
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    item {
-                        Spacer(modifier = Modifier.height(200.dp))
-                    }
-                }
-            }
-
-            is AccountUiState.SignedIn -> {
-                EditProfileScreen(
-                    userEmail = state.email,
-                    initialDisplayName = state.displayName,
-                    initialMajor = state.major,
-                    initialDescription = state.description,
-                    initialLinks = state.links,
-                    initialMajorVisible = state.majorVisible,
-                    initialDescriptionVisible = state.descriptionVisible,
-                    initialLinksVisible = state.linksVisible,
-                    initialSearchable = state.searchable,
-                    initialShowOnlineStatus = state.showOnlineStatus,
-                    initialOnlineStatus = state.onlineStatus,
-                    avatarId = state.avatarId,
-                    onSaveClick = { displayName, major, description, links, majorVisible, descriptionVisible, linksVisible, searchable, showOnlineStatus, onlineStatus, avatarId ->
-                        val oldDisplayName = state.displayName
-                        val oldMajor = state.major
-                        val oldDescription = state.description
-                        val oldLinks = state.links
-                        val oldMajorVisible = state.majorVisible
-                        val oldDescriptionVisible = state.descriptionVisible
-                        val oldLinksVisible = state.linksVisible
-                        val oldSearchable = state.searchable
-                        val oldShowOnlineStatus = state.showOnlineStatus
-                        val oldOnlineStatus = state.onlineStatus
-                        val oldAvatarId = state.avatarId
-
-                        viewModel.saveProfile(
-                            displayName = displayName,
-                            major = major,
-                            description = description,
-                            links = links,
-                            majorVisible = majorVisible,
-                            descriptionVisible = descriptionVisible,
-                            linksVisible = linksVisible,
-                            avatarId = avatarId,
-                            searchable = searchable,
-                            showOnlineStatus = showOnlineStatus,
-                            onlineStatus = onlineStatus,
-                        )
-
-                        scope.launch {
-                            val savedSuccessMessage = context.getString(R.string.account_save_success)
-                            val undoLabel = context.getString(R.string.account_undo)
-                            val result = snackbarHostState.showSnackbar(
-                                message = savedSuccessMessage,
-                                actionLabel = undoLabel,
-                                duration = SnackbarDuration.Long,
-                            )
-
-                            if (result == SnackbarResult.ActionPerformed) {
-                                viewModel.saveProfile(
-                                    displayName = oldDisplayName,
-                                    major = oldMajor,
-                                    description = oldDescription,
-                                    links = oldLinks,
-                                    majorVisible = oldMajorVisible,
-                                    descriptionVisible = oldDescriptionVisible,
-                                    linksVisible = oldLinksVisible,
-                                    avatarId = oldAvatarId,
-                                    searchable = oldSearchable,
-                                    showOnlineStatus = oldShowOnlineStatus,
-                                    onlineStatus = oldOnlineStatus,
-                                )
-                            }
-                        }
-                    },
-                    onSignOutClick = {
-                        viewModel.onSignOutClick()
-                        onSignOut()
-                    },
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-        }
 
         }
     }
