@@ -38,6 +38,8 @@ import androidx.compose.ui.zIndex
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventSource
 import com.ekhonavigator.core.model.RsvpStatus
+import java.time.Duration
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -302,6 +304,15 @@ internal data class EventLayout(
     val totalInGroup: Int,
 )
 
+/** Floor for an event's effective end time in layout — keeps degenerate ranges from escaping overlap detection. */
+private val MinLayoutDuration: Duration = Duration.ofMinutes(15)
+
+private val CalendarEvent.layoutEndTime: Instant
+    get() {
+        val floor = startTime.plus(MinLayoutDuration)
+        return if (endTime.isAfter(floor)) endTime else floor
+    }
+
 /**
  * Assigns horizontal positions to events that overlap in time.
  * Events that don't overlap get the full column width.
@@ -314,7 +325,7 @@ internal fun layoutEventsForDay(
 
     val sorted = events.sortedWith(
         compareBy<CalendarEvent> { it.startTime }
-            .thenByDescending { it.endTime.epochSecond - it.startTime.epochSecond },
+            .thenByDescending { it.layoutEndTime.epochSecond - it.startTime.epochSecond },
     )
 
     val result = mutableListOf<EventLayout>()
@@ -324,7 +335,7 @@ internal fun layoutEventsForDay(
         var placed = false
         for (group in groups) {
             val overlaps = group.any { existing ->
-                event.startTime < existing.endTime && event.endTime > existing.startTime
+                event.startTime < existing.layoutEndTime && event.layoutEndTime > existing.startTime
             }
             if (overlaps) {
                 group.add(event)
@@ -343,7 +354,7 @@ internal fun layoutEventsForDay(
             var placedInColumn = false
             for (column in columns) {
                 val lastInColumn = column.last()
-                if (event.startTime >= lastInColumn.endTime) {
+                if (event.startTime >= lastInColumn.layoutEndTime) {
                     column.add(event)
                     placedInColumn = true
                     break

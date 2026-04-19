@@ -137,8 +137,12 @@ fun CreateEventScreen(
                 onClick = { showEndTimePicker = true },
                 modifier = Modifier.weight(1f),
                 isRequired = true,
-                isError = uiState.endTimeError,
-                errorText = "Required",
+                isError = uiState.endTimeError || uiState.endBeforeStart,
+                errorText = when {
+                    uiState.endTimeError -> "Required"
+                    uiState.endBeforeStart -> "End must be after start"
+                    else -> null
+                },
             )
         }
 

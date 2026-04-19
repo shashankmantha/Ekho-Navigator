@@ -36,7 +36,12 @@ data class CreateEventUiState(
     val showValidationErrors: Boolean = false,
 ) {
     val canSave: Boolean
-        get() = title.isNotBlank() && date != null && startTime != null && endTime != null
+        get() = title.isNotBlank() && date != null && startTime != null && endTime != null &&
+                !endBeforeStart
+
+    /** True once both times are picked but end is not strictly after start. Shown immediately (not gated by save attempt). */
+    val endBeforeStart: Boolean
+        get() = startTime != null && endTime != null && !endTime.isAfter(startTime)
 
     val titleError: Boolean get() = showValidationErrors && title.isBlank()
     val dateError: Boolean get() = showValidationErrors && date == null
