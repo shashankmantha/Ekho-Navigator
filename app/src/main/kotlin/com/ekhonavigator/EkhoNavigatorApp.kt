@@ -55,7 +55,6 @@ import com.ekhonavigator.feature.event.navigation.EventNavKey
 import com.ekhonavigator.feature.event.navigation.navigateToCreateEvent
 import com.ekhonavigator.feature.event.InvitesActionIcon
 import com.ekhonavigator.feature.event.InvitesScreen
-import com.ekhonavigator.feature.event.navigation.EventNavKey
 import com.ekhonavigator.feature.event.navigation.InvitesNavKey
 import com.ekhonavigator.feature.event.navigation.navigateToEvent
 import com.ekhonavigator.feature.event.navigation.navigateToInvites
@@ -65,27 +64,13 @@ import com.ekhonavigator.feature.map.CampusPlacesData
 import com.ekhonavigator.feature.map.MapScreen
 import com.ekhonavigator.feature.map.navigation.MapNavKey
 import com.ekhonavigator.feature.social.ChatScreen
-import com.ekhonavigator.feature.event.CreateEventScreen
-import com.ekhonavigator.feature.calendar.DayScreen
-import com.ekhonavigator.feature.discover.DiscoverScreen
 import com.ekhonavigator.feature.discover.DiscoverTab
-import com.ekhonavigator.feature.event.navigation.CreateEventNavKey
-import com.ekhonavigator.feature.calendar.navigation.CalendarNavKey
-import com.ekhonavigator.feature.calendar.CalendarScreen
-import com.ekhonavigator.feature.calendar.navigation.DayNavKey
-import com.ekhonavigator.feature.discover.navigation.DiscoverNavKey
-import com.ekhonavigator.feature.event.navigation.navigateToCreateEvent
-import com.ekhonavigator.feature.calendar.navigation.navigateToDay
 import com.ekhonavigator.feature.social.SocialScreen
 import com.ekhonavigator.feature.social.UserProfileScreen
 import com.ekhonavigator.feature.social.navigation.ChatNavKey
 import com.ekhonavigator.feature.social.navigation.SocialNavKey
 import com.ekhonavigator.feature.social.navigation.UserProfileNavKey
-import com.ekhonavigator.feature.study.StudyScreen
-import com.ekhonavigator.feature.study.navigation.StudyNavKey
 import com.ekhonavigator.navigation.TOP_LEVEL_NAV_ITEMS
-import com.ekhonavigator.feature.social.ChatScreen
-import com.ekhonavigator.feature.social.navigation.ChatNavKey
 
 @Composable
 fun EkhoNavigatorApp(
@@ -266,7 +251,7 @@ fun EkhoNavigatorApp(
                                             sharedLocation = location
                                         )
                                     )
-                                }
+                                },
                                 focusPlaceId = key.focusPlaceId,
                             )
                         }
@@ -307,7 +292,7 @@ fun EkhoNavigatorApp(
                                 friendAvatarId = key.friendAvatarId,
                                 sharedLocation = key.sharedLocation,
                                 onNavigateToMap = {
-                                    navigator.navigate(MapNavKey)
+                                    navigator.navigate(MapNavKey())
                                 }
                             )
                         }
