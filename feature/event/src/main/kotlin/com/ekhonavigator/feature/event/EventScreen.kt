@@ -1,10 +1,10 @@
 package com.ekhonavigator.feature.event
 
-import android.content.Intent
 import android.text.Html
 import android.text.method.LinkMovementMethod
 import android.widget.TextView
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,6 +32,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -42,28 +44,39 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import com.ekhonavigator.core.designsystem.component.EkhoMonogramBadge
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventAttendee
+import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSource
 import com.ekhonavigator.core.model.RsvpStatus
+import com.ekhonavigator.core.model.prettifyAllCaps
+import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /** Loads the event reactively from Room — navigates back if the event is deleted remotely. */
 @Composable
 fun EventScreen(
     eventId: String,
     onBack: () -> Unit = {},
+    onLocationClick: (placeId: String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: EventDetailViewModel = hiltViewModel(
         checkNotNull(
@@ -114,6 +127,7 @@ fun EventScreen(
             currentUserRsvp = currentUserRsvp,
             attendees = attendees,
             onRsvp = viewModel::rsvp,
+            onLocationClick = onLocationClick,
             modifier = modifier,
         )
     }
@@ -132,192 +146,90 @@ private fun EventDetailContent(
     currentUserRsvp: RsvpStatus? = null,
     attendees: List<EventAttendee> = emptyList(),
     onRsvp: (RsvpStatus) -> Unit = {},
+    onLocationClick: (placeId: String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
-    val dateFormatter = remember { DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy") }
-    val timeFormatter = remember { DateTimeFormatter.ofPattern("h:mm a") }
     val zone = remember { ZoneId.systemDefault() }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+    val cleanedDescription = remember(event.description) {
+        stripTrumbaHeaderLines(event.description)
+    }
 
     Column(
         modifier = modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.Top,
-        ) {
-            Text(
-                text = event.title,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f),
-            )
+        // ── Top action chrome ───────────────────────────
+        ActionRow(
+            isBookmarked = event.isBookmarked,
+            showBookmark = event.source == EventSource.ICAL_FEED,
+            onBookmarkClick = onBookmarkClick,
+            canDelete = canDelete,
+            onDeleteClick = { showDeleteConfirmation = true },
+        )
 
-            // Share always first (leftmost action)
-            IconButton(onClick = {
-                val shareText = buildString {
-                    append(event.title)
-                    append("\n")
-                    val startZoned = event.startTime.atZone(zone)
-                    append(startZoned.format(dateFormatter))
-                    append(" at ")
-                    append(startZoned.format(timeFormatter))
-                    if (event.location.isNotBlank()) {
-                        append("\n")
-                        append(event.location)
-                    }
-                    if (event.url.isNotBlank()) {
-                        append("\n")
-                        append(event.url)
-                    }
-                }
-                val intent = Intent(Intent.ACTION_SEND).apply {
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_TEXT, shareText)
-                }
-                context.startActivity(Intent.createChooser(intent, "Share event"))
-            }) {
-                Icon(
-                    imageVector = EkhoIcons.Share,
-                    contentDescription = "Share",
-                )
-            }
+        // ── State ribbon (only when event has a state) ─
+        StateRibbon(
+            source = event.source,
+            isBookmarked = event.isBookmarked,
+        )
 
-            // Rightmost position: bookmark (campus) or delete (owned custom)
-            if (event.source == EventSource.ICAL_FEED) {
-                IconButton(onClick = onBookmarkClick) {
-                    Icon(
-                        imageVector = if (event.isBookmarked) EkhoIcons.Bookmark else EkhoIcons.BookmarkBorder,
-                        contentDescription = if (event.isBookmarked) "Remove bookmark" else "Bookmark",
-                        tint = if (event.isBookmarked) {
-                            MaterialTheme.colorScheme.tertiary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                    )
-                }
-            }
+        // ── Date eyebrow ───────────────────────────────
+        DateEyebrow(
+            startTime = event.startTime,
+            zone = zone,
+            tagCount = event.categories.size,
+        )
 
-            if (canDelete) {
-                IconButton(onClick = { showDeleteConfirmation = true }) {
-                    Icon(
-                        imageVector = EkhoIcons.Close,
-                        contentDescription = "Delete event",
-                        tint = MaterialTheme.colorScheme.error,
-                    )
-                }
-            }
+        Spacer(Modifier.height(14.dp))
+
+        // ── Title ──────────────────────────────────────
+        Text(
+            text = event.title,
+            style = MaterialTheme.typography.headlineMedium.copy(
+                letterSpacing = (-0.02).em,
+                lineHeight = 34.sp,
+            ),
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+
+        if (event.eventType.isNotBlank()) {
+            Spacer(Modifier.height(10.dp))
+            EventTypeBadge(event.eventType)
         }
 
-        if (event.categories.isNotEmpty()) {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                event.categories.forEach { category ->
-                    AssistChip(
-                        onClick = { },
-                        label = {
-                            Text(
-                                text = category.displayName,
-                                style = MaterialTheme.typography.labelSmall,
-                            )
-                        },
-                        colors = AssistChipDefaults.assistChipColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        ),
-                        border = AssistChipDefaults.assistChipBorder(
-                            enabled = true,
-                            borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                        ),
-                    )
-                }
-            }
+        // ── Meta rail ──────────────────────────────────
+        Spacer(Modifier.height(18.dp))
+        ThinDivider()
+        Spacer(Modifier.height(10.dp))
+
+        MetaTextRow(label = "WHEN", value = formatTimeRange(event.startTime, event.endTime, zone), monoValue = true)
+        if (event.organization.isNotBlank()) {
+            MetaTextRow(label = "HOSTED BY", value = event.organization.prettifyAllCaps())
         }
-
-        HorizontalDivider()
-
-        val startZoned = event.startTime.atZone(zone)
-        val endZoned = event.endTime.atZone(zone)
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Icon(
-                imageVector = EkhoIcons.Schedule,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-            )
-            Column {
-                Text(
-                    text = startZoned.format(dateFormatter),
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                )
-                Text(
-                    text = "${startZoned.format(timeFormatter)} \u2013 ${
-                        endZoned.format(
-                            timeFormatter
-                        )
-                    }",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-
         if (event.location.isNotBlank()) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Icon(
-                    imageVector = EkhoIcons.Place,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-                Text(
-                    text = event.location,
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-            }
+            MetaTextRow(
+                label = "WHERE",
+                value = event.location,
+                onClick = event.placeId?.let { placeId -> { onLocationClick(placeId) } },
+            )
         }
-
-        // ---- Status (only shown if not the default CONFIRMED) ----
         if (event.status != "CONFIRMED") {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(MaterialTheme.colorScheme.tertiaryContainer),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = event.status.first().toString(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onTertiaryContainer,
-                    )
-                }
-                Text(
-                    text = event.status.lowercase()
-                        .replaceFirstChar { it.uppercase() },
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-            }
+            MetaTextRow(
+                label = "STATUS",
+                value = event.status.lowercase().replaceFirstChar { it.uppercase() },
+            )
         }
 
+        // ── Attendees / RSVP ───────────────────────────
         if (hasAttendees) {
-            HorizontalDivider()
+            Spacer(Modifier.height(14.dp))
+            ThinDivider()
+            Spacer(Modifier.height(14.dp))
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -326,7 +238,7 @@ private fun EventDetailContent(
                 Icon(
                     imageVector = EkhoIcons.Person,
                     contentDescription = null,
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(16.dp),
                     tint = MaterialTheme.colorScheme.primary,
                 )
                 Text(
@@ -344,11 +256,9 @@ private fun EventDetailContent(
             }
 
             if (canRsvp) {
-                Text(
-                    text = "Your Response",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
+                Spacer(Modifier.height(12.dp))
+                SectionEyebrow("YOUR RESPONSE")
+                Spacer(Modifier.height(8.dp))
 
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -409,14 +319,13 @@ private fun EventDetailContent(
             }
 
             if (attendees.isNotEmpty()) {
-                Text(
-                    text = "Attendees",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Spacer(Modifier.height(12.dp))
+                SectionEyebrow("ATTENDEES")
+                Spacer(Modifier.height(6.dp))
 
                 attendees.forEach { attendee ->
                     Row(
+                        modifier = Modifier.padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
@@ -449,22 +358,31 @@ private fun EventDetailContent(
             }
         }
 
-        if (event.description.isNotBlank()) {
-            HorizontalDivider()
+        // ── About / Description ────────────────────────
+        if (cleanedDescription.isNotBlank()) {
+            Spacer(Modifier.height(18.dp))
+            ThinDivider()
+            Spacer(Modifier.height(14.dp))
 
-            Text(
-                text = "About",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
+            SectionEyebrow("ABOUT")
+            Spacer(Modifier.height(8.dp))
 
             HtmlDescription(
-                html = event.description,
+                html = cleanedDescription,
                 modifier = Modifier.fillMaxWidth(),
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        // ── Meta rail ──────────────────────────────────
+        Spacer(Modifier.height(18.dp))
+        ThinDivider()
+        Spacer(Modifier.height(10.dp))
+
+        if (event.categories.isNotEmpty()) {
+            MetaChipsRow(label = "TAGGED", categories = event.categories)
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
     }
 
     if (showDeleteConfirmation) {
@@ -491,11 +409,308 @@ private fun EventDetailContent(
     }
 }
 
+// ── Helpers ────────────────────────────────────────────
+
+@Composable
+private fun ActionRow(
+    isBookmarked: Boolean,
+    showBookmark: Boolean,
+    onBookmarkClick: () -> Unit,
+    canDelete: Boolean,
+    onDeleteClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.End,
+    ) {
+        if (showBookmark) {
+            IconButton(onClick = onBookmarkClick) {
+                Icon(
+                    imageVector = if (isBookmarked) EkhoIcons.Bookmark else EkhoIcons.BookmarkBorder,
+                    contentDescription = if (isBookmarked) "Remove bookmark" else "Bookmark",
+                    tint = if (isBookmarked) {
+                        MaterialTheme.colorScheme.tertiary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+            }
+        }
+        if (canDelete) {
+            IconButton(onClick = onDeleteClick) {
+                Icon(
+                    imageVector = EkhoIcons.Close,
+                    contentDescription = "Delete event",
+                    tint = MaterialTheme.colorScheme.error,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StateRibbon(
+    source: EventSource,
+    isBookmarked: Boolean,
+) {
+    val (label, color) = when {
+        source == EventSource.ICAL_FEED && isBookmarked ->
+            "SAVED TO MY SCHEDULE" to MaterialTheme.colorScheme.tertiary
+        source == EventSource.USER_CREATED ->
+            "YOUR EVENT" to MaterialTheme.colorScheme.secondary
+        source == EventSource.SHARED ->
+            "SHARED INVITE" to MaterialTheme.colorScheme.secondary
+        else -> return
+    }
+
+    Row(
+        modifier = Modifier.padding(bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(6.dp)
+                .clip(CircleShape)
+                .background(color),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 10.sp,
+                letterSpacing = 0.14.em,
+            ),
+            color = color,
+        )
+    }
+}
+
+@Composable
+private fun DateEyebrow(
+    startTime: Instant,
+    zone: ZoneId,
+    tagCount: Int,
+) {
+    val date = startTime.atZone(zone)
+    val today = remember { LocalDate.now(zone) }
+    val tomorrow = remember { today.plusDays(1) }
+    val eventDate = date.toLocalDate()
+
+    val dayLabel = when (eventDate) {
+        today -> "TODAY"
+        tomorrow -> "TOMORROW"
+        else -> date.format(DateTimeFormatter.ofPattern("EEE", Locale.US)).uppercase(Locale.US)
+    }
+    val suffix = " · " + date.format(DateTimeFormatter.ofPattern("MMM d", Locale.US))
+        .uppercase(Locale.US)
+    val isImportant = eventDate == today || eventDate == tomorrow
+    val brandRed = MaterialTheme.colorScheme.primary
+
+    val dateText = buildAnnotatedString {
+        if (isImportant) {
+            withStyle(SpanStyle(color = brandRed)) { append(dayLabel) }
+        } else {
+            append(dayLabel)
+        }
+        append(suffix)
+    }
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = dateText,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Bold,
+                fontSize = 11.sp,
+                letterSpacing = 0.14.em,
+            ),
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(Modifier.width(10.dp))
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+        )
+        Spacer(Modifier.width(10.dp))
+        Text(
+            text = if (tagCount == 1) "1 TAG" else "$tagCount TAGS",
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 10.sp,
+                letterSpacing = 0.14.em,
+            ),
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+        )
+    }
+}
+
+@Composable
+private fun EventTypeBadge(eventType: String) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = RoundedCornerShape(4.dp),
+    ) {
+        Text(
+            text = eventType.prettifyAllCaps(),
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontSize = 10.sp,
+                letterSpacing = 0.04.em,
+            ),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+        )
+    }
+}
+
+private val MetaLabelWidth = 76.dp
+
+@Composable
+private fun MetaTextRow(
+    label: String,
+    value: String,
+    monoValue: Boolean = false,
+    onClick: (() -> Unit)? = null,
+) {
+    val rowModifier = Modifier
+        .fillMaxWidth()
+        .then(
+            if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
+        )
+        .padding(vertical = 5.dp)
+    val valueColor = if (onClick != null) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+    Row(
+        modifier = rowModifier,
+        verticalAlignment = Alignment.Top,
+    ) {
+        MetaLabel(label, Modifier.width(MetaLabelWidth).padding(top = 2.dp))
+        Text(
+            text = value,
+            style = if (monoValue) {
+                MaterialTheme.typography.bodyMedium.copy(
+                    fontFamily = FontFamily.Monospace,
+                    letterSpacing = (-0.02).em,
+                )
+            } else {
+                MaterialTheme.typography.bodyMedium
+            },
+            color = valueColor,
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MetaChipsRow(
+    label: String,
+    categories: List<EventCategory>,
+) {
+    Row(
+        modifier = Modifier.padding(vertical = 5.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        MetaLabel(label, Modifier.width(MetaLabelWidth).padding(top = 6.dp))
+        FlowRow(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            categories.forEach { category ->
+                AssistChip(
+                    onClick = { },
+                    label = {
+                        Text(
+                            text = category.displayName,
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                    },
+                    leadingIcon = {
+                        EkhoMonogramBadge(
+                            monogram = category.monogram,
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        )
+                    },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
+                    border = AssistChipDefaults.assistChipBorder(
+                        enabled = true,
+                        borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                    ),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MetaLabel(label: String, modifier: Modifier = Modifier) {
+    Text(
+        text = label,
+        modifier = modifier,
+        style = MaterialTheme.typography.labelSmall.copy(
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 10.sp,
+            letterSpacing = 0.14.em,
+        ),
+        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+    )
+}
+
+@Composable
+private fun ThinDivider() {
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+}
+
+@Composable
+private fun SectionEyebrow(label: String) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelSmall.copy(
+            fontSize = 10.sp,
+            letterSpacing = 0.14.em,
+        ),
+        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+    )
+}
+
+private fun formatTimeRange(startTime: Instant, endTime: Instant, zone: ZoneId): String {
+    val timeFormatter = DateTimeFormatter.ofPattern("h:mm a", Locale.US)
+    return "${startTime.atZone(zone).format(timeFormatter)} \u2013 " +
+            endTime.atZone(zone).format(timeFormatter)
+}
+
+private val trumbaHeaderPattern = Regex(
+    "^\\s*(Event Name|Organization|Organizer|Categories)\\s*:.*$",
+    RegexOption.IGNORE_CASE,
+)
+
 /**
- * Renders an HTML string using Android's [TextView] + [Html.fromHtml].
- * This handles `<p>`, `<br>`, `<b>`, `<a href>` tags and HTML entities
- * that the 25Live Publisher feed embeds in event descriptions.
- * Links are clickable via [LinkMovementMethod].
+ * Trumba pastes structured metadata ("Event Name: …", "Organization: …",
+ * "Organizer: …", "Categories: …") as the first lines of DESCRIPTION. We now
+ * surface those fields at the top of the detail screen, so stripping the
+ * leading matching lines avoids showing them twice.
+ */
+private fun stripTrumbaHeaderLines(description: String): String {
+    if (description.isBlank()) return description
+    val normalized = description.replace(Regex("<br\\s*/?>", RegexOption.IGNORE_CASE), "\n")
+    val lines = normalized.split("\n")
+    val kept = lines.dropWhile { trumbaHeaderPattern.matches(it) }
+    return kept.joinToString("\n").trim()
+}
+
+/**
+ * Renders an HTML string using Android's [TextView] + [Html.fromHtml]. Handles
+ * `<p>`, `<br>`, `<b>`, `<a href>` and HTML entities the feed embeds. Links
+ * are tappable via [LinkMovementMethod].
  */
 @Composable
 private fun HtmlDescription(

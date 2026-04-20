@@ -3,6 +3,7 @@ package com.ekhonavigator.core.testing
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSource
+import com.ekhonavigator.core.model.RsvpStatus
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -44,6 +45,11 @@ fun testCalendarEvent(
     source: EventSource = EventSource.ICAL_FEED,
     ownerUid: String? = null,
     pendingSync: Boolean = false,
+    myRsvpStatus: RsvpStatus? = null,
+    eventName: String = "",
+    organization: String = "",
+    eventType: String = "",
+    placeId: String? = null,
 ): CalendarEvent = CalendarEvent(
     id = id,
     title = title,
@@ -59,4 +65,9 @@ fun testCalendarEvent(
     source = source,
     ownerUid = ownerUid,
     pendingSync = pendingSync,
+    myRsvpStatus = myRsvpStatus,
+    eventName = eventName,
+    organization = organization,
+    eventType = eventType,
+    placeId = placeId,
 )

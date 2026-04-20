@@ -20,6 +20,15 @@ class TestCustomEventRepository : CustomEventRepository {
     val createdEvents = mutableListOf<Pair<CalendarEvent, Map<String, String>>>()
     val deletedEventIds = mutableListOf<String>()
 
+    data class RsvpCall(
+        val eventId: String,
+        val userId: String,
+        val displayName: String,
+        val status: RsvpStatus,
+    )
+
+    val rsvpCalls = mutableListOf<RsvpCall>()
+
     override fun observeMyEvents(ownerUid: String): Flow<List<CalendarEvent>> = flowOf(emptyList())
 
     override fun observeSharedEvents(): Flow<List<CalendarEvent>> = flowOf(emptyList())
@@ -46,6 +55,7 @@ class TestCustomEventRepository : CustomEventRepository {
         displayName: String,
         status: RsvpStatus
     ) {
+        rsvpCalls += RsvpCall(eventId, userId, displayName, status)
     }
 
     override suspend fun syncAttendees(eventId: String) {}

@@ -36,6 +36,7 @@ android {
 
 dependencies {
     api(projects.feature.event)
+    implementation(projects.feature.study)
     implementation(projects.core.model)
     implementation(projects.core.data)
     implementation(projects.core.designsystem)

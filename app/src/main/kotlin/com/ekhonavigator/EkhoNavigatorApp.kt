@@ -16,6 +16,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -30,12 +31,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.ui.NavDisplay
-import com.ekhonavigator.core.designsystem.component.EkhoNavigationBar
-import com.ekhonavigator.core.designsystem.component.EkhoNavigationBarItem
+import com.ekhonavigator.core.designsystem.component.EkhoNavigationSuiteScaffold
+import com.ekhonavigator.core.designsystem.component.EkhoAppBarIcon
 import com.ekhonavigator.core.designsystem.component.EkhoTopAppBar
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.navigation.Navigator
@@ -51,19 +53,23 @@ import com.ekhonavigator.feature.event.EventScreen
 import com.ekhonavigator.feature.event.navigation.CreateEventNavKey
 import com.ekhonavigator.feature.event.navigation.EventNavKey
 import com.ekhonavigator.feature.event.navigation.navigateToCreateEvent
+import com.ekhonavigator.feature.event.InvitesActionIcon
+import com.ekhonavigator.feature.event.InvitesScreen
+import com.ekhonavigator.feature.event.navigation.InvitesNavKey
 import com.ekhonavigator.feature.event.navigation.navigateToEvent
+import com.ekhonavigator.feature.event.navigation.navigateToInvites
 import com.ekhonavigator.feature.home.HomeScreen
 import com.ekhonavigator.feature.home.navigation.HomeNavKey
+import com.ekhonavigator.feature.map.CampusPlacesData
 import com.ekhonavigator.feature.map.MapScreen
 import com.ekhonavigator.feature.map.navigation.MapNavKey
 import com.ekhonavigator.feature.social.ChatScreen
+import com.ekhonavigator.feature.discover.DiscoverTab
 import com.ekhonavigator.feature.social.SocialScreen
 import com.ekhonavigator.feature.social.UserProfileScreen
 import com.ekhonavigator.feature.social.navigation.ChatNavKey
 import com.ekhonavigator.feature.social.navigation.SocialNavKey
 import com.ekhonavigator.feature.social.navigation.UserProfileNavKey
-import com.ekhonavigator.feature.study.StudyScreen
-import com.ekhonavigator.feature.study.navigation.StudyNavKey
 import com.ekhonavigator.navigation.TOP_LEVEL_NAV_ITEMS
 
 @Composable
@@ -81,7 +87,7 @@ fun EkhoNavigatorApp(
     val topLevelDestination =
         TOP_LEVEL_NAV_ITEMS.entries.find { (key, _) -> key::class == currentKey::class }?.value
     val isTopLevelDestination = topLevelDestination != null
-    val isPureDestination = TOP_LEVEL_NAV_ITEMS.containsKey(currentKey)
+    val isDefaultTopLevel = TOP_LEVEL_NAV_ITEMS.containsKey(currentKey)
 
     val topAppBarState = rememberTopAppBarState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(topAppBarState)
@@ -92,40 +98,58 @@ fun EkhoNavigatorApp(
         topAppBarState.contentOffset = 0f
     }
 
-    Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = {
-            val titleRes = topLevelDestination?.titleRes ?: R.string.app_name
-            EkhoTopAppBar(
-                titleRes = titleRes,
-                scrollBehavior = scrollBehavior,
-                navigationIcon = if (isPureDestination) null else EkhoIcons.ArrowBack,
-                actionIcon = EkhoIcons.AccountCircle,
-                secondaryActionIcon = EkhoIcons.Settings,
-                navigationIconContentDescription = if (isPureDestination) null else "Back",
-                onNavigationClick = {
-                    if (!isPureDestination) {
-                        navigator.goBack()
-                    }
-                },
-                onActionClick = {
-                    navigator.navigateToAccount()
-                },
-                onSecondaryActionClick = {
-                    navigator.navigateToSettings()
-                }
-            )
-        },
-        bottomBar = {
-            if (isTopLevelDestination) {
-                EkhoBottomBar(
-                    onNavigateToNavKey = navigator::navigate,
-                    // used currentKey so the bar knows exactly which screen is active
-                    currentTopLevelKey = currentKey
+    EkhoNavigationSuiteScaffold(
+        navigationSuiteItems = {
+            TOP_LEVEL_NAV_ITEMS.forEach { (navKey, navItem) ->
+                item(
+                    selected = navKey::class == currentKey::class,
+                    onClick = { navigator.navigate(navKey) },
+                    icon = {
+                        Icon(
+                            imageVector = navItem.unselectedIcon,
+                            contentDescription = null,
+                        )
+                    },
+                    selectedIcon = {
+                        Icon(
+                            imageVector = navItem.selectedIcon,
+                            contentDescription = null,
+                        )
+                    },
+                    label = { Text(navItem.label) },
                 )
             }
-        }
-    ) { paddingValues ->
+        },
+    ) {
+        Scaffold(
+            modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+            containerColor = Color.Transparent,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            topBar = {
+                val titleRes = topLevelDestination?.titleRes ?: R.string.app_name
+                EkhoTopAppBar(
+                    titleRes = titleRes,
+                    scrollBehavior = scrollBehavior,
+                    navigationIcon = {
+                        if (!isDefaultTopLevel) {
+                            EkhoAppBarIcon(
+                                icon = EkhoIcons.ArrowBack,
+                                contentDescription = "Back",
+                                onClick = { navigator.goBack() },
+                            )
+                        }
+                    },
+                    actions = {
+                        InvitesActionIcon(onClick = { navigator.navigateToInvites() })
+                        EkhoAppBarIcon(
+                            icon = EkhoIcons.AccountCircle,
+                            contentDescription = null,
+                            onClick = { navigator.navigateToAccount() },
+                        )
+                    },
+                )
+            },
+        ) { paddingValues ->
         NavDisplay(
             modifier = Modifier
                 .padding(paddingValues)
@@ -172,7 +196,13 @@ fun EkhoNavigatorApp(
                                 onCreateEventClick = { epochDay ->
                                     navigator.navigateToCreateEvent(epochDay)
                                 },
-                                initialLocationFilter = key.initialLocationFilter
+                                onViewLibraryOnMap = {
+                                    navigator.navigateAsDetour(
+                                        MapNavKey(focusPlaceId = CampusPlacesData.BROOME_LIBRARY_ID),
+                                    )
+                                },
+                                focusPlaceId = key.focusPlaceId,
+                                initialTab = key.initialTab,
                             )
                         }
                     }
@@ -204,8 +234,13 @@ fun EkhoNavigatorApp(
                         NavEntry(key) {
                             MapScreen(
                                 onEventClick = navigator::navigateToEvent,
-                                onOpenDiscoverForLocation = { selectedCampusPlaceName ->
-                                    navigator.navigate(DiscoverNavKey(initialLocationFilter = selectedCampusPlaceName))
+                                onOpenDiscoverForPlace = { placeId ->
+                                    navigator.navigateAsTabSwitch(
+                                        DiscoverNavKey(
+                                            focusPlaceId = placeId,
+                                            initialTab = DiscoverTab.EVENTS,
+                                        )
+                                    )
                                 },
                                 onShareLocationToChat = { friendId, friendName, location ->
                                     navigator.navigate(
@@ -216,14 +251,9 @@ fun EkhoNavigatorApp(
                                             sharedLocation = location
                                         )
                                     )
-                                }
+                                },
+                                focusPlaceId = key.focusPlaceId,
                             )
-                        }
-                    }
-
-                    is StudyNavKey -> {
-                        NavEntry(key) {
-                            StudyScreen()
                         }
                     }
 
@@ -262,7 +292,7 @@ fun EkhoNavigatorApp(
                                 friendAvatarId = key.friendAvatarId,
                                 sharedLocation = key.sharedLocation,
                                 onNavigateToMap = {
-                                    navigator.navigate(MapNavKey)
+                                    navigator.navigate(MapNavKey())
                                 }
                             )
                         }
@@ -292,7 +322,16 @@ fun EkhoNavigatorApp(
                                 // so the standard back button is not enough here
                                 // normally the top nav bar handles all back functionality
                                 onBack = navigator::goBack,
+                                onLocationClick = { placeId ->
+                                    navigator.navigateAsDetour(MapNavKey(focusPlaceId = placeId))
+                                },
                             )
+                        }
+                    }
+
+                    is InvitesNavKey -> {
+                        NavEntry(key) {
+                            InvitesScreen(onEventClick = navigator::navigateToEvent)
                         }
                     }
 
@@ -306,35 +345,6 @@ fun EkhoNavigatorApp(
             onBack = { navigator.goBack() }
         )
     }
-}
-
-@Composable
-private fun EkhoBottomBar(
-    onNavigateToNavKey: (NavKey) -> Unit,
-    currentTopLevelKey: NavKey,
-) {
-    EkhoNavigationBar {
-        TOP_LEVEL_NAV_ITEMS.forEach { (navKey, item) ->
-            val selected =
-                navKey::class == currentTopLevelKey::class     // matched by class so the icon highlights for any version of the tab
-            EkhoNavigationBarItem(
-                selected = selected,
-                onClick = { onNavigateToNavKey(navKey) },
-                icon = {
-                    Icon(
-                        imageVector = item.unselectedIcon,
-                        contentDescription = null,
-                    )
-                },
-                selectedIcon = {
-                    Icon(
-                        imageVector = item.selectedIcon,
-                        contentDescription = null,
-                    )
-                },
-                label = { Text(item.label) },
-            )
-        }
     }
 }
 

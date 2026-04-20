@@ -3,11 +3,13 @@ package com.ekhonavigator.feature.discover
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ekhonavigator.core.data.auth.AuthRepository
+import com.ekhonavigator.core.data.place.PlaceRepository
 import com.ekhonavigator.core.data.repository.CalendarRepository
 import com.ekhonavigator.core.data.repository.CustomEventRepository
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSourceType
+import com.ekhonavigator.core.model.Place
 import com.ekhonavigator.core.model.matchesCategories
 import com.ekhonavigator.core.model.matchesSourceTypes
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -27,6 +29,7 @@ class DiscoverViewModel @Inject constructor(
     private val repository: CalendarRepository,
     private val authRepository: AuthRepository,
     private val customEventRepository: CustomEventRepository,
+    private val placeRepository: PlaceRepository,
 ) : ViewModel() {
 
     val isSignedIn: Boolean
@@ -51,13 +54,22 @@ class DiscoverViewModel @Inject constructor(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
-    /** Upcoming events, filtered by source, category, and search query. */
+    private val _focusedPlaceId = MutableStateFlow<String?>(null)
+
+    val focusedPlace: StateFlow<Place?> = combine(
+        _focusedPlaceId,
+        placeRepository.observePlaces(),
+    ) { id, places ->
+        id?.let { targetId -> places.firstOrNull { it.id == targetId } }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
     val discoverEvents: StateFlow<List<CalendarEvent>> = combine(
         repository.observeEvents(),
         _searchQuery,
         _activeSourceTypes,
         _selectedCategories,
-    ) { allEvents, query, activeTypes, categories ->
+        _focusedPlaceId,
+    ) { allEvents, query, activeTypes, categories, focusedPid ->
         val now = LocalDate.now(ZoneId.of("America/Los_Angeles"))
             .atStartOfDay(ZoneId.of("America/Los_Angeles"))
             .toInstant()
@@ -70,13 +82,19 @@ class DiscoverViewModel @Inject constructor(
                     event.description.contains(query, ignoreCase = true) ||
                     event.location.contains(query, ignoreCase = true)
 
+            val matchesPlace = focusedPid == null || event.placeId == focusedPid
+
             notPast && event.matchesSourceTypes(activeTypes) &&
-                    event.matchesCategories(categories) && matchesQuery
+                    event.matchesCategories(categories) && matchesQuery && matchesPlace
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
+    }
+
+    fun setFocusedPlaceId(id: String?) {
+        _focusedPlaceId.value = id
     }
 
     fun toggleCategory(category: EventCategory) {

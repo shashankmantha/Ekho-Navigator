@@ -1,5 +1,7 @@
 package com.ekhonavigator.core.data.di
 
+import com.ekhonavigator.core.data.place.DefaultPlaceRepository
+import com.ekhonavigator.core.data.place.PlaceRepository
 import com.ekhonavigator.core.data.repository.CalendarRepository
 import com.ekhonavigator.core.data.repository.CustomEventRepository
 import com.ekhonavigator.core.data.repository.DefaultCalendarRepository
@@ -22,4 +24,9 @@ abstract class DataModule {
     abstract fun bindCustomEventRepository(
         impl: DefaultCustomEventRepository,
     ): CustomEventRepository
+
+    @Binds
+    abstract fun bindPlaceRepository(
+        impl: DefaultPlaceRepository,
+    ): PlaceRepository
 }

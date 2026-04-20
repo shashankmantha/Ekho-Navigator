@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -29,16 +30,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.ekhonavigator.core.designsystem.component.EkhoEventCard
-import com.ekhonavigator.core.designsystem.component.sourceAccentColor
+import com.ekhonavigator.core.designsystem.component.EkhoEventRow
+import com.ekhonavigator.core.designsystem.component.EkhoEventRowState
 import com.ekhonavigator.core.designsystem.component.EkhoSectionHeader
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventSource
+import com.ekhonavigator.core.model.RsvpStatus
+import com.ekhonavigator.core.model.prettifyAllCaps
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @Composable
 fun HomeScreen(
@@ -69,13 +73,17 @@ fun HomeScreen(
             if (date.isAfter(cutoff)) break
             result[date] = events
             total += events.size
-            if (total >= 4) break
+            if (total >= 3) break
         }
         result
     }
 
-    val dayHeaderFormatter = remember { DateTimeFormatter.ofPattern("EEEE, MMMM d") }
-    val timeFormatter = remember { DateTimeFormatter.ofPattern("h:mm a") }
+    val dateHintFormatter = remember {
+        DateTimeFormatter.ofPattern("MMM d").withLocale(Locale.US)
+    }
+    val fullDayFormatter = remember {
+        DateTimeFormatter.ofPattern("EEEE").withLocale(Locale.US)
+    }
 
     Column(
         modifier = modifier
@@ -150,54 +158,49 @@ fun HomeScreen(
             }
         } else {
             eventsByDate.forEach { (date, dayEvents) ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp)
-                ) {
-                    val headerLabel = when (date) {
-                        today -> "Today"
-                        tomorrow -> "Tomorrow"
-                        else -> date.format(dayHeaderFormatter)
-                    }
-                    val isImportant = date == today || date == tomorrow
+                val label = when (date) {
+                    today -> "Today"
+                    tomorrow -> "Tomorrow"
+                    else -> date.format(fullDayFormatter)
+                }
+                val hint = date.format(dateHintFormatter).uppercase(Locale.US)
+                val isImportant = date == today || date == tomorrow
 
-                    EkhoSectionHeader(
-                        title = headerLabel,
-                        isImportant = isImportant,
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                EkhoSectionHeader(
+                    title = label,
+                    dateHint = hint,
+                    count = dayEvents.size,
+                    isImportant = isImportant,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+
+                dayEvents.forEach { event ->
+                    EkhoEventRow(
+                        title = event.eventName.ifEmpty { event.title },
+                        startTime = event.startTime,
+                        endTime = event.endTime,
+                        zone = zone,
+                        location = event.location,
+                        monograms = event.categories.map { it.monogram },
+                        state = event.toRowState(),
+                        isPending = event.myRsvpStatus == RsvpStatus.PENDING,
+                        organization = event.organization.prettifyAllCaps(),
+                        onClick = { onEventClick(event.id) },
+                        onBookmarkClick = { viewModel.toggleBookmark(event.id) },
                     )
-
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 4.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        dayEvents.forEach { event ->
-                            val startTime = event.startTime.atZone(zone).format(timeFormatter)
-                            val endTime = event.endTime.atZone(zone).format(timeFormatter)
-
-                            EkhoEventCard(
-                                title = event.title,
-                                timeRange = "$startTime – $endTime",
-                                location = event.location,
-                                accentColor = sourceAccentColor(
-                                    event.source.name,
-                                    event.isBookmarked
-                                ),
-                                isBookmarked = event.isBookmarked,
-                                showBookmark = event.source == EventSource.ICAL_FEED,
-                                onBookmarkClick = { viewModel.toggleBookmark(event.id) },
-                                onClick = { onEventClick(event.id) },
-                                modifier = Modifier.padding(horizontal = 16.dp)
-                            )
-                        }
-                    }
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                    )
                 }
             }
         }
 
         Spacer(Modifier.height(24.dp))
     }
+}
+
+private fun CalendarEvent.toRowState(): EkhoEventRowState = when {
+    source != EventSource.ICAL_FEED -> EkhoEventRowState.PERSONAL
+    isBookmarked -> EkhoEventRowState.BOOKMARKED
+    else -> EkhoEventRowState.NONE
 }

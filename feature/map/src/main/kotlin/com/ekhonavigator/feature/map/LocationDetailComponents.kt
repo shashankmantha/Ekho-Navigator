@@ -87,7 +87,7 @@ fun CampusPlacePreviewCard(place: CampusPlace) {
 fun CampusPlaceDetailCard(
     place: CampusPlace,
     onDismiss: () -> Unit,
-    onViewLocationEvents: (String) -> Unit
+    onViewLocationEvents: () -> Unit
 ) {
     Dialog(
         onDismissRequest = onDismiss,
@@ -136,7 +136,7 @@ fun CampusPlaceDetailCard(
                     horizontalArrangement = Arrangement.End
                 ) {
                     androidx.compose.material3.TextButton(
-                        onClick = { onViewLocationEvents(place.name) },
+                        onClick = onViewLocationEvents,
                         modifier = Modifier.padding(end = 8.dp)
                     ) {
                         Text("View Events Here")

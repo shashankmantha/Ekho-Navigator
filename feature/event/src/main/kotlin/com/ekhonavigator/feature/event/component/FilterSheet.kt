@@ -26,6 +26,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.ekhonavigator.core.designsystem.component.EkhoMonogramBadge
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSourceType
@@ -190,16 +191,16 @@ fun FilterSheetContent(
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                         )
                     },
-                    leadingIcon = if (isSelected) {
-                        {
-                            Icon(
-                                imageVector = EkhoIcons.Check,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                            )
-                        }
-                    } else {
-                        null
+                    leadingIcon = {
+                        EkhoMonogramBadge(
+                            monogram = category.monogram,
+                            containerColor = colors.surfaceContainerHighest,
+                            contentColor = if (isSelected) {
+                                colors.onPrimaryContainer
+                            } else {
+                                colors.onSurfaceVariant
+                            },
+                        )
                     },
                     modifier = Modifier.height(32.dp),
                     shape = RoundedCornerShape(10.dp),

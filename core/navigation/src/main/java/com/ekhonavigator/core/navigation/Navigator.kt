@@ -34,26 +34,33 @@ class Navigator(val state: NavigationState) {
         when (key) {
             in state.topLevelKeys -> {
                 goToTopLevel(key)
-                // Always reset the tab to its root when selected from the Bottom Bar
-                clearSubStack()
+                // Reset the root — a prior navigateAsTabSwitch may have parameterized it.
+                resetSubStack(key)
             }
             else -> goToKey(key)
         }
+    }
+
+    fun navigateAsDetour(key: NavKey) = goToKey(key)
+
+    fun navigateAsTabSwitch(key: NavKey) {
+        val topLevelClass = state.topLevelKeys.firstOrNull { it::class == key::class }
+            ?: error("navigateAsTabSwitch: ${key::class.simpleName} is not a top-level destination")
+        state.subStacks.getValue(topLevelClass).apply {
+            clear()
+            add(key)
+        }
+        goToTopLevel(topLevelClass)
     }
 
     /**
      * Go back to the previous navigation key.
      */
     fun goBack() {
-        when (state.currentKey) {
-            state.startKey -> error("You cannot go back from the start route")
-            state.currentTopLevelKey -> {
-                // We're at the base of the current substack, go back to the previous top level
-                // stack.
-                state.topLevelStack.removeLastOrNull()
-            }
-
-            else -> state.currentSubStack.removeLastOrNull()
+        when {
+            state.currentKey == state.startKey -> error("You cannot go back from the start route")
+            state.currentSubStack.size > 1 -> state.currentSubStack.removeLastOrNull()
+            else -> state.topLevelStack.removeLastOrNull()
         }
     }
 
@@ -84,12 +91,10 @@ class Navigator(val state: NavigationState) {
         }
     }
 
-    /**
-     * Clearing all but the root key in the current substack.
-     */
-    private fun clearSubStack() {
-        state.currentSubStack.run {
-            if (size > 1) subList(1, size).clear()
+    private fun resetSubStack(rootKey: NavKey) {
+        state.subStacks.getValue(rootKey).apply {
+            clear()
+            add(rootKey)
         }
     }
 }

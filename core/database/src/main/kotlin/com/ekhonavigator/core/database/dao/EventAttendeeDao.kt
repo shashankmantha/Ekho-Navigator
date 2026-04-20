@@ -12,6 +12,12 @@ interface EventAttendeeDao {
     @Query("SELECT * FROM event_attendees WHERE eventId = :eventId")
     fun observeAttendees(eventId: String): Flow<List<EventAttendeeEntity>>
 
+    @Query("SELECT * FROM event_attendees WHERE userId = :userId")
+    fun observeAllForUser(userId: String): Flow<List<EventAttendeeEntity>>
+
+    @Query("SELECT * FROM event_attendees WHERE eventId = :eventId AND userId = :userId LIMIT 1")
+    suspend fun getAttendee(eventId: String, userId: String): EventAttendeeEntity?
+
     @Upsert
     suspend fun upsertAttendee(attendee: EventAttendeeEntity)
 
