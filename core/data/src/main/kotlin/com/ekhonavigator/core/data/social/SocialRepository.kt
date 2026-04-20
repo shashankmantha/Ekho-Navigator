@@ -9,9 +9,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
-class SocialRepository @Inject constructor() {
+open class SocialRepository @Inject constructor() {
 
-    private val firestore = FirebaseFirestore.getInstance()
+    private val firestore by lazy { FirebaseFirestore.getInstance() }
 
     suspend fun getUserById(userId: String): SocialUser? {
         val doc = firestore.collection("users")
@@ -152,7 +152,7 @@ class SocialRepository @Inject constructor() {
         return snapshot.documents.map { it.toFriendRequest() }
     }
 
-    fun observeIncomingRequests(userId: String): Flow<List<FriendRequest>> = callbackFlow {
+    open fun observeIncomingRequests(userId: String): Flow<List<FriendRequest>> = callbackFlow {
         val registration = firestore.collection("users")
             .document(userId)
             .collection("incomingRequests")
