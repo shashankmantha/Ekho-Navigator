@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -41,6 +42,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ekhonavigator.core.data.social.FriendRequest
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.RsvpStatus
@@ -55,6 +57,7 @@ fun InvitesScreen(
 ) {
     val pending by viewModel.pendingInvites.collectAsStateWithLifecycle()
     val declined by viewModel.declinedInvites.collectAsStateWithLifecycle()
+    val friendRequests by viewModel.friendRequests.collectAsStateWithLifecycle()
 
     var showDeclined by rememberSaveable { mutableStateOf(false) }
 
@@ -65,6 +68,31 @@ fun InvitesScreen(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        item(key = "friend-requests-category") {
+            CategoryHeader(
+                icon = EkhoIcons.Person,
+                title = "Friend Requests",
+                subtitle = "People who want to connect",
+            )
+        }
+
+        if (friendRequests.isEmpty()) {
+            item(key = "friend-requests-empty") {
+                CategoryEmptyState(message = "No friend requests right now")
+            }
+        } else {
+            item(key = "friend-requests-sub") {
+                SubsectionLabel(title = "Pending", count = friendRequests.size)
+            }
+            items(friendRequests, key = { "friend-req-${it.uid}" }) { request ->
+                FriendRequestRow(
+                    request = request,
+                    onAccept = { viewModel.acceptFriendRequest(request.uid) },
+                    onDeny = { viewModel.denyFriendRequest(request.uid) },
+                )
+            }
+        }
+
         item(key = "event-invites-category") {
             CategoryHeader(
                 icon = EkhoIcons.Notifications,
@@ -252,6 +280,86 @@ private fun DeclinedToggle(
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+@Composable
+private fun FriendRequestRow(
+    request: FriendRequest,
+    onAccept: () -> Unit,
+    onDeny: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp)),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        tonalElevation = 1.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = request.displayName.take(1).uppercase().ifBlank { "?" },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
+                Spacer(Modifier.size(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = request.displayName.ifBlank { "Someone" },
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (request.major.isNotBlank()) {
+                        Text(
+                            text = request.major,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = onAccept,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(10.dp),
+                ) {
+                    Icon(EkhoIcons.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.size(6.dp))
+                    Text("Accept")
+                }
+                OutlinedButton(
+                    onClick = onDeny,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(10.dp),
+                ) {
+                    Icon(EkhoIcons.Close, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.size(6.dp))
+                    Text("Deny")
+                }
+            }
+        }
     }
 }
 

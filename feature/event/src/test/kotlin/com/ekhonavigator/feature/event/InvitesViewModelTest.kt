@@ -6,6 +6,7 @@ import com.ekhonavigator.core.testing.MainDispatcherRule
 import com.ekhonavigator.core.testing.TestAuthRepository
 import com.ekhonavigator.core.testing.TestCalendarRepository
 import com.ekhonavigator.core.testing.TestCustomEventRepository
+import com.ekhonavigator.core.testing.TestSocialRepository
 import com.ekhonavigator.core.testing.testCalendarEvent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -28,6 +29,7 @@ class InvitesViewModelTest {
 
     private lateinit var calendarRepository: TestCalendarRepository
     private lateinit var customEventRepository: TestCustomEventRepository
+    private lateinit var socialRepository: TestSocialRepository
     private lateinit var authRepository: TestAuthRepository
     private lateinit var viewModel: InvitesViewModel
 
@@ -35,8 +37,14 @@ class InvitesViewModelTest {
     fun setup() {
         calendarRepository = TestCalendarRepository()
         customEventRepository = TestCustomEventRepository()
+        socialRepository = TestSocialRepository()
         authRepository = TestAuthRepository()
-        viewModel = InvitesViewModel(calendarRepository, customEventRepository, authRepository)
+        viewModel = InvitesViewModel(
+            calendarRepository,
+            customEventRepository,
+            socialRepository,
+            authRepository,
+        )
     }
 
     @Test

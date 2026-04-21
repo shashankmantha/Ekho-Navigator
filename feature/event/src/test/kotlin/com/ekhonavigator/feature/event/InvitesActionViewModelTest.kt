@@ -3,7 +3,9 @@ package com.ekhonavigator.feature.event
 import app.cash.turbine.test
 import com.ekhonavigator.core.model.RsvpStatus
 import com.ekhonavigator.core.testing.MainDispatcherRule
+import com.ekhonavigator.core.testing.TestAuthRepository
 import com.ekhonavigator.core.testing.TestCalendarRepository
+import com.ekhonavigator.core.testing.TestSocialRepository
 import com.ekhonavigator.core.testing.testCalendarEvent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -26,7 +28,11 @@ class InvitesActionViewModelTest {
     @Test
     fun `pendingCount reflects number of PENDING invites`() = runTest {
         val calendarRepository = TestCalendarRepository()
-        val viewModel = InvitesActionViewModel(calendarRepository)
+        val viewModel = InvitesActionViewModel(
+            calendarRepository,
+            TestSocialRepository(),
+            TestAuthRepository(),
+        )
 
         viewModel.pendingCount.test {
             assertEquals(0, awaitItem())
@@ -47,7 +53,11 @@ class InvitesActionViewModelTest {
     @Test
     fun `pendingCount stays at zero when every invite has a decision`() = runTest {
         val calendarRepository = TestCalendarRepository()
-        val viewModel = InvitesActionViewModel(calendarRepository)
+        val viewModel = InvitesActionViewModel(
+            calendarRepository,
+            TestSocialRepository(),
+            TestAuthRepository(),
+        )
 
         // First produce a non-zero count so the flow is actively collecting,
         // then drop back to zero-pending. Going 0 → N → 0 exercises the

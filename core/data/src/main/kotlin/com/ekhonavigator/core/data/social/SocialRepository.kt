@@ -1,13 +1,17 @@
 package com.ekhonavigator.core.data.social
 
 import android.util.Log
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import javax.inject.Inject
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
-class SocialRepository @Inject constructor() {
+open class SocialRepository @Inject constructor() {
 
-    private val firestore = FirebaseFirestore.getInstance()
+    private val firestore by lazy { FirebaseFirestore.getInstance() }
 
     suspend fun getUserById(userId: String): SocialUser? {
         val doc = firestore.collection("users")
@@ -145,15 +149,30 @@ class SocialRepository @Inject constructor() {
             .get()
             .await()
 
-        return snapshot.documents.map {
-            FriendRequest(
-                uid = it.getString("uid") ?: "",
-                displayName = it.getString("displayName") ?: "",
-                avatarId = it.getString("avatarId") ?: "avatar_default",
-                major = it.getString("major") ?: "",
-            )
-        }
+        return snapshot.documents.map { it.toFriendRequest() }
     }
+
+    open fun observeIncomingRequests(userId: String): Flow<List<FriendRequest>> = callbackFlow {
+        val registration = firestore.collection("users")
+            .document(userId)
+            .collection("incomingRequests")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                val requests = snapshot?.documents?.map { it.toFriendRequest() } ?: emptyList()
+                trySend(requests)
+            }
+        awaitClose { registration.remove() }
+    }
+
+    private fun DocumentSnapshot.toFriendRequest(): FriendRequest = FriendRequest(
+        uid = getString("uid") ?: "",
+        displayName = getString("displayName") ?: "",
+        avatarId = getString("avatarId") ?: "avatar_default",
+        major = getString("major") ?: "",
+    )
 
     suspend fun getFriends(currentUserId: String): List<FriendUser> {
         val snapshot = firestore.collection("users")
