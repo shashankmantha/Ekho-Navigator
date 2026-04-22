@@ -65,8 +65,14 @@ import com.ekhonavigator.feature.map.MapScreen
 import com.ekhonavigator.feature.map.navigation.MapNavKey
 import com.ekhonavigator.feature.social.ChatScreen
 import com.ekhonavigator.feature.discover.DiscoverTab
+import com.ekhonavigator.feature.social.SocialActionViewModel
 import com.ekhonavigator.feature.social.SocialScreen
 import com.ekhonavigator.feature.social.UserProfileScreen
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.runtime.getValue
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ekhonavigator.feature.social.navigation.ChatNavKey
 import com.ekhonavigator.feature.social.navigation.SocialNavKey
 import com.ekhonavigator.feature.social.navigation.UserProfileNavKey
@@ -76,7 +82,9 @@ import com.ekhonavigator.navigation.TOP_LEVEL_NAV_ITEMS
 fun EkhoNavigatorApp(
     onSignIn: () -> Unit = {},
     onSignOut: () -> Unit = {},
+    socialActionViewModel: SocialActionViewModel = hiltViewModel(),
 ) {
+    val hasUnreadMessages by socialActionViewModel.hasUnreadMessages.collectAsStateWithLifecycle()
     val navigationState = rememberNavigationState(
         startKey = HomeNavKey,
         topLevelKeys = TOP_LEVEL_NAV_ITEMS.keys
@@ -105,16 +113,22 @@ fun EkhoNavigatorApp(
                     selected = navKey::class == currentKey::class,
                     onClick = { navigator.navigate(navKey) },
                     icon = {
-                        Icon(
-                            imageVector = navItem.unselectedIcon,
-                            contentDescription = null,
-                        )
-                    },
-                    selectedIcon = {
-                        Icon(
-                            imageVector = navItem.selectedIcon,
-                            contentDescription = null,
-                        )
+                        val icon = if (navKey::class == currentKey::class) navItem.selectedIcon else navItem.unselectedIcon
+                        BadgedBox(
+                            badge = {
+                                if (navItem.label == "Social" && hasUnreadMessages) {
+                                    Badge(
+                                        containerColor = Color.Blue,
+                                        modifier = Modifier.align(Alignment.TopEnd)
+                                    )
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = null,
+                            )
+                        }
                     },
                     label = { Text(navItem.label) },
                 )
