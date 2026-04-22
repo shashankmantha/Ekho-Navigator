@@ -61,35 +61,7 @@ class ChatRepository @Inject constructor() {
                 }
 
                 val messages = snapshot?.documents?.map { doc ->
-                    val timestampValue = doc.get("timestamp")
-                    val timestampMillis = when (timestampValue) {
-                        is com.google.firebase.Timestamp -> timestampValue.toDate().time
-                        is Long -> timestampValue
-                        is Number -> timestampValue.toLong()
-                        else -> doc.getLong("clientTimestamp") ?: 0L
-                    }
-
-                    val sharedLocationData = doc.get("sharedLocation") as? Map<String, Any>
-                    val sharedLocation = sharedLocationData?.let {
-                        com.ekhonavigator.core.model.SharedLocation(
-                            title = it["title"] as? String ?: "",
-                            latitude = (it["latitude"] as? Number)?.toDouble() ?: 0.0,
-                            longitude = (it["longitude"] as? Number)?.toDouble() ?: 0.0,
-                            details = it["details"] as? String ?: ""
-                        )
-                    }
-
-                    ChatMessage(
-                        id = doc.id,
-                        senderId = doc.getString("senderId") ?: "",
-                        senderName = doc.getString("senderName") ?: "",
-                        text = doc.getString("text") ?: "",
-                        timestamp = timestampMillis,
-                        readBy = (doc.get("readBy") as? List<*>)?.filterIsInstance<String>()
-                            ?: emptyList(),
-                        clientMessageId = doc.getString("clientMessageId") ?: "",
-                        sharedLocation = sharedLocation
-                    )
+                    doc.toChatMessage()
                 }
                     ?.sortedBy { it.timestamp }
                     .orEmpty()
@@ -97,6 +69,125 @@ class ChatRepository @Inject constructor() {
                 trySend(messages)
             }
 
+        awaitClose { registration.remove() }
+    }
+
+    private fun com.google.firebase.firestore.DocumentSnapshot.toChatMessage(): ChatMessage {
+        val timestampValue = get("timestamp")
+        val timestampMillis = when (timestampValue) {
+            is com.google.firebase.Timestamp -> timestampValue.toDate().time
+            is Long -> timestampValue
+            is Number -> timestampValue.toLong()
+            else -> getLong("clientTimestamp") ?: 0L
+        }
+
+        val sharedLocationData = get("sharedLocation") as? Map<String, Any>
+        val sharedLocation = sharedLocationData?.let {
+            com.ekhonavigator.core.model.SharedLocation(
+                title = it["title"] as? String ?: "",
+                latitude = (it["latitude"] as? Number)?.toDouble() ?: 0.0,
+                longitude = (it["longitude"] as? Number)?.toDouble() ?: 0.0,
+                details = it["details"] as? String ?: ""
+            )
+        }
+
+        return ChatMessage(
+            id = id,
+            senderId = getString("senderId") ?: "",
+            senderName = getString("senderName") ?: "",
+            text = getString("text") ?: "",
+            timestamp = timestampMillis,
+            readBy = (get("readBy") as? List<*>)?.filterIsInstance<String>()
+                ?: emptyList(),
+            clientMessageId = getString("clientMessageId") ?: "",
+            sharedLocation = sharedLocation
+        )
+    }
+
+    fun observeUnreadMessagesCount(currentUserId: String): Flow<Int> = callbackFlow {
+        // We'll use a collectionGroup query to find all messages that the current user hasn't read yet.
+        // This requires the message to have a 'participantIds' field to be queryable by collectionGroup safely for the user,
+        // OR we just query all messages where 'readBy' does not contain currentUserId.
+        // NOTE: 'not-in' or 'array-contains-any' might be needed.
+        // Firestore doesn't support 'array-not-contains'.
+        
+        // A common pattern is to store unread status on the conversation document.
+        // Let's check the conversation doc again.
+        val registration = firestore.collection("conversations")
+            .whereArrayContains("participantIds", currentUserId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(0)
+                    return@addSnapshotListener
+                }
+
+                val unreadConversations = snapshot?.documents?.count { doc ->
+                    val lastSenderId = doc.getString("lastSenderId")
+                    val readBy = (doc.get("readBy") as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+                    lastSenderId != null && lastSenderId != currentUserId && currentUserId !in readBy
+                } ?: 0
+                
+                trySend(unreadConversations)
+            }
+        awaitClose { registration.remove() }
+    }
+
+    fun observeAllConversations(currentUserId: String): Flow<List<ChatConversation>> = callbackFlow {
+        val registration = firestore.collection("conversations")
+            .whereArrayContains("participantIds", currentUserId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                val conversations = snapshot?.documents?.mapNotNull { it.toChatConversation() } ?: emptyList()
+                trySend(conversations)
+            }
+        awaitClose { registration.remove() }
+    }
+
+    private fun com.google.firebase.firestore.DocumentSnapshot.toChatConversation(): ChatConversation? {
+        if (!exists()) return null
+        
+        val timestampValue = get("lastTimestamp")
+        val lastTimestamp = when (timestampValue) {
+            is com.google.firebase.Timestamp -> timestampValue.toDate().time
+            is Long -> timestampValue
+            is Number -> timestampValue.toLong()
+            else -> 0L
+        }
+
+        val createdAtValue = get("createdAt")
+        val createdAt = when (createdAtValue) {
+            is com.google.firebase.Timestamp -> createdAtValue.toDate().time
+            is Long -> createdAtValue
+            is Number -> createdAtValue.toLong()
+            else -> 0L
+        }
+
+        return ChatConversation(
+            id = id,
+            participantIds = (get("participantIds") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
+            participantNames = (get("participantNames") as? Map<*, *>)?.map { it.key.toString() to it.value.toString() }?.toMap() ?: emptyMap(),
+            lastMessage = getString("lastMessage") ?: "",
+            lastSenderId = getString("lastSenderId") ?: "",
+            lastTimestamp = lastTimestamp,
+            readBy = (get("readBy") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
+            createdAt = createdAt,
+        )
+    }
+
+    fun observeConversation(currentUserId: String, friendUserId: String): Flow<ChatConversation?> = callbackFlow {
+        val conversationId = buildConversationId(currentUserId, friendUserId)
+        val registration = firestore.collection("conversations")
+            .document(conversationId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                trySend(snapshot?.toChatConversation())
+            }
         awaitClose { registration.remove() }
     }
 
@@ -137,6 +228,7 @@ class ChatRepository @Inject constructor() {
                 "lastMessage" to trimmed,
                 "lastSenderId" to senderId,
                 "lastTimestamp" to FieldValue.serverTimestamp(),
+                "readBy" to listOf(senderId),
             )
         )
         batch.commit().await()
@@ -162,6 +254,9 @@ class ChatRepository @Inject constructor() {
                 batch.update(doc.reference, "readBy", FieldValue.arrayUnion(currentUserId))
             }
         }
+
+        val conversationRef = firestore.collection("conversations").document(conversationId)
+        batch.update(conversationRef, "readBy", FieldValue.arrayUnion(currentUserId))
 
         batch.commit().await()
     }

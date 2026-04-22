@@ -48,10 +48,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
+import androidx.compose.ui.graphics.Color
+import com.ekhonavigator.core.model.OnlineStatus
+
 @Composable
 private fun ChatAvatar(
     friendAvatarId: String,
     friendDisplayName: String,
+    presenceStatus: com.ekhonavigator.core.model.PresenceStatus?,
     modifier: Modifier = Modifier,
 ) {
     val avatarRes = when (friendAvatarId) {
@@ -61,14 +65,42 @@ private fun ChatAvatar(
         else -> com.ekhonavigator.core.designsystem.R.drawable.avatar_default
     }
 
-    Image(
-        painter = painterResource(id = avatarRes),
-        contentDescription = "$friendDisplayName avatar",
-        modifier = modifier
-            .size(72.dp)
-            .clip(CircleShape),
-        contentScale = ContentScale.Crop,
-    )
+    val statusColor = if (presenceStatus != null) {
+        when (presenceStatus.state.uppercase()) {
+            "ONLINE" -> Color(0xFF4CAF50)
+            "AWAY" -> Color(0xFFFFC107)
+            "BUSY" -> Color(0xFFF44336)
+            else -> null
+        }
+    } else null
+
+    Box(modifier = modifier, contentAlignment = Alignment.BottomEnd) {
+        Image(
+            painter = painterResource(id = avatarRes),
+            contentDescription = "$friendDisplayName avatar",
+            modifier = Modifier
+                .size(72.dp)
+                .clip(CircleShape),
+            contentScale = ContentScale.Crop,
+        )
+
+        if (statusColor != null) {
+            Box(
+                modifier = Modifier
+                    .size(18.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(2.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .background(statusColor)
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -186,6 +218,7 @@ fun ChatScreen(
             ChatAvatar(
                 friendAvatarId = friendAvatarId,
                 friendDisplayName = friendDisplayName,
+                presenceStatus = uiState.friendPresence,
             )
 
             Text(

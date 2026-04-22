@@ -10,8 +10,11 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import com.ekhonavigator.core.data.repository.PresenceRepository
+import com.ekhonavigator.core.model.PresenceStatus
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -24,6 +27,7 @@ data class ChatUiState(
     val pendingSharedLocation: com.ekhonavigator.core.model.SharedLocation? = null,
     val errorMessage: String? = null,
     val infoMessage: String? = null,
+    val friendPresence: PresenceStatus? = null,
 )
 
 @HiltViewModel
@@ -31,12 +35,14 @@ class ChatViewModel @Inject constructor(
     private val chatRepository: ChatRepository,
     private val authRepository: AuthRepository,
     private val markerRepository: MarkerRepository,
+    private val presenceRepository: PresenceRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
     private var observeJob: Job? = null
+    private var presenceJob: Job? = null
     private var startedConversationId: String? = null
 
     init {
@@ -62,6 +68,15 @@ class ChatViewModel @Inject constructor(
     ) {
         val currentUserId = authRepository.getCurrentUserUid() ?: return
         val currentUserName = authRepository.getCurrentUserDisplayName() ?: "Unknown"
+
+        presenceJob?.cancel()
+        presenceJob = viewModelScope.launch {
+            presenceRepository.observePresence(friendUserId)
+                .catch { /* ignore presence errors in chat */ }
+                .collect { presence ->
+                    _uiState.update { it.copy(friendPresence = presence) }
+                }
+        }
 
         viewModelScope.launch {
             runCatching {
