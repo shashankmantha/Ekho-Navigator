@@ -132,6 +132,65 @@ class ChatRepository @Inject constructor() {
         awaitClose { registration.remove() }
     }
 
+    fun observeAllConversations(currentUserId: String): Flow<List<ChatConversation>> = callbackFlow {
+        val registration = firestore.collection("conversations")
+            .whereArrayContains("participantIds", currentUserId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                val conversations = snapshot?.documents?.mapNotNull { it.toChatConversation() } ?: emptyList()
+                trySend(conversations)
+            }
+        awaitClose { registration.remove() }
+    }
+
+    private fun com.google.firebase.firestore.DocumentSnapshot.toChatConversation(): ChatConversation? {
+        if (!exists()) return null
+        
+        val timestampValue = get("lastTimestamp")
+        val lastTimestamp = when (timestampValue) {
+            is com.google.firebase.Timestamp -> timestampValue.toDate().time
+            is Long -> timestampValue
+            is Number -> timestampValue.toLong()
+            else -> 0L
+        }
+
+        val createdAtValue = get("createdAt")
+        val createdAt = when (createdAtValue) {
+            is com.google.firebase.Timestamp -> createdAtValue.toDate().time
+            is Long -> createdAtValue
+            is Number -> createdAtValue.toLong()
+            else -> 0L
+        }
+
+        return ChatConversation(
+            id = id,
+            participantIds = (get("participantIds") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
+            participantNames = (get("participantNames") as? Map<*, *>)?.map { it.key.toString() to it.value.toString() }?.toMap() ?: emptyMap(),
+            lastMessage = getString("lastMessage") ?: "",
+            lastSenderId = getString("lastSenderId") ?: "",
+            lastTimestamp = lastTimestamp,
+            readBy = (get("readBy") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
+            createdAt = createdAt,
+        )
+    }
+
+    fun observeConversation(currentUserId: String, friendUserId: String): Flow<ChatConversation?> = callbackFlow {
+        val conversationId = buildConversationId(currentUserId, friendUserId)
+        val registration = firestore.collection("conversations")
+            .document(conversationId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                trySend(snapshot?.toChatConversation())
+            }
+        awaitClose { registration.remove() }
+    }
+
     suspend fun sendMessage(
         conversationId: String,
         senderId: String,

@@ -38,6 +38,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.compose.ui.text.style.TextOverflow
 import com.ekhonavigator.core.model.OnlineStatus
 
 @Composable
@@ -145,6 +146,8 @@ fun SocialScreen(
                         showOnlineStatus = friend.showOnlineStatus,
                         online = friend.online,
                         onlineStatus = friend.onlineStatus,
+                        lastMessage = friend.lastMessage,
+                        hasUnreadMessages = friend.hasUnreadMessages,
                         onMessageClick = { uid, displayName, avatarId ->
                             onMessageClick(uid, displayName, avatarId)
                         },
@@ -281,6 +284,8 @@ private fun FriendRow(
     showOnlineStatus: Boolean,
     online: Boolean,
     onlineStatus: OnlineStatus,
+    lastMessage: String,
+    hasUnreadMessages: Boolean,
     onMessageClick: (String, String, String) -> Unit,
     onViewProfileClick: (String) -> Unit,
     onRemoveFriendClick: (String) -> Unit,
@@ -340,13 +345,42 @@ private fun FriendRow(
                 }
             },
             headlineContent = {
-                Text(displayName)
+                Text(
+                    text = displayName,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             },
             supportingContent = {
-                if (major.isNotBlank()) {
-                    Text(major)
+                Column {
+                    if (major.isNotBlank()) {
+                        Text(
+                            text = major,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    if (lastMessage.isNotBlank()) {
+                        Text(
+                            text = lastMessage,
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             },
+            trailingContent = {
+                if (hasUnreadMessages) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF2196F3)) // Blue dot
+                    )
+                }
+            }
         )
 
         DropdownMenu(
