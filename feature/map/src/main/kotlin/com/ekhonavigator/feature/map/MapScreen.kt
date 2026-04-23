@@ -1,5 +1,7 @@
 package com.ekhonavigator.feature.map
 
+import com.ekhonavigator.core.model.SharedLocation
+import com.ekhonavigator.feature.map.FriendInfo
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
@@ -54,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.compose.navigation
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
@@ -69,6 +72,7 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
 
 data class UserMarker(
     val id: Long,
@@ -139,14 +143,33 @@ fun MapLocationControls(
 @Composable
 fun MapScreen(
     onEventClick: (String) -> Unit,
+    onShareLocationToChat: (friendId: String, friendName: String, SharedLocation) -> Unit,
+    onOpenDiscoverForPlace: (placeId: String) -> Unit,
+    focusPlaceId: String? = null,
     modifier: Modifier = Modifier,
     viewModel: MapViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val csuciCenter = LatLng(34.162134342787105, -119.04400892418893)
 
+    val focusedPlace = remember(focusPlaceId) {
+        focusPlaceId?.let { id -> CampusPlacesData.places.firstOrNull { it.id == id } }
+    }
+
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(csuciCenter, 15f)
+    }
+
+    var isMapLoaded by remember { mutableStateOf(false) }
+
+    // Animate (not initial position) — contentPadding is only honored on CameraUpdate moves.
+    // Gate on isMapLoaded to avoid the world-view flash from racing the SDK's map init.
+    LaunchedEffect(focusPlaceId, isMapLoaded) {
+        if (focusedPlace != null && isMapLoaded) {
+            cameraPositionState.animate(
+                CameraUpdateFactory.newLatLngZoom(focusedPlace.position, 17f),
+            )
+        }
     }
 
     var selectedCampusPlace by remember { mutableStateOf<CampusPlace?>(null) }
@@ -182,9 +205,11 @@ fun MapScreen(
     val campusPlaces = remember { CampusPlacesData.places }
 
     var searchText by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf(PlaceCategory.BUILDINGS) }
+    var selectedCategory by remember {
+        mutableStateOf(focusedPlace?.category ?: PlaceCategory.BUILDINGS)
+    }
     var isPanelExpanded by remember { mutableStateOf(true) }
-    var showFilterTip by remember { mutableStateOf(true) }
+    var showFilterTip by remember { mutableStateOf(focusPlaceId == null) }
 
     val mapPaddingForInfoCards by remember(isPanelExpanded, showFilterTip, selectedCategory) {
         derivedStateOf {
@@ -211,6 +236,7 @@ fun MapScreen(
     }
 
     var selectedDroppedMarkerForOptions by remember { mutableStateOf<UserMarker?>(null) }
+    var showFriendPickerForMarker by remember { mutableStateOf<UserMarker?>(null) }
     var markerBeingEdited by remember { mutableStateOf<UserMarker?>(null) }
     var editLabelText by remember { mutableStateOf("") }
     var markerPendingRemoval by remember { mutableStateOf<UserMarker?>(null) }
@@ -246,7 +272,8 @@ fun MapScreen(
             ),
             onMapLongClick = { latLng ->
                 viewModel.addMarker(latLng)
-            }
+            },
+            onMapLoaded = { isMapLoaded = true },
         ) {
             key("csuci-main") {
                 Marker(
@@ -259,10 +286,15 @@ fun MapScreen(
             if (zoomRevealsCampusMarkers || searchText.isNotBlank()) {
                 visiblePlaces.forEach { place ->
                     key("campus-place-${place.name}") {
+                        val markerState = rememberMarkerState(position = place.position)
+                        if (place.id == focusPlaceId) {
+                            LaunchedEffect(focusPlaceId) {
+                                markerState.showInfoWindow()
+                            }
+                        }
                         MarkerInfoWindowContent(
-                            state = rememberMarkerState(position = place.position),
+                            state = markerState,
                             onInfoWindowClick = {
-
                                 selectedCampusPlace = place
                             }
                         ) {
@@ -441,6 +473,11 @@ fun MapScreen(
                             selectedDroppedMarkerForOptions = null
                             markerPendingRemoval = selectedMarker
                         }) { Text("Remove") }
+
+                        TextButton(onClick = {
+                            selectedDroppedMarkerForOptions = null
+                            showFriendPickerForMarker = selectedMarker
+                        }) { Text("Send to Friend") }
                     }
                 },
                 confirmButton = {
@@ -492,10 +529,33 @@ fun MapScreen(
                 }
             )
         }
+
+        if (showFriendPickerForMarker != null) {
+            val marker = showFriendPickerForMarker!!
+            FriendPickerCard(
+                markerLabel = marker.markerLabelComment.ifBlank { "Dropped Marker" },
+                friends = viewModel.friends,
+                onFriendSelected = { friend ->
+                    showFriendPickerForMarker = null
+                    val sharedLoc = SharedLocation(
+                        title = marker.markerLabelComment.ifBlank { "Dropped Marker" },
+                        latitude = marker.droppedMarkerLocation.latitude,
+                        longitude = marker.droppedMarkerLocation.longitude
+                    )
+                    onShareLocationToChat(friend.id, friend.name, sharedLoc)
+                },
+                onDismiss = { showFriendPickerForMarker = null }
+            )
+        }
+
         selectedCampusPlace?.let { place ->
             CampusPlaceDetailCard(
                 place = place,
-                onDismiss = { selectedCampusPlace = null }
+                onDismiss = { selectedCampusPlace = null },
+                onViewLocationEvents = {
+                    selectedCampusPlace = null
+                    onOpenDiscoverForPlace(place.id)
+                }
             )
         }
     }

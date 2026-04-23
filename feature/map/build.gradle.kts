@@ -35,6 +35,7 @@ android {
 }
 
 dependencies {
+    api(projects.core.model)
     api(projects.core.navigation)
     api(projects.feature.event)
     implementation(platform(libs.androidx.compose.bom))
@@ -63,6 +64,8 @@ dependencies {
 
     // Runtime library for JSON serialization
     implementation(libs.kotlinx.serialization.json)
+
+    implementation(project(":core:model"))
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

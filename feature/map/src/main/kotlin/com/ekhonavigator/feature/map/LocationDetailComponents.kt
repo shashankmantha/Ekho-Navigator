@@ -1,6 +1,8 @@
 package com.ekhonavigator.feature.map
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -82,7 +84,11 @@ fun CampusPlacePreviewCard(place: CampusPlace) {
 }
 
 @Composable
-fun CampusPlaceDetailCard(place: CampusPlace, onDismiss: () -> Unit) {
+fun CampusPlaceDetailCard(
+    place: CampusPlace,
+    onDismiss: () -> Unit,
+    onViewLocationEvents: () -> Unit
+) {
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -125,11 +131,20 @@ fun CampusPlaceDetailCard(place: CampusPlace, onDismiss: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                Button(
-                    onClick = onDismiss,
-                    modifier = Modifier.align(Alignment.End)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
                 ) {
-                    Text("Close")
+                    androidx.compose.material3.TextButton(
+                        onClick = onViewLocationEvents,
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        Text("View Events Here")
+                    }
+
+                    Button(onClick = onDismiss) {
+                        Text("Close")
+                    }
                 }
             }
         }

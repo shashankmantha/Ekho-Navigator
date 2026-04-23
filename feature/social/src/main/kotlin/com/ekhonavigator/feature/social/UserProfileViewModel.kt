@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ekhonavigator.core.data.social.SocialRepository
 import com.ekhonavigator.core.data.social.SocialUser
+import com.ekhonavigator.core.data.repository.PresenceRepository
+import com.ekhonavigator.core.model.OnlineStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,12 +17,16 @@ import kotlinx.coroutines.launch
 data class UserProfileUiState(
     val isLoading: Boolean = false,
     val user: SocialUser? = null,
+    val isOnline: Boolean = false,
+    val onlineStatus: OnlineStatus = OnlineStatus.ONLINE,
+    val lastSeen: Long = 0L,
     val errorMessage: String? = null,
 )
 
 @HiltViewModel
 class UserProfileViewModel @Inject constructor(
     private val repository: SocialRepository,
+    private val presenceRepository: PresenceRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(UserProfileUiState())
@@ -46,12 +52,36 @@ class UserProfileViewModel @Inject constructor(
                         errorMessage = if (user == null) "User not found" else null,
                     )
                 }
+
+                if (user != null) {
+                    observePresence(userId)
+                }
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         user = null,
                         errorMessage = e.message ?: "Failed to load profile",
+                    )
+                }
+            }
+        }
+    }
+
+    private fun observePresence(userId: String) {
+        viewModelScope.launch {
+            presenceRepository.observePresence(userId).collect { status ->
+                val statusStr = status.state.uppercase()
+                val onlineStatus = try {
+                    OnlineStatus.valueOf(statusStr)
+                } catch (e: Exception) {
+                    OnlineStatus.ONLINE
+                }
+                _uiState.update {
+                    it.copy(
+                        isOnline = status.state != "offline",
+                        onlineStatus = onlineStatus,
+                        lastSeen = status.lastChanged
                     )
                 }
             }

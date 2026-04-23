@@ -15,6 +15,7 @@ import java.time.Instant
 fun NetworkCalendarEvent.toEntity(
     existingBookmark: Boolean = false,
     syncedAt: Instant = Instant.now(),
+    placeId: String? = null,
 ): CalendarEventEntity = CalendarEventEntity(
     uid = uid,
     title = summary,
@@ -27,6 +28,10 @@ fun NetworkCalendarEvent.toEntity(
     status = status,
     isBookmarked = existingBookmark,
     lastSyncedAt = syncedAt,
+    eventName = eventName,
+    organization = organization,
+    eventType = eventType,
+    placeId = placeId,
 )
 
 /**
@@ -51,6 +56,10 @@ fun CalendarEvent.toCustomEventEntity(
     source = EventSource.USER_CREATED,
     ownerUid = ownerUid,
     pendingSync = true,
+    eventName = eventName,
+    organization = organization,
+    eventType = eventType,
+    placeId = placeId,
 )
 
 /**
@@ -91,5 +100,8 @@ fun firestoreDocToEntity(
         source = source,
         ownerUid = doc.getString("ownerUid"),
         pendingSync = false,
+        eventName = doc.getString("eventName") ?: "",
+        organization = doc.getString("organization") ?: "",
+        eventType = doc.getString("eventType") ?: "",
     )
 }

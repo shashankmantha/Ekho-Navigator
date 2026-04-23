@@ -2,6 +2,7 @@ package com.ekhonavigator.core.testing
 
 import android.content.Context
 import com.ekhonavigator.core.data.auth.AuthRepository
+import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -18,6 +19,8 @@ class TestAuthRepository(
     override fun getCurrentUserEmail(): String? = email
 
     override fun getCurrentUserDisplayName(): String? = displayName
+
+    override fun getCurrentUser(): FirebaseUser? = null
 
     override fun userFlow(): Flow<String?> = _userFlow
 

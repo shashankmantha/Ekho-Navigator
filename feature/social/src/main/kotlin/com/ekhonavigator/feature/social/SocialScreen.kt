@@ -1,37 +1,50 @@
 package com.ekhonavigator.feature.social
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Button
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.text.style.TextOverflow
+import com.ekhonavigator.core.model.OnlineStatus
 
 @Composable
 fun SocialScreen(
     onProfileClick: (String) -> Unit,
+    onMessageClick: (String, String, String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SocialViewModel = hiltViewModel(),
 ) {
@@ -97,7 +110,7 @@ fun SocialScreen(
                         trailingContent = {
                             Row {
                                 TextButton(
-                                    onClick = { viewModel.acceptFriendRequest(request.uid) }
+                                    onClick = { viewModel.acceptFriendRequest(request.uid) },
                                 ) {
                                     Text("Accept")
                                 }
@@ -105,7 +118,7 @@ fun SocialScreen(
                                 Spacer(modifier = Modifier.width(8.dp))
 
                                 TextButton(
-                                    onClick = { viewModel.denyFriendRequest(request.uid) }
+                                    onClick = { viewModel.denyFriendRequest(request.uid) },
                                 ) {
                                     Text("Deny")
                                 }
@@ -125,24 +138,22 @@ fun SocialScreen(
                 }
 
                 items(uiState.friends, key = { "friend_${it.uid}" }) { friend ->
-                    ListItem(
-                        modifier = Modifier.clickable {
-                            onProfileClick(friend.uid)
+                    FriendRow(
+                        uid = friend.uid,
+                        displayName = friend.displayName,
+                        avatarId = friend.avatarId,
+                        major = friend.major,
+                        showOnlineStatus = friend.showOnlineStatus,
+                        online = friend.online,
+                        onlineStatus = friend.onlineStatus,
+                        lastMessage = friend.lastMessage,
+                        hasUnreadMessages = friend.hasUnreadMessages,
+                        onMessageClick = { uid, displayName, avatarId ->
+                            onMessageClick(uid, displayName, avatarId)
                         },
-                        headlineContent = {
-                            Text(friend.displayName)
-                        },
-                        supportingContent = {
-                            if (friend.major.isNotBlank()) {
-                                Text(friend.major)
-                            }
-                        },
-                        trailingContent = {
-                            TextButton(
-                                onClick = { viewModel.removeFriend(friend.uid) }
-                            ) {
-                                Text("Delete")
-                            }
+                        onViewProfileClick = onProfileClick,
+                        onRemoveFriendClick = { uid ->
+                            viewModel.removeFriend(uid)
                         },
                     )
                     HorizontalDivider()
@@ -248,7 +259,7 @@ fun SocialScreen(
 
                                     else -> {
                                         Button(
-                                            onClick = { viewModel.sendFriendRequest(user.id) }
+                                            onClick = { viewModel.sendFriendRequest(user.id) },
                                         ) {
                                             Text("Add")
                                         }
@@ -260,6 +271,145 @@ fun SocialScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun FriendRow(
+    uid: String,
+    displayName: String,
+    avatarId: String,
+    major: String,
+    showOnlineStatus: Boolean,
+    online: Boolean,
+    onlineStatus: OnlineStatus,
+    lastMessage: String,
+    hasUnreadMessages: Boolean,
+    onMessageClick: (String, String, String) -> Unit,
+    onViewProfileClick: (String) -> Unit,
+    onRemoveFriendClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var showMenu by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        ListItem(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    showMenu = true
+                },
+            leadingContent = {
+                Box(
+                    modifier = Modifier.size(40.dp),
+                    contentAlignment = Alignment.BottomEnd,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = displayName.take(1).uppercase(),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+                    }
+
+                    if (showOnlineStatus && online) {
+                        val statusColor = when (onlineStatus) {
+                            OnlineStatus.ONLINE -> Color(0xFF4CAF50)
+                            OnlineStatus.AWAY -> Color(0xFFFFC107)
+                            OnlineStatus.BUSY -> Color(0xFFF44336)
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surface)
+                                .padding(2.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                                    .background(statusColor)
+                            )
+                        }
+                    }
+                }
+            },
+            headlineContent = {
+                Text(
+                    text = displayName,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            },
+            supportingContent = {
+                Column {
+                    if (major.isNotBlank()) {
+                        Text(
+                            text = major,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    if (lastMessage.isNotBlank()) {
+                        Text(
+                            text = lastMessage,
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            },
+            trailingContent = {
+                if (hasUnreadMessages) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF2196F3)) // Blue dot
+                    )
+                }
+            }
+        )
+
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text("Message") },
+                onClick = {
+                    showMenu = false
+                    onMessageClick(uid, displayName, avatarId)
+                },
+            )
+
+            DropdownMenuItem(
+                text = { Text("View Profile") },
+                onClick = {
+                    showMenu = false
+                    onViewProfileClick(uid)
+                },
+            )
+
+            DropdownMenuItem(
+                text = { Text("Remove Friend") },
+                onClick = {
+                    showMenu = false
+                    onRemoveFriendClick(uid)
+                },
+            )
         }
     }
 }

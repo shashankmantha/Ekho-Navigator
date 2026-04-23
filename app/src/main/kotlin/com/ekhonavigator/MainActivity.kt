@@ -1,6 +1,7 @@
 package com.ekhonavigator
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -13,18 +14,30 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.core.content.ContextCompat
+import com.ekhonavigator.core.data.auth.AuthRepository
+import com.ekhonavigator.core.data.profile.ProfileRepository
 import com.ekhonavigator.core.data.repository.CalendarRepository
 import com.ekhonavigator.core.data.repository.CustomEventRepository
-import androidx.core.content.ContextCompat
-import android.content.pm.PackageManager
+import com.ekhonavigator.core.data.repository.PresenceRepository
 import com.ekhonavigator.core.designsystem.theme.EkhoTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var authRepository: AuthRepository
+
+    @Inject
+    lateinit var profileRepository: ProfileRepository
+
+    @Inject
+    lateinit var presenceRepository: PresenceRepository
 
     @Inject
     lateinit var customEventRepository: CustomEventRepository
@@ -35,6 +48,19 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Track presence globally while the user is signed in
+        MainScope().launch {
+            authRepository.userFlow().collectLatest { uid ->
+                if (uid != null) {
+                    val profile = profileRepository.getProfile(uid)
+                    val showOnlineStatus = profile?.showOnlineStatus ?: true
+                    presenceRepository.startPresence(uid, showOnlineStatus)
+                } else {
+                    presenceRepository.stopPresence()
+                }
+            }
+        }
 
         setContent {
             val notificationPermissionLauncher = rememberLauncherForActivityResult(

@@ -4,19 +4,19 @@ package com.ekhonavigator.core.model
  * Event categories matching the CSUCI 25Live Publisher feed.
  * These come from the X-TRUMBA-CUSTOMFIELD;NAME="Categories" property.
  */
-enum class EventCategory(val displayName: String, val color: Long) {
-    ACADEMICS_RESEARCH("Academics & Research", 0xFF1565C0),
-    ALUMNI("Alumni", 0xFF00897B),
-    COMMUNITY("Community", 0xFF2E7D32),
-    EXTERNAL("External", 0xFF78909C),
-    HOMECOMING("Homecoming", 0xFFF9A825),
-    PRIVATE_EVENT("Private Event", 0xFF6A1B9A),
-    STAFF("Staff", 0xFF1E88E5),
-    STUDENT_ORGS("Student Organizations", 0xFFAB47BC),
-    SUMMER_CONFERENCE("Summer Conference", 0xFF00ACC1),
-    TEACHING_INNOVATIONS("Teaching & Innovations", 0xFFE65100),
-    UNIVERSITY_LIFE("University Life", 0xFFC62828),
-    GENERAL("General", 0xFF607D8B);
+enum class EventCategory(val displayName: String, val color: Long, val monogram: String) {
+    ACADEMICS_RESEARCH("Academics & Research", 0xFF1565C0, "AR"),
+    ALUMNI("Alumni", 0xFF00897B, "AL"),
+    COMMUNITY("Community", 0xFF2E7D32, "CM"),
+    EXTERNAL("External", 0xFF78909C, "EX"),
+    HOMECOMING("Homecoming", 0xFFF9A825, "HC"),
+    PRIVATE_EVENT("Private Event", 0xFF6A1B9A, "PE"),
+    STAFF("Staff", 0xFF1E88E5, "ST"),
+    STUDENT_ORGS("Student Organizations", 0xFFAB47BC, "SO"),
+    SUMMER_CONFERENCE("Summer Conference", 0xFF00ACC1, "SC"),
+    TEACHING_INNOVATIONS("Teaching & Innovations", 0xFFE65100, "TI"),
+    UNIVERSITY_LIFE("University Life", 0xFFC62828, "UL"),
+    GENERAL("General", 0xFF607D8B, "GN");
 
     companion object {
         /**
