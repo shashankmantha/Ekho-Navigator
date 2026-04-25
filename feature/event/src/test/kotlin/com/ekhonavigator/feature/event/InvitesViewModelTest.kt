@@ -14,6 +14,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.time.Instant
 
 /**
  * Unit tests for [InvitesViewModel].
@@ -96,6 +97,26 @@ class InvitesViewModelTest {
         viewModel.rsvp(eventId = "evt-99", status = RsvpStatus.GOING)
 
         assertTrue(customEventRepository.rsvpCalls.isEmpty())
+    }
+
+    @Test
+    fun `togglePast surfaces past pending invites that are hidden by default`() = runTest {
+        val past = testCalendarEvent(
+            id = "old",
+            myRsvpStatus = RsvpStatus.PENDING,
+            startTime = Instant.parse("2020-01-01T00:00:00Z"),
+            endTime = Instant.parse("2020-01-01T01:00:00Z"),
+        )
+        val upcoming = testCalendarEvent(id = "new", myRsvpStatus = RsvpStatus.PENDING)
+
+        viewModel.pendingInvites.test {
+            assertEquals(emptyList<Any>(), awaitItem())
+            calendarRepository.emit(listOf(past, upcoming))
+            assertEquals(listOf(upcoming), awaitItem())
+
+            viewModel.togglePast()
+            assertEquals(listOf(past, upcoming), awaitItem())
+        }
     }
 
     @Test

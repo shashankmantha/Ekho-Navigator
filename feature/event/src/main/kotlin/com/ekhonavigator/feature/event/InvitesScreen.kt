@@ -25,6 +25,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -46,6 +48,7 @@ import com.ekhonavigator.core.data.social.FriendRequest
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.RsvpStatus
+import com.ekhonavigator.core.model.isPast
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
@@ -58,6 +61,7 @@ fun InvitesScreen(
     val pending by viewModel.pendingInvites.collectAsStateWithLifecycle()
     val declined by viewModel.declinedInvites.collectAsStateWithLifecycle()
     val friendRequests by viewModel.friendRequests.collectAsStateWithLifecycle()
+    val showPast by viewModel.showPast.collectAsStateWithLifecycle()
 
     var showDeclined by rememberSaveable { mutableStateOf(false) }
 
@@ -98,12 +102,24 @@ fun InvitesScreen(
                 icon = EkhoIcons.Notifications,
                 title = "Event Invites",
                 subtitle = "Invitations from friends",
+                trailing = {
+                    PastToggle(
+                        checked = showPast,
+                        onCheckedChange = { viewModel.togglePast() },
+                    )
+                },
             )
         }
 
         if (pending.isEmpty() && declined.isEmpty()) {
             item(key = "event-invites-empty") {
-                CategoryEmptyState(message = "No event invites right now")
+                CategoryEmptyState(
+                    message = if (showPast) {
+                        "No event invites — past or present"
+                    } else {
+                        "No event invites right now"
+                    },
+                )
             }
             return@LazyColumn
         }
@@ -182,6 +198,7 @@ private fun CategoryHeader(
     icon: ImageVector,
     title: String,
     subtitle: String,
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     Column(
         modifier = Modifier
@@ -201,7 +218,9 @@ private fun CategoryHeader(
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
             )
+            if (trailing != null) trailing()
         }
         Text(
             text = subtitle,
@@ -211,6 +230,49 @@ private fun CategoryHeader(
         )
         Spacer(Modifier.height(8.dp))
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+    }
+}
+
+@Composable
+private fun PastBadge() {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+        shape = RoundedCornerShape(6.dp),
+    ) {
+        Text(
+            text = "PAST",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+        )
+    }
+}
+
+@Composable
+private fun PastToggle(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = "Show past",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.size(6.dp))
+        // Default unchecked track sits on `surfaceContainerHighest` and disappears
+        // against light surfaces — pin to outlineVariant so the affordance reads
+        // as a toggle in both color schemes.
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                uncheckedBorderColor = MaterialTheme.colorScheme.outline,
+                uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+            ),
+        )
     }
 }
 
@@ -373,6 +435,7 @@ private fun InviteRow(
     val zone = remember { ZoneId.systemDefault() }
     val dateFormatter = remember { DateTimeFormatter.ofPattern("EEE, MMM d  h:mm a") }
     val whenLabel = event.startTime.atZone(zone).format(dateFormatter)
+    val isPast = event.isPast()
 
     Surface(
         modifier = Modifier
@@ -386,13 +449,29 @@ private fun InviteRow(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(
-                text = event.title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = event.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                if (isPast) {
+                    Spacer(Modifier.size(8.dp))
+                    PastBadge()
+                }
+            }
+
+            if (event.ownerDisplayName.isNotBlank()) {
+                Text(
+                    text = "Invited by ${event.ownerDisplayName}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
 
             Text(
                 text = whenLabel,

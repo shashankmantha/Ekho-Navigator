@@ -9,6 +9,8 @@ import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSource
 import com.ekhonavigator.core.model.EventSourceType
+import com.ekhonavigator.core.model.RsvpStatus
+import com.ekhonavigator.core.model.isPast
 import com.ekhonavigator.core.model.matchesCategories
 import com.ekhonavigator.core.model.matchesSourceTypes
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,6 +24,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
+import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
@@ -91,7 +94,7 @@ class CalendarViewModel @Inject constructor(
         _activeSourceTypes,
         _selectedCategories,
     ) { events, activeTypes, categories ->
-        events.filter { it.matchesSourceTypes(activeTypes) && it.matchesCategories(categories) }
+        events.applyVisibilityFilters(activeTypes, categories)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Events for the selected date, filtered by source types + categories (for DayScreen). */
@@ -105,11 +108,7 @@ class CalendarViewModel @Inject constructor(
                 _activeSourceTypes,
                 _selectedCategories,
             ) { events, activeTypes, categories ->
-                events.filter {
-                    it.matchesSourceTypes(activeTypes) && it.matchesCategories(
-                        categories
-                    )
-                }
+                events.applyVisibilityFilters(activeTypes, categories)
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -133,11 +132,7 @@ class CalendarViewModel @Inject constructor(
                 _activeSourceTypes,
                 _selectedCategories,
             ) { events, activeTypes, categories ->
-                events.filter {
-                    it.matchesSourceTypes(activeTypes) && it.matchesCategories(
-                        categories
-                    )
-                }
+                events.applyVisibilityFilters(activeTypes, categories)
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -161,11 +156,7 @@ class CalendarViewModel @Inject constructor(
                     _selectedCategories,
                 ) { events, activeTypes, categories ->
                     events
-                        .filter {
-                            it.matchesSourceTypes(activeTypes) && it.matchesCategories(
-                                categories
-                            )
-                        }
+                        .applyVisibilityFilters(activeTypes, categories)
                         .groupBy { it.startTime.atZone(zone).toLocalDate() }
                         .mapValues { (_, dayEvents) ->
                             dayEvents.map { it.toSourceType() }.toSet()
@@ -242,6 +233,26 @@ class CalendarViewModel @Inject constructor(
         viewModelScope.launch {
             repository.toggleBookmark(eventId)
         }
+    }
+}
+
+/**
+ * Applies the calendar's visibility rules. Past pending invites are hidden so
+ * stale "going?" cards don't clutter days the user already lived through; the
+ * Invites screen still surfaces them via its own "Show past" toggle.
+ */
+private fun List<CalendarEvent>.applyVisibilityFilters(
+    activeTypes: Set<EventSourceType>,
+    categories: Set<EventCategory>,
+): List<CalendarEvent> {
+    val now = Instant.now()
+    return filter { event ->
+        val isStalePendingInvite = event.source == EventSource.SHARED &&
+            event.myRsvpStatus == RsvpStatus.PENDING &&
+            event.isPast(now)
+        !isStalePendingInvite &&
+            event.matchesSourceTypes(activeTypes) &&
+            event.matchesCategories(categories)
     }
 }
 

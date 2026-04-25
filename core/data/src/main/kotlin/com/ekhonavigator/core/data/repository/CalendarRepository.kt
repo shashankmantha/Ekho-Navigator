@@ -16,8 +16,9 @@ interface CalendarRepository {
     fun observeEventsByDateRange(start: Instant, end: Instant): Flow<List<CalendarEvent>>
     /** Does NOT filter declined events — the detail screen must still open them so the user can undo. */
     fun observeEventById(id: String): Flow<CalendarEvent?>
-    fun observePendingInvites(): Flow<List<CalendarEvent>>
-    fun observeDeclinedInvites(): Flow<List<CalendarEvent>>
+    /** Past events are hidden by default. Pass `includePast = true` to surface them in a "show past" view. */
+    fun observePendingInvites(includePast: Boolean = false): Flow<List<CalendarEvent>>
+    fun observeDeclinedInvites(includePast: Boolean = false): Flow<List<CalendarEvent>>
     suspend fun toggleBookmark(eventId: String)
     suspend fun restoreBookmarks()
     suspend fun onSignOut()
