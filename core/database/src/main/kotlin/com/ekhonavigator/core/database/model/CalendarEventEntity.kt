@@ -24,12 +24,18 @@ data class CalendarEventEntity(
     val lastSyncedAt: Instant,
     val source: EventSource = EventSource.ICAL_FEED,
     val ownerUid: String? = null,
+    val ownerDisplayName: String = "",
     val pendingSync: Boolean = false,
     val eventName: String = "",
     val organization: String = "",
     val eventType: String = "",
     val placeId: String? = null,
+    val externalSourceId: String? = null,
+    val externalSourceType: String? = null,
+    val dueAt: Instant? = null,
 )
+
+fun CalendarEventEntity.isPast(now: Instant = Instant.now()): Boolean = endTime <= now
 
 fun CalendarEventEntity.toDomainModel(
     myRsvpStatus: RsvpStatus? = null,
@@ -47,10 +53,14 @@ fun CalendarEventEntity.toDomainModel(
     lastSyncedAt = lastSyncedAt,
     source = source,
     ownerUid = ownerUid,
+    ownerDisplayName = ownerDisplayName,
     pendingSync = pendingSync,
     myRsvpStatus = myRsvpStatus,
     eventName = eventName,
     organization = organization,
     eventType = eventType,
     placeId = placeId,
+    externalSourceId = externalSourceId,
+    externalSourceType = externalSourceType,
+    dueAt = dueAt,
 )
