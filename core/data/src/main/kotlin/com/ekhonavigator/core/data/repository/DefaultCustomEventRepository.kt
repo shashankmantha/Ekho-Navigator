@@ -10,6 +10,7 @@ import com.ekhonavigator.core.database.model.toDomainModel
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventAttendee
 import com.ekhonavigator.core.model.RsvpStatus
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -97,6 +98,46 @@ class DefaultCustomEventRepository @Inject constructor(
             calendarEventDao.updatePendingSync(event.id, false)
         } catch (_: Exception) {
             // Stays pendingSync = true, will be retried by pushPendingEvents()
+        }
+    }
+
+    override suspend fun addAttendees(eventId: String, sharedWith: Map<String, String>) {
+        if (sharedWith.isEmpty()) return
+
+        for ((uid, displayName) in sharedWith) {
+            eventAttendeeDao.upsertAttendee(
+                EventAttendeeEntity(
+                    eventId = eventId,
+                    userId = uid,
+                    displayName = displayName,
+                    rsvpStatus = RsvpStatus.PENDING,
+                ),
+            )
+        }
+
+        try {
+            // arrayUnion is idempotent — re-adding an existing UID is a no-op,
+            // safe to call without first reading the participants array.
+            firestore.collection("events").document(eventId).update(
+                "participants",
+                FieldValue.arrayUnion(*sharedWith.keys.toTypedArray()),
+            ).await()
+
+            for ((uid, displayName) in sharedWith) {
+                firestore.collection("events")
+                    .document(eventId)
+                    .collection("attendees")
+                    .document(uid)
+                    .set(
+                        mapOf(
+                            "displayName" to displayName,
+                            "rsvpStatus" to RsvpStatus.PENDING.name,
+                        ),
+                    )
+                    .await()
+            }
+        } catch (_: Exception) {
+            // Offline-first: Room has the attendees, Firestore push retries on reconnect
         }
     }
 

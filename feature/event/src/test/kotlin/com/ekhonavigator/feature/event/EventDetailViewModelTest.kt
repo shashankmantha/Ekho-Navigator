@@ -4,6 +4,8 @@ import com.ekhonavigator.core.testing.MainDispatcherRule
 import com.ekhonavigator.core.testing.TestAuthRepository
 import com.ekhonavigator.core.testing.TestCalendarRepository
 import com.ekhonavigator.core.testing.TestCustomEventRepository
+import com.ekhonavigator.core.testing.TestPlaceRepository
+import com.ekhonavigator.core.testing.TestSocialRepository
 import com.ekhonavigator.core.testing.testCalendarEvent
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -39,15 +41,25 @@ class EventDetailViewModelTest {
 
     private lateinit var repository: TestCalendarRepository
     private lateinit var customEventRepository: TestCustomEventRepository
+    private lateinit var socialRepository: TestSocialRepository
     private lateinit var authRepository: TestAuthRepository
+    private lateinit var placeRepository: TestPlaceRepository
     private lateinit var viewModel: EventDetailViewModel
 
     @Before
     fun setup() {
         repository = TestCalendarRepository()
         customEventRepository = TestCustomEventRepository()
+        socialRepository = TestSocialRepository()
         authRepository = TestAuthRepository()
-        viewModel = EventDetailViewModel(repository, customEventRepository, authRepository)
+        placeRepository = TestPlaceRepository()
+        viewModel = EventDetailViewModel(
+            repository,
+            customEventRepository,
+            socialRepository,
+            authRepository,
+            placeRepository,
+        )
     }
 
     @Test
@@ -85,6 +97,28 @@ class EventDetailViewModelTest {
 
         val second = viewModel.event.first { it?.title == "Updated Title" }
         assertEquals("Updated Title", second?.title)
+    }
+
+    @Test
+    fun `effectivePlaceId surfaces the id only while the place still exists`() = runTest {
+        val place = com.ekhonavigator.core.model.Place(
+            id = "marker_42",
+            name = "Coffee spot",
+            latitude = 0.0,
+            longitude = 0.0,
+            category = com.ekhonavigator.core.model.PlaceCategory.GENERAL,
+            isCustom = true,
+        )
+        placeRepository.emit(listOf(place))
+        repository.emit(listOf(testCalendarEvent(id = "e1", placeId = "marker_42")))
+
+        viewModel.setEventId("e1")
+        viewModel.event.first { it != null }
+        assertEquals("marker_42", viewModel.effectivePlaceId.first { it != null })
+
+        // The user deletes the underlying marker — the link must go dead.
+        placeRepository.emit(emptyList())
+        assertEquals(null, viewModel.effectivePlaceId.first { it == null })
     }
 
     @Test
