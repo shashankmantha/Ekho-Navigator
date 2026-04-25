@@ -15,6 +15,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.ekhonavigator.core.database.dao.CalendarEventDao
 import com.ekhonavigator.core.database.model.CalendarEventEntity
+import com.ekhonavigator.core.database.model.isPast
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -42,7 +43,7 @@ class DailyEventNotificationManager @Inject constructor(
         val endOfDay = today.plusDays(1).atStartOfDay(zoneId).toInstant()
         val todaysEvents = calendarEventDao
             .observeEventsByDateRange(startOfDay, endOfDay)
-            .map { events -> events.filter { it.endTime.isAfter(now) } }
+            .map { events -> events.filter { !it.isPast(now) } }
             .first()
 
         if (todaysEvents.isEmpty()) return
@@ -74,7 +75,7 @@ class DailyEventNotificationManager @Inject constructor(
             .observeBookmarkedEvents()
             .map { events ->
                 events.filter {
-                    it.startTime >= startOfDay && it.startTime < endOfDay && it.endTime.isAfter(now)
+                    it.startTime >= startOfDay && it.startTime < endOfDay && !it.isPast(now)
                 }
             }
             .first()
@@ -102,7 +103,7 @@ class DailyEventNotificationManager @Inject constructor(
         if (!canPostNotifications()) return
 
         val event = calendarEventDao.getEventById(eventId) ?: return
-        if (!event.isBookmarked || !event.endTime.isAfter(now)) return
+        if (!event.isBookmarked || event.isPast(now)) return
 
         postNotification(
             notificationId = BOOKMARK_ACTION_NOTIFICATION_ID,
