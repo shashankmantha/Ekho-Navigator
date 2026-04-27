@@ -58,6 +58,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import com.ekhonavigator.core.designsystem.component.EkhoMonogramBadge
+import com.ekhonavigator.core.designsystem.component.FriendPickerEntry
+import com.ekhonavigator.core.designsystem.component.FriendPickerSheet
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventAttendee
@@ -93,6 +95,9 @@ fun EventScreen(
     val event by viewModel.event.collectAsStateWithLifecycle()
     val attendees by viewModel.attendees.collectAsStateWithLifecycle()
     val currentUserRsvp by viewModel.currentUserRsvp.collectAsStateWithLifecycle()
+    val effectivePlaceId by viewModel.effectivePlaceId.collectAsStateWithLifecycle()
+    val friends by viewModel.friends.collectAsStateWithLifecycle()
+    val shareSheetVisible by viewModel.shareSheetVisible.collectAsStateWithLifecycle()
 
     // Track whether we ever loaded an event — if it disappears after loading,
     // the event was deleted (by owner, by self, or by remote sync) and we navigate back.
@@ -118,9 +123,12 @@ fun EventScreen(
     } else {
         EventDetailContent(
             event = event!!,
+            effectivePlaceId = effectivePlaceId,
             onBookmarkClick = viewModel::toggleBookmark,
             canDelete = viewModel.canDelete,
             onDeleteClick = viewModel::deleteEvent,
+            canShare = viewModel.canShare,
+            onShareClick = viewModel::openShareSheet,
             hasAttendees = viewModel.hasAttendees,
             canRsvp = viewModel.canRsvp,
             isOwner = viewModel.isOwner,
@@ -130,6 +138,28 @@ fun EventScreen(
             onLocationClick = onLocationClick,
             modifier = modifier,
         )
+
+        if (shareSheetVisible) {
+            val attendeeUids = remember(attendees) { attendees.map { it.userId }.toSet() }
+            val entries = remember(friends, attendeeUids) {
+                friends.map { friend ->
+                    FriendPickerEntry(
+                        uid = friend.uid,
+                        displayName = friend.displayName,
+                        subtitle = friend.major,
+                        initiallySelected = friend.uid in attendeeUids,
+                        locked = friend.uid in attendeeUids,
+                    )
+                }
+            }
+            FriendPickerSheet(
+                friends = entries,
+                onDismiss = viewModel::dismissShareSheet,
+                onConfirm = viewModel::shareWith,
+                title = "Invite friends",
+                actionLabel = "Send invites",
+            )
+        }
     }
 }
 
@@ -137,9 +167,12 @@ fun EventScreen(
 @Composable
 private fun EventDetailContent(
     event: CalendarEvent,
+    effectivePlaceId: String?,
     onBookmarkClick: () -> Unit,
     canDelete: Boolean = false,
     onDeleteClick: () -> Unit = {},
+    canShare: Boolean = false,
+    onShareClick: () -> Unit = {},
     hasAttendees: Boolean = false,
     canRsvp: Boolean = false,
     isOwner: Boolean = false,
@@ -167,6 +200,8 @@ private fun EventDetailContent(
             isBookmarked = event.isBookmarked,
             showBookmark = event.source == EventSource.ICAL_FEED,
             onBookmarkClick = onBookmarkClick,
+            canShare = canShare,
+            onShareClick = onShareClick,
             canDelete = canDelete,
             onDeleteClick = { showDeleteConfirmation = true },
         )
@@ -215,7 +250,7 @@ private fun EventDetailContent(
             MetaTextRow(
                 label = "WHERE",
                 value = event.location,
-                onClick = event.placeId?.let { placeId -> { onLocationClick(placeId) } },
+                onClick = effectivePlaceId?.let { placeId -> { onLocationClick(placeId) } },
             )
         }
         if (event.status != "CONFIRMED") {
@@ -416,6 +451,8 @@ private fun ActionRow(
     isBookmarked: Boolean,
     showBookmark: Boolean,
     onBookmarkClick: () -> Unit,
+    canShare: Boolean,
+    onShareClick: () -> Unit,
     canDelete: Boolean,
     onDeleteClick: () -> Unit,
 ) {
@@ -433,6 +470,15 @@ private fun ActionRow(
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
                     },
+                )
+            }
+        }
+        if (canShare) {
+            IconButton(onClick = onShareClick) {
+                Icon(
+                    imageVector = EkhoIcons.Share,
+                    contentDescription = "Share event",
+                    tint = MaterialTheme.colorScheme.primary,
                 )
             }
         }

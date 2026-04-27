@@ -174,7 +174,7 @@ open class SocialRepository @Inject constructor() {
         major = getString("major") ?: "",
     )
 
-    suspend fun getFriends(currentUserId: String): List<FriendUser> {
+    open suspend fun getFriends(currentUserId: String): List<FriendUser> {
         val snapshot = firestore.collection("users")
             .document(currentUserId)
             .collection("friends")

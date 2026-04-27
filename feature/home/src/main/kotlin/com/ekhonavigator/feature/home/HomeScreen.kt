@@ -37,6 +37,7 @@ import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventSource
 import com.ekhonavigator.core.model.RsvpStatus
+import com.ekhonavigator.core.model.isPast
 import com.ekhonavigator.core.model.prettifyAllCaps
 import java.time.Instant
 import java.time.LocalDate
@@ -62,7 +63,7 @@ fun HomeScreen(
         val cutoff = today.plusDays(7)
 
         val byDate = allEvents
-            .filter { it.endTime.isAfter(now) }
+            .filter { !it.isPast(now) }
             .filter { !it.startTime.atZone(zone).toLocalDate().isBefore(today) }
             .groupBy { it.startTime.atZone(zone).toLocalDate() }
             .toSortedMap()
