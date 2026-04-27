@@ -1,5 +1,6 @@
 package com.ekhonavigator.feature.social
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -36,10 +37,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.compose.ui.text.style.TextOverflow
 import com.ekhonavigator.core.model.OnlineStatus
+import com.ekhonavigator.core.designsystem.R as DesignR
 
 @Composable
 fun SocialScreen(
@@ -307,19 +311,21 @@ private fun FriendRow(
                     modifier = Modifier.size(40.dp),
                     contentAlignment = Alignment.BottomEnd,
                 ) {
-                    Box(
+                    val resId = when (avatarId) {
+                        "avatar_dolphin" -> DesignR.drawable.avatar_dolphin
+                        "avatar_whale" -> DesignR.drawable.avatar_whale
+                        "avatar_turtle" -> DesignR.drawable.avatar_turtle
+                        else -> DesignR.drawable.avatar_default
+                    }
+
+                    Image(
+                        painter = painterResource(resId),
+                        contentDescription = null,
                         modifier = Modifier
                             .fillMaxSize()
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primaryContainer),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = displayName.take(1).uppercase(),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        )
-                    }
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
 
                     if (showOnlineStatus && online) {
                         val statusColor = when (onlineStatus) {
