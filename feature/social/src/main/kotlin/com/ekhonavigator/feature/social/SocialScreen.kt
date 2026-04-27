@@ -16,11 +16,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Chat
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -304,7 +308,7 @@ private fun FriendRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable {
-                    showMenu = true
+                    onViewProfileClick(uid)
                 },
             leadingContent = {
                 Box(
@@ -378,13 +382,28 @@ private fun FriendRow(
                 }
             },
             trailingContent = {
-                if (hasUnreadMessages) {
-                    Box(
-                        modifier = Modifier
-                            .size(10.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF2196F3)) // Blue dot
-                    )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (hasUnreadMessages) {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF2196F3)) // Blue dot
+                        )
+                    }
+
+                    IconButton(
+                        onClick = { onMessageClick(uid, displayName, avatarId) }
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.Chat,
+                            contentDescription = "Message",
+                            tint = if (hasUnreadMessages) Color(0xFF2196F3) else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         )
@@ -393,14 +412,6 @@ private fun FriendRow(
             expanded = showMenu,
             onDismissRequest = { showMenu = false },
         ) {
-            DropdownMenuItem(
-                text = { Text("Message") },
-                onClick = {
-                    showMenu = false
-                    onMessageClick(uid, displayName, avatarId)
-                },
-            )
-
             DropdownMenuItem(
                 text = { Text("View Profile") },
                 onClick = {

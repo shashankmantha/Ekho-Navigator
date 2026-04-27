@@ -294,6 +294,7 @@ fun EkhoNavigatorApp(
                         NavEntry(key) {
                             UserProfileScreen(
                                 userId = key.userId,
+                                onBack = navigator::goBack,
                             )
                         }
                     }
