@@ -1,7 +1,5 @@
 package com.ekhonavigator.feature.map
 
-import com.ekhonavigator.core.model.SharedLocation
-import com.ekhonavigator.feature.map.FriendInfo
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
@@ -56,7 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.compose.navigation
+import com.ekhonavigator.core.model.SharedLocation
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
@@ -333,7 +331,8 @@ fun MapScreen(
 
             droppedMarkers.forEach { droppedMarker ->
                 key("user-marker-${droppedMarker.id}") {
-                    val markerState = rememberMarkerState(position = droppedMarker.droppedMarkerLocation)
+                    val markerState =
+                        rememberMarkerState(position = droppedMarker.droppedMarkerLocation)
                     if (focusPlaceId == "$MARKER_FOCUS_PREFIX${droppedMarker.id}") {
                         LaunchedEffect(focusPlaceId) {
                             markerState.showInfoWindow()
@@ -566,9 +565,14 @@ fun MapScreen(
             val marker = showFriendPickerForMarker!!
             FriendPickerCard(
                 markerLabel = marker.markerLabelComment.ifBlank { "Dropped Marker" },
-                friends = viewModel.friends,
+                searchText = viewModel.searchTextForFriendPicker,
+                onSearchTextChange = { newText ->
+                    viewModel.updateSearchTextForFriendPicker(newText)
+                },
+                friends = viewModel.friendsListMatchingSearchQuery,
                 onFriendSelected = { friend ->
                     showFriendPickerForMarker = null
+                    viewModel.updateSearchTextForFriendPicker("") // Reset on success
                     val sharedLoc = SharedLocation(
                         title = marker.markerLabelComment.ifBlank { "Dropped Marker" },
                         latitude = marker.droppedMarkerLocation.latitude,
@@ -576,7 +580,10 @@ fun MapScreen(
                     )
                     onShareLocationToChat(friend.id, friend.name, sharedLoc)
                 },
-                onDismiss = { showFriendPickerForMarker = null }
+                onDismiss = {
+                    showFriendPickerForMarker = null
+                    viewModel.updateSearchTextForFriendPicker("") // Reset on cancel
+                }
             )
         }
 

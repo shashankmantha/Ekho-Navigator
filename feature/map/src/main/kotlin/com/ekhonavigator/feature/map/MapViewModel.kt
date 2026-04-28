@@ -1,6 +1,9 @@
 package com.ekhonavigator.feature.map
 
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ekhonavigator.core.data.auth.AuthRepository
@@ -22,6 +25,25 @@ class MapViewModel @Inject constructor(
 
     val friends = androidx.compose.runtime.mutableStateListOf<FriendInfo>()
 
+
+    var searchTextForFriendPicker by mutableStateOf("")
+        private set
+
+    private var activeFriendsListener: kotlinx.coroutines.Job? = null
+
+    fun updateSearchTextForFriendPicker(newText: String) {
+        searchTextForFriendPicker = newText
+    }
+
+    val friendsListMatchingSearchQuery: List<FriendInfo>
+        get() = if (searchTextForFriendPicker.isBlank()) {
+            friends
+        } else {
+            friends.filter { friend ->
+                friend.name.contains(searchTextForFriendPicker, ignoreCase = true)
+            }
+        }
+
     private val currentUserId: String?
         get() = authRepository.getCurrentUserUid()
 
@@ -40,11 +62,15 @@ class MapViewModel @Inject constructor(
     }
 
     private fun loadFriends(userId: String) {
-        viewModelScope.launch {
-            // SocialRepository.getFriends returns a List, so we just call it.
-            val friendList = socialRepository.getFriends(userId)
-            friends.clear()
-            friends.addAll(friendList.map { FriendInfo(it.uid, it.displayName) })
+        activeFriendsListener?.cancel()
+
+        activeFriendsListener = viewModelScope.launch {
+            socialRepository.observeFriends(userId).collect { latestFriendsFromFirebase ->
+                friends.clear()
+                friends.addAll(latestFriendsFromFirebase.map { friend ->
+                    FriendInfo(friend.uid, friend.displayName)
+                })
+            }
         }
     }
 
