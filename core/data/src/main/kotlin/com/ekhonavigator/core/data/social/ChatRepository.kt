@@ -173,6 +173,7 @@ class ChatRepository @Inject constructor() {
             lastSenderId = getString("lastSenderId") ?: "",
             lastTimestamp = lastTimestamp,
             readBy = (get("readBy") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
+            unreadCount = getLong("unreadCount")?.toInt() ?: 0,
             createdAt = createdAt,
         )
     }
@@ -225,10 +226,11 @@ class ChatRepository @Inject constructor() {
         batch.update(
             conversationRef,
             mapOf(
-                "lastMessage" to trimmed,
+                "lastMessage" to (if (trimmed.isEmpty() && sharedLocation != null) "Shared a location" else trimmed),
                 "lastSenderId" to senderId,
                 "lastTimestamp" to FieldValue.serverTimestamp(),
                 "readBy" to listOf(senderId),
+                "unreadCount" to FieldValue.increment(1)
             )
         )
         batch.commit().await()
@@ -238,15 +240,33 @@ class ChatRepository @Inject constructor() {
         conversationId: String,
         currentUserId: String,
     ) {
+        val conversationRef = firestore.collection("conversations").document(conversationId)
+
+        firestore.runTransaction { transaction ->
+            val snapshot = transaction.get(conversationRef)
+            val lastSenderId = snapshot.getString("lastSenderId")
+            
+            // Only reset if the current user is NOT the last sender 
+            // OR if there is an actual unread count to clear.
+            if (lastSenderId != currentUserId) {
+                transaction.update(conversationRef, 
+                    mapOf(
+                        "readBy" to FieldValue.arrayUnion(currentUserId),
+                        "unreadCount" to 0
+                    )
+                )
+            }
+        }.await()
+
+        // Also mark individual messages as read (outside the transaction to keep it simple, 
+        // as this can be many documents)
         val messagesRef = firestore.collection("conversations")
             .document(conversationId)
             .collection("messages")
 
-        val snapshot = messagesRef.get().await()
-
+        val messageSnapshot = messagesRef.get().await()
         val batch = firestore.batch()
-
-        snapshot.documents.forEach { doc ->
+        messageSnapshot.documents.forEach { doc ->
             val senderId = doc.getString("senderId") ?: return@forEach
             val readBy = (doc.get("readBy") as? List<*>)?.filterIsInstance<String>() ?: emptyList()
 
@@ -254,10 +274,6 @@ class ChatRepository @Inject constructor() {
                 batch.update(doc.reference, "readBy", FieldValue.arrayUnion(currentUserId))
             }
         }
-
-        val conversationRef = firestore.collection("conversations").document(conversationId)
-        batch.update(conversationRef, "readBy", FieldValue.arrayUnion(currentUserId))
-
         batch.commit().await()
     }
 }

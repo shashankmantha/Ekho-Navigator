@@ -15,4 +15,5 @@ data class FriendUser(
     val lastMessageTimestamp: Long = 0L,
     val lastMessageSenderId: String = "",
     val hasUnreadMessages: Boolean = false,
+    val unreadCount: Int = 0,
 )

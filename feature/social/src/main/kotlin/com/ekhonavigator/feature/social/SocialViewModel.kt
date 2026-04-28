@@ -123,20 +123,27 @@ class SocialViewModel @Inject constructor(
                     _uiState.update { it.copy(errorMessage = "Error observing messages: ${e.message}") }
                 }
                 .collectLatest { conversations ->
-                    val unreadMap = conversations.associateBy(
+                    val conversationMap = conversations.associateBy(
                         keySelector = { conv ->
                             conv.participantIds.find { it != currentUserId } ?: ""
-                        },
-                        valueTransform = { conv ->
-                            conv.lastSenderId != currentUserId && !conv.readBy.contains(currentUserId)
                         }
                     )
 
                     _uiState.update { state ->
                         val updatedFriends = state.friends.map { friend ->
-                            friend.copy(
-                                hasUnreadMessages = unreadMap[friend.uid] == true
-                            )
+                            val conv = conversationMap[friend.uid]
+                            if (conv != null) {
+                                val isUnread = conv.lastSenderId != currentUserId && (conv.unreadCount > 0 || !conv.readBy.contains(currentUserId))
+                                friend.copy(
+                                    lastMessage = conv.lastMessage,
+                                    lastMessageTimestamp = conv.lastTimestamp,
+                                    lastMessageSenderId = conv.lastSenderId,
+                                    hasUnreadMessages = isUnread,
+                                    unreadCount = if (isUnread) conv.unreadCount.coerceAtLeast(1) else 0
+                                )
+                            } else {
+                                friend
+                            }
                         }
                         state.copy(friends = updatedFriends)
                     }

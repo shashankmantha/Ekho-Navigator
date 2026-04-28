@@ -156,6 +156,7 @@ fun SocialScreen(
                         onlineStatus = friend.onlineStatus,
                         lastMessage = friend.lastMessage,
                         hasUnreadMessages = friend.hasUnreadMessages,
+                        unreadCount = friend.unreadCount,
                         onMessageClick = { uid, displayName, avatarId ->
                             onMessageClick(uid, displayName, avatarId)
                         },
@@ -294,6 +295,7 @@ private fun FriendRow(
     onlineStatus: OnlineStatus,
     lastMessage: String,
     hasUnreadMessages: Boolean,
+    unreadCount: Int,
     onMessageClick: (String, String, String) -> Unit,
     onViewProfileClick: (String) -> Unit,
     onRemoveFriendClick: (String) -> Unit,
@@ -308,11 +310,14 @@ private fun FriendRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable {
-                    onViewProfileClick(uid)
+                    onMessageClick(uid, displayName, avatarId)
                 },
             leadingContent = {
                 Box(
-                    modifier = Modifier.size(40.dp),
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .clickable { onViewProfileClick(uid) },
                     contentAlignment = Alignment.BottomEnd,
                 ) {
                     val resId = when (avatarId) {
@@ -371,13 +376,34 @@ private fun FriendRow(
                         )
                     }
                     if (lastMessage.isNotBlank()) {
-                        Text(
-                            text = lastMessage,
-                            style = MaterialTheme.typography.bodySmall,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (hasUnreadMessages) {
+                                Box(
+                                    modifier = Modifier
+                                        .padding(end = 6.dp)
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF2196F3))
+                                )
+                            }
+                            val fadeBrush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                colors = listOf(
+                                    if (hasUnreadMessages) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    Color.Transparent
+                                ),
+                                startX = 0f,
+                                endX = 600f
+                            )
+                            Text(
+                                text = lastMessage,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    brush = fadeBrush,
+                                    fontWeight = if (hasUnreadMessages) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Clip,
+                            )
+                        }
                     }
                 }
             },
@@ -389,10 +415,18 @@ private fun FriendRow(
                     if (hasUnreadMessages) {
                         Box(
                             modifier = Modifier
-                                .size(10.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFF2196F3)) // Blue dot
-                        )
+                                .background(Color(0xFF2196F3))
+                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "+$unreadCount",
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                            )
+                        }
                     }
 
                     IconButton(
