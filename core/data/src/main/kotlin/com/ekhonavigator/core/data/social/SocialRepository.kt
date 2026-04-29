@@ -167,6 +167,34 @@ open class SocialRepository @Inject constructor() {
         awaitClose { registration.remove() }
     }
 
+    open fun observeFriends(currentUserId: String): Flow<List<FriendUser>> = callbackFlow {
+        val registration = firestore.collection("users")
+            .document(currentUserId)
+            .collection("friends")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                val friends = snapshot?.documents?.mapNotNull { doc ->
+                    val uid = doc.getString("uid") ?: return@mapNotNull null
+                    val displayName = doc.getString("displayName") ?: return@mapNotNull null
+
+                    if (uid == currentUserId) return@mapNotNull null
+
+                    FriendUser(
+                        uid = uid,
+                        displayName = displayName,
+                        avatarId = doc.getString("avatarId") ?: "avatar_default",
+                        major = doc.getString("major") ?: "",
+                        showOnlineStatus = doc.getBoolean("showOnlineStatus") ?: true,
+                    )
+                } ?: emptyList()
+                trySend(friends)
+            }
+        awaitClose { registration.remove() }
+    }
+
     private fun DocumentSnapshot.toFriendRequest(): FriendRequest = FriendRequest(
         uid = getString("uid") ?: "",
         displayName = getString("displayName") ?: "",

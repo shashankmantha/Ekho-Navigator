@@ -87,12 +87,13 @@ class SocialViewModel @Inject constructor(
         val currentUserId = authRepository.getCurrentUserUid() ?: return
 
         viewModelScope.launch {
-            runCatching {
-                val requests = repository.getIncomingRequests(currentUserId)
-                val friends = repository.getFriends(currentUserId)
+            combine(
+                repository.observeIncomingRequests(currentUserId),
+                repository.observeFriends(currentUserId)
+            ) { requests, friends ->
+                requests to friends
+            }.collectLatest { (requests, friends) ->
                 val outgoingRequestIds = repository.getOutgoingRequestIds(currentUserId)
-                Triple(requests, friends, outgoingRequestIds)
-            }.onSuccess { (requests, friends, outgoingRequestIds) ->
                 _uiState.update {
                     it.copy(
                         incomingRequests = requests,
@@ -103,12 +104,6 @@ class SocialViewModel @Inject constructor(
                 }
                 observeFriendPresence(friends)
                 observeFriendMessages(friends)
-            }.onFailure { e ->
-                _uiState.update {
-                    it.copy(
-                        errorMessage = e.message ?: "Failed to load social data",
-                    )
-                }
             }
         }
     }
