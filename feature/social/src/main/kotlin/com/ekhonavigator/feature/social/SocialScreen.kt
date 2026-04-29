@@ -315,26 +315,32 @@ private fun FriendRow(
             leadingContent = {
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .clickable { onViewProfileClick(uid) },
+                        .size(44.dp), // Increased from 40.dp to provide room for indicator
                     contentAlignment = Alignment.BottomEnd,
                 ) {
-                    val resId = when (avatarId) {
-                        "avatar_dolphin" -> DesignR.drawable.avatar_dolphin
-                        "avatar_whale" -> DesignR.drawable.avatar_whale
-                        "avatar_turtle" -> DesignR.drawable.avatar_turtle
-                        else -> DesignR.drawable.avatar_default
-                    }
-
-                    Image(
-                        painter = painterResource(resId),
-                        contentDescription = null,
+                    Box(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .clickable { onViewProfileClick(uid) },
+                        contentAlignment = Alignment.BottomEnd,
+                    ) {
+                        val resId = when (avatarId) {
+                            "avatar_dolphin" -> DesignR.drawable.avatar_dolphin
+                            "avatar_whale" -> DesignR.drawable.avatar_whale
+                            "avatar_turtle" -> DesignR.drawable.avatar_turtle
+                            else -> DesignR.drawable.avatar_default
+                        }
+
+                        Image(
+                            painter = painterResource(resId),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
 
                     if (showOnlineStatus && online) {
                         val statusColor = when (onlineStatus) {
@@ -344,7 +350,7 @@ private fun FriendRow(
                         }
                         Box(
                             modifier = Modifier
-                                .size(12.dp)
+                                .size(14.dp)
                                 .clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.surface)
                                 .padding(2.dp)
