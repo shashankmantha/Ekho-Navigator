@@ -133,9 +133,11 @@ fun FriendPickerSheet(
                 }
             }
 
+            // Enabled whenever the selection differs from initial — including the
+            // edit-mode "remove everyone" path (initial = {A}, selected = ∅).
             Button(
                 onClick = { onConfirm(selected) },
-                enabled = selected != initial && selected.isNotEmpty(),
+                enabled = selected != initial,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
             ) {

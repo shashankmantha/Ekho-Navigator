@@ -94,7 +94,7 @@ class DefaultCustomEventRepository @Inject constructor(
         calendarEventDao.upsertEvent(entity)
 
         try {
-            pushEventToFirestore(event.id, event)
+            pushEventUpdateToFirestore(event.id, event)
             calendarEventDao.updatePendingSync(event.id, false)
         } catch (_: Exception) {
             // Stays pendingSync = true, will be retried by pushPendingEvents()
@@ -274,6 +274,21 @@ class DefaultCustomEventRepository @Inject constructor(
             "createdAt" to com.google.firebase.Timestamp.now(),
         )
         firestore.collection("events").document(eventId).set(data).await()
+    }
+
+    /** Edits only the user-mutable fields. Critically excludes participants — that array
+     *  is mutated independently by addAttendees/removeAttendee, and a `set(...)` write
+     *  here would clobber the existing attendee membership. */
+    private suspend fun pushEventUpdateToFirestore(eventId: String, event: CalendarEvent) {
+        val data = mapOf(
+            "title" to event.title,
+            "description" to event.description,
+            "location" to event.location,
+            "startTime" to event.startTime.toEpochMilli(),
+            "endTime" to event.endTime.toEpochMilli(),
+            "categories" to event.categories.map { it.name },
+        )
+        firestore.collection("events").document(eventId).update(data).await()
     }
 
     override fun startSync(scope: CoroutineScope) {

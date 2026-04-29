@@ -78,6 +78,12 @@ class EventDetailViewModel @Inject constructor(
             return event.source == EventSource.USER_CREATED && event.ownerUid == uid
         }
 
+    /** Same gate as [canDelete] today — owner of a user-created event. Kept as a distinct
+     *  property so a future policy change (e.g. allow edit but not delete) doesn't have to
+     *  fork the call sites. */
+    val canEdit: Boolean
+        get() = canDelete
+
     /** True for any custom event with attendees — shows attendee section for both owner and invitees. */
     val hasAttendees: Boolean
         get() {

@@ -63,14 +63,21 @@ import java.time.format.DateTimeFormatter
 fun CreateEventScreen(
     onBack: () -> Unit,
     initialEpochDay: Long? = null,
+    eventId: String? = null,
     modifier: Modifier = Modifier,
     viewModel: CreateEventViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val locationSuggestions by viewModel.locationSuggestions.collectAsStateWithLifecycle()
 
-    LaunchedEffect(initialEpochDay) {
-        if (initialEpochDay != null) {
+    LaunchedEffect(eventId) {
+        if (eventId != null) viewModel.setEventId(eventId)
+    }
+
+    // initialEpochDay is a create-mode shortcut from "tap a calendar day to create"; it would
+    // overwrite the loaded event's date in edit mode, so suppress it when editing.
+    LaunchedEffect(initialEpochDay, eventId) {
+        if (eventId == null && initialEpochDay != null) {
             viewModel.setDate(LocalDate.ofEpochDay(initialEpochDay))
         }
     }
@@ -192,7 +199,13 @@ fun CreateEventScreen(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
         ) {
-            Text(if (uiState.isSaving) "Saving..." else "Create Event")
+            Text(
+                when {
+                    uiState.isSaving -> "Saving..."
+                    uiState.editingEventId != null -> "Save Changes"
+                    else -> "Create Event"
+                },
+            )
         }
 
         Spacer(Modifier.height(16.dp))

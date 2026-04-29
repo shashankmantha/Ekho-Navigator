@@ -61,6 +61,7 @@ import com.ekhonavigator.feature.event.navigation.CreateEventNavKey
 import com.ekhonavigator.feature.event.navigation.EventNavKey
 import com.ekhonavigator.feature.event.navigation.InvitesNavKey
 import com.ekhonavigator.feature.event.navigation.navigateToCreateEvent
+import com.ekhonavigator.feature.event.navigation.navigateToEditEvent
 import com.ekhonavigator.feature.event.navigation.navigateToEvent
 import com.ekhonavigator.feature.event.navigation.navigateToInvites
 import com.ekhonavigator.feature.home.HomeScreen
@@ -325,6 +326,7 @@ fun EkhoNavigatorApp(
                                 CreateEventScreen(
                                     onBack = navigator::goBack,
                                     initialEpochDay = key.initialEpochDay,
+                                    eventId = key.eventId,
                                 )
                             }
                         }
@@ -539,6 +541,7 @@ fun EkhoNavigatorApp(
                                             ),
                                         )
                                     },
+                                    onEditClick = navigator::navigateToEditEvent,
                                 )
                             }
                         }

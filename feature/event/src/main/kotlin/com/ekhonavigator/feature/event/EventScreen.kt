@@ -79,6 +79,7 @@ fun EventScreen(
     eventId: String,
     onBack: () -> Unit = {},
     onLocationClick: (placeId: String) -> Unit = {},
+    onEditClick: (eventId: String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: EventDetailViewModel = hiltViewModel(
         checkNotNull(
@@ -127,6 +128,8 @@ fun EventScreen(
             onBookmarkClick = viewModel::toggleBookmark,
             canDelete = viewModel.canDelete,
             onDeleteClick = viewModel::deleteEvent,
+            canEdit = viewModel.canEdit,
+            onEditClick = { onEditClick(eventId) },
             canShare = viewModel.canShare,
             onShareClick = viewModel::openShareSheet,
             hasAttendees = viewModel.hasAttendees,
@@ -171,6 +174,8 @@ private fun EventDetailContent(
     onBookmarkClick: () -> Unit,
     canDelete: Boolean = false,
     onDeleteClick: () -> Unit = {},
+    canEdit: Boolean = false,
+    onEditClick: () -> Unit = {},
     canShare: Boolean = false,
     onShareClick: () -> Unit = {},
     hasAttendees: Boolean = false,
@@ -202,6 +207,8 @@ private fun EventDetailContent(
             onBookmarkClick = onBookmarkClick,
             canShare = canShare,
             onShareClick = onShareClick,
+            canEdit = canEdit,
+            onEditClick = onEditClick,
             canDelete = canDelete,
             onDeleteClick = { showDeleteConfirmation = true },
         )
@@ -453,6 +460,8 @@ private fun ActionRow(
     onBookmarkClick: () -> Unit,
     canShare: Boolean,
     onShareClick: () -> Unit,
+    canEdit: Boolean,
+    onEditClick: () -> Unit,
     canDelete: Boolean,
     onDeleteClick: () -> Unit,
 ) {
@@ -478,6 +487,15 @@ private fun ActionRow(
                 Icon(
                     imageVector = EkhoIcons.Share,
                     contentDescription = "Share event",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+        if (canEdit) {
+            IconButton(onClick = onEditClick) {
+                Icon(
+                    imageVector = EkhoIcons.Edit,
+                    contentDescription = "Edit event",
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
