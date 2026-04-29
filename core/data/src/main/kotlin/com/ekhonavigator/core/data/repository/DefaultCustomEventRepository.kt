@@ -141,6 +141,28 @@ class DefaultCustomEventRepository @Inject constructor(
         }
     }
 
+    override suspend fun removeAttendee(eventId: String, userId: String) {
+        eventAttendeeDao.removeAttendee(eventId, userId)
+
+        try {
+            // arrayRemove is the symmetric counterpart to addAttendees' arrayUnion —
+            // safe whether or not the uid is currently in the participants list.
+            firestore.collection("events").document(eventId).update(
+                "participants",
+                FieldValue.arrayRemove(userId),
+            ).await()
+
+            firestore.collection("events")
+                .document(eventId)
+                .collection("attendees")
+                .document(userId)
+                .delete()
+                .await()
+        } catch (_: Exception) {
+            // Offline-first: Room reflects the removal, Firestore reconciles on reconnect.
+        }
+    }
+
     override suspend fun deleteEvent(eventId: String) {
         // Track deletion so the listener doesn't re-add it during the race window
         sharedEventSyncService.pendingDeletes.add(eventId)

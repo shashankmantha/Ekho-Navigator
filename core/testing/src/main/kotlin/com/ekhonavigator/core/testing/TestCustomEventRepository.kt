@@ -51,6 +51,12 @@ class TestCustomEventRepository : CustomEventRepository {
         addedAttendees += eventId to sharedWith
     }
 
+    val removedAttendees = mutableListOf<Pair<String, String>>()
+
+    override suspend fun removeAttendee(eventId: String, userId: String) {
+        removedAttendees += eventId to userId
+    }
+
     override suspend fun deleteEvent(eventId: String) {
         deletedEventIds += eventId
     }
