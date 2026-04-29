@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ekhonavigator.core.data.auth.AuthRepository
 import com.ekhonavigator.core.data.place.PlaceRepository
+import com.ekhonavigator.core.data.repository.CalendarRepository
 import com.ekhonavigator.core.data.repository.CustomEventRepository
 import com.ekhonavigator.core.data.social.FriendUser
 import com.ekhonavigator.core.data.social.SocialRepository
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -40,6 +42,11 @@ data class CreateEventUiState(
     val category: EventCategory = EventCategory.GENERAL,
     val friends: List<FriendUser> = emptyList(),
     val selectedFriendUids: Set<String> = emptySet(),
+    /** Non-null when editing — drives Save vs Create label, branches the save() path,
+     *  and gates the one-shot pre-population so user edits aren't clobbered by Firestore syncs. */
+    val editingEventId: String? = null,
+    /** Snapshot of attendees at load time, used to compute add/remove diffs on save. */
+    val existingAttendees: Map<String, String> = emptyMap(),
     val isSaving: Boolean = false,
     val isSaved: Boolean = false,
     val showValidationErrors: Boolean = false,
@@ -69,6 +76,7 @@ data class CreateEventUiState(
 @HiltViewModel
 class CreateEventViewModel @Inject constructor(
     private val authRepository: AuthRepository,
+    private val calendarRepository: CalendarRepository,
     private val customEventRepository: CustomEventRepository,
     private val socialRepository: SocialRepository,
     private val placeRepository: PlaceRepository,
@@ -77,6 +85,8 @@ class CreateEventViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(CreateEventUiState())
     val uiState: StateFlow<CreateEventUiState> = _uiState.asStateFlow()
 
+    private var didLoadEvent = false
+
     val locationSuggestions: StateFlow<List<LocationSuggestion>> = placeRepository
         .observePlaces()
         .map { places -> places.map { it.toSuggestion() } }
@@ -84,6 +94,35 @@ class CreateEventViewModel @Inject constructor(
 
     init {
         loadFriends()
+    }
+
+    /** One-shot load of an existing event for edit mode. Subsequent calls and
+     *  remote Firestore updates are ignored so the user's in-progress edits aren't clobbered. */
+    fun setEventId(eventId: String) {
+        if (didLoadEvent) return
+        didLoadEvent = true
+        viewModelScope.launch {
+            val event = calendarRepository.observeEventById(eventId).first { it != null } ?: return@launch
+            val attendees = customEventRepository.observeAttendees(eventId).first()
+            val attendeeMap = attendees.associate { it.userId to it.displayName }
+            val zoned = event.startTime.atZone(EventZone)
+            val zonedEnd = event.endTime.atZone(EventZone)
+            _uiState.update {
+                it.copy(
+                    editingEventId = eventId,
+                    title = event.title,
+                    description = event.description,
+                    location = event.location,
+                    placeId = event.placeId,
+                    date = zoned.toLocalDate(),
+                    startTime = zoned.toLocalTime(),
+                    endTime = zonedEnd.toLocalTime(),
+                    category = event.categories.firstOrNull() ?: EventCategory.GENERAL,
+                    selectedFriendUids = attendeeMap.keys,
+                    existingAttendees = attendeeMap,
+                )
+            }
+        }
     }
 
     private fun loadFriends() {
@@ -145,10 +184,6 @@ class CreateEventViewModel @Inject constructor(
 
         _uiState.update { it.copy(isSaving = true) }
 
-        val sharedWith = state.friends
-            .filter { it.uid in state.selectedFriendUids }
-            .associate { it.uid to it.displayName }
-
         viewModelScope.launch {
             // Last-chance resolution: if the user typed a known place name without
             // tapping the suggestion, still pin the event to that place id.
@@ -156,28 +191,95 @@ class CreateEventViewModel @Inject constructor(
                 ?: state.location.takeIf { it.isNotBlank() }
                     ?.let { placeRepository.resolveFromText(it) }
 
-            val event = CalendarEvent(
-                id = "",
-                title = state.title.trim(),
-                description = state.description.trim(),
-                location = state.location.trim(),
-                startTime = startInstant,
-                endTime = endInstant,
-                categories = listOf(state.category),
-                url = "",
-                status = "CONFIRMED",
-                isBookmarked = true,
-                lastSyncedAt = Instant.now(),
-                source = EventSource.USER_CREATED,
-                ownerUid = ownerUid,
-                ownerDisplayName = authRepository.getCurrentUserDisplayName().orEmpty(),
-                placeId = resolvedPlaceId,
-            )
-
-            customEventRepository.createEvent(event, sharedWith)
+            val editingId = state.editingEventId
+            if (editingId != null) {
+                applyEdit(editingId, ownerUid, state, startInstant, endInstant, resolvedPlaceId)
+            } else {
+                applyCreate(ownerUid, state, startInstant, endInstant, resolvedPlaceId)
+            }
             _uiState.update { it.copy(isSaving = false, isSaved = true) }
         }
     }
+
+    private suspend fun applyCreate(
+        ownerUid: String,
+        state: CreateEventUiState,
+        startInstant: Instant,
+        endInstant: Instant,
+        resolvedPlaceId: String?,
+    ) {
+        val sharedWith = state.friends
+            .filter { it.uid in state.selectedFriendUids }
+            .associate { it.uid to it.displayName }
+
+        val event = baseEvent(
+            id = "",
+            ownerUid = ownerUid,
+            state = state,
+            startInstant = startInstant,
+            endInstant = endInstant,
+            resolvedPlaceId = resolvedPlaceId,
+        )
+        customEventRepository.createEvent(event, sharedWith)
+    }
+
+    private suspend fun applyEdit(
+        eventId: String,
+        ownerUid: String,
+        state: CreateEventUiState,
+        startInstant: Instant,
+        endInstant: Instant,
+        resolvedPlaceId: String?,
+    ) {
+        val event = baseEvent(
+            id = eventId,
+            ownerUid = ownerUid,
+            state = state,
+            startInstant = startInstant,
+            endInstant = endInstant,
+            resolvedPlaceId = resolvedPlaceId,
+        )
+        customEventRepository.updateEvent(event)
+
+        val toRemove = state.existingAttendees.keys - state.selectedFriendUids
+        for (uid in toRemove) {
+            customEventRepository.removeAttendee(eventId, uid)
+        }
+
+        val toAdd = (state.selectedFriendUids - state.existingAttendees.keys)
+            .mapNotNull { uid ->
+                state.friends.firstOrNull { it.uid == uid }?.let { uid to it.displayName }
+            }
+            .toMap()
+        if (toAdd.isNotEmpty()) {
+            customEventRepository.addAttendees(eventId, toAdd)
+        }
+    }
+
+    private fun baseEvent(
+        id: String,
+        ownerUid: String,
+        state: CreateEventUiState,
+        startInstant: Instant,
+        endInstant: Instant,
+        resolvedPlaceId: String?,
+    ): CalendarEvent = CalendarEvent(
+        id = id,
+        title = state.title.trim(),
+        description = state.description.trim(),
+        location = state.location.trim(),
+        startTime = startInstant,
+        endTime = endInstant,
+        categories = listOf(state.category),
+        url = "",
+        status = "CONFIRMED",
+        isBookmarked = true,
+        lastSyncedAt = Instant.now(),
+        source = EventSource.USER_CREATED,
+        ownerUid = ownerUid,
+        ownerDisplayName = authRepository.getCurrentUserDisplayName().orEmpty(),
+        placeId = resolvedPlaceId,
+    )
 }
 
 private fun Place.toSuggestion(): LocationSuggestion = LocationSuggestion(

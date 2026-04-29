@@ -53,6 +53,7 @@ import com.ekhonavigator.feature.event.EventScreen
 import com.ekhonavigator.feature.event.navigation.CreateEventNavKey
 import com.ekhonavigator.feature.event.navigation.EventNavKey
 import com.ekhonavigator.feature.event.navigation.navigateToCreateEvent
+import com.ekhonavigator.feature.event.navigation.navigateToEditEvent
 import com.ekhonavigator.feature.event.InvitesActionIcon
 import com.ekhonavigator.feature.event.InvitesScreen
 import com.ekhonavigator.feature.event.navigation.InvitesNavKey
@@ -240,6 +241,7 @@ fun EkhoNavigatorApp(
                             CreateEventScreen(
                                 onBack = navigator::goBack,
                                 initialEpochDay = key.initialEpochDay,
+                                eventId = key.eventId,
                             )
                         }
                     }
@@ -339,6 +341,7 @@ fun EkhoNavigatorApp(
                                 onLocationClick = { placeId ->
                                     navigator.navigateAsDetour(MapNavKey(focusPlaceId = placeId))
                                 },
+                                onEditClick = navigator::navigateToEditEvent,
                             )
                         }
                     }

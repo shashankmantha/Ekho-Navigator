@@ -24,6 +24,7 @@ import androidx.compose.material.icons.rounded.Bookmarks
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Grid3x3
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
@@ -63,6 +64,7 @@ object EkhoIcons {
     val BookmarksBorder = Icons.Outlined.Bookmarks
     val Check = Icons.Rounded.Check
     val Close = Icons.Rounded.Close
+    val Edit = Icons.Rounded.Edit
     val Grid3x3 = Icons.Rounded.Grid3x3
     val MoreVert = Icons.Default.MoreVert
     val Notifications = Icons.Outlined.Notifications
