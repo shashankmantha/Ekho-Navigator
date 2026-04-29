@@ -151,7 +151,6 @@ fun SocialScreen(
                         displayName = friend.displayName,
                         avatarId = friend.avatarId,
                         major = friend.major,
-                        showOnlineStatus = friend.showOnlineStatus,
                         online = friend.online,
                         onlineStatus = friend.onlineStatus,
                         lastMessage = friend.lastMessage,
@@ -290,7 +289,6 @@ private fun FriendRow(
     displayName: String,
     avatarId: String,
     major: String,
-    showOnlineStatus: Boolean,
     online: Boolean,
     onlineStatus: OnlineStatus,
     lastMessage: String,
@@ -342,7 +340,7 @@ private fun FriendRow(
                         )
                     }
 
-                    if (showOnlineStatus && online) {
+                    if (online) {
                         val statusColor = when (onlineStatus) {
                             OnlineStatus.ONLINE -> Color(0xFF4CAF50)
                             OnlineStatus.AWAY -> Color(0xFFFFC107)
