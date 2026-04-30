@@ -50,7 +50,7 @@ class SocialViewModel @Inject constructor(
     val uiState: StateFlow<SocialUiState> = _uiState.asStateFlow()
 
     private val queryFlow = MutableStateFlow("")
-    private var presenceJob: Job? = null
+    private var friendsJob: Job? = null
     private var messagesJob: Job? = null
 
     init {
@@ -102,7 +102,7 @@ class SocialViewModel @Inject constructor(
                         errorMessage = null,
                     )
                 }
-                observeFriendPresence(friends)
+                observeFriendLiveUpdates(friends)
                 observeFriendMessages(friends)
             }
         }
@@ -146,36 +146,50 @@ class SocialViewModel @Inject constructor(
         }
     }
 
-    private fun observeFriendPresence(friends: List<FriendUser>) {
-        if (friends.isEmpty()) return
+    private fun observeFriendLiveUpdates(friends: List<FriendUser>) {
+        if (friends.isEmpty()) {
+            friendsJob?.cancel()
+            return
+        }
 
-        presenceJob?.cancel()
-        presenceJob = viewModelScope.launch {
-            val presenceFlows: List<Flow<Pair<String, com.ekhonavigator.core.model.PresenceStatus>>> = friends.map { friend ->
-                presenceRepository.observePresence(friend.uid).map { presence ->
-                    friend.uid to presence
+        friendsJob?.cancel()
+        friendsJob = viewModelScope.launch {
+            val friendFlows = friends.map { friend ->
+                combine(
+                    repository.observeUser(friend.uid),
+                    presenceRepository.observePresence(friend.uid)
+                ) { user, presence ->
+                    Triple(friend.uid, user, presence)
                 }
             }
 
-            combine(presenceFlows) { friendPresences: Array<Pair<String, com.ekhonavigator.core.model.PresenceStatus>> ->
-                friendPresences.toMap()
+            combine(friendFlows) { updates ->
+                updates.toList()
             }.catch { e ->
-                _uiState.update { it.copy(errorMessage = "Error observing presence: ${e.message}") }
-            }.collectLatest { presenceMap ->
+                _uiState.update { it.copy(errorMessage = "Error observing friend updates: ${e.message}") }
+            }.collectLatest { updates ->
                 _uiState.update { state ->
                     val updatedFriends = state.friends.map { friend ->
-                        val presence = presenceMap[friend.uid]
-                        if (presence != null) {
-                            val statusStr = presence.state.uppercase()
+                        val update = updates.find { it.first == friend.uid }
+                        val user = update?.second
+                        val presence = update?.third
+
+                        if (user != null) {
+                            val statusStr = presence?.state?.uppercase() ?: "OFFLINE"
                             val onlineStatus = try {
                                 OnlineStatus.valueOf(statusStr)
                             } catch (e: Exception) {
                                 OnlineStatus.ONLINE
                             }
+
                             friend.copy(
-                                online = presence.state != "offline",
+                                displayName = user.displayName,
+                                avatarId = user.avatarId,
+                                major = user.major,
+                                showOnlineStatus = user.showOnlineStatus,
+                                online = presence?.state != "offline",
                                 onlineStatus = onlineStatus,
-                                lastChanged = presence.lastChanged
+                                lastChanged = presence?.lastChanged ?: 0L
                             )
                         } else {
                             friend

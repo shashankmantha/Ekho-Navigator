@@ -15,4 +15,5 @@ data class FriendUser(
     val lastMessageSenderId: String = "",
     val hasUnreadMessages: Boolean = false,
     val unreadCount: Int = 0,
+    val showOnlineStatus: Boolean = true,
 )

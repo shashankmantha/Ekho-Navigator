@@ -45,29 +45,28 @@ class UserProfileViewModel @Inject constructor(
                 )
             }
 
+            launch {
+                repository.observeUser(userId).collect { user ->
+                    _uiState.update { it.copy(user = user, isLoading = false) }
+                }
+            }
+
             try {
-                val user = repository.getUserById(userId)
                 val currentUserId = authRepository.getCurrentUserUid()
                 val friends = if (currentUserId != null) repository.getFriends(currentUserId) else emptyList()
                 val isFriend = friends.any { it.uid == userId }
 
                 _uiState.update {
                     it.copy(
-                        isLoading = false,
-                        user = user,
                         isFriend = isFriend,
-                        errorMessage = if (user == null) "User not found" else null,
                     )
                 }
 
-                if (user != null) {
-                    observePresence(userId)
-                }
+                observePresence(userId)
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        user = null,
                         errorMessage = e.message ?: "Failed to load profile",
                     )
                 }

@@ -13,6 +13,37 @@ open class SocialRepository @Inject constructor() {
 
     private val firestore by lazy { FirebaseFirestore.getInstance() }
 
+    open fun observeUser(userId: String): Flow<SocialUser?> = callbackFlow {
+        val registration = firestore.collection("users")
+            .document(userId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(null)
+                    return@addSnapshotListener
+                }
+                if (snapshot == null || !snapshot.exists()) {
+                    trySend(null)
+                    return@addSnapshotListener
+                }
+
+                val user = SocialUser(
+                    id = snapshot.id,
+                    displayName = snapshot.getString("displayName") ?: "",
+                    email = snapshot.getString("email") ?: "",
+                    major = snapshot.getString("major") ?: "",
+                    description = snapshot.getString("description") ?: "",
+                    links = snapshot.getString("links") ?: "",
+                    avatarId = snapshot.getString("avatarId") ?: "avatar_default",
+                    majorVisible = snapshot.getBoolean("majorVisible") ?: false,
+                    descriptionVisible = snapshot.getBoolean("descriptionVisible") ?: false,
+                    linksVisible = snapshot.getBoolean("linksVisible") ?: false,
+                    showOnlineStatus = snapshot.getBoolean("showOnlineStatus") ?: true,
+                )
+                trySend(user)
+            }
+        awaitClose { registration.remove() }
+    }
+
     suspend fun getUserById(userId: String): SocialUser? {
         val doc = firestore.collection("users")
             .document(userId)
@@ -178,16 +209,9 @@ open class SocialRepository @Inject constructor() {
                 }
                 val friends = snapshot?.documents?.mapNotNull { doc ->
                     val uid = doc.getString("uid") ?: return@mapNotNull null
-                    val displayName = doc.getString("displayName") ?: return@mapNotNull null
-
                     if (uid == currentUserId) return@mapNotNull null
 
-                    FriendUser(
-                        uid = uid,
-                        displayName = displayName,
-                        avatarId = doc.getString("avatarId") ?: "avatar_default",
-                        major = doc.getString("major") ?: "",
-                    )
+                    FriendUser(uid = uid)
                 } ?: emptyList()
                 trySend(friends)
             }
@@ -210,39 +234,13 @@ open class SocialRepository @Inject constructor() {
 
         return snapshot.documents.mapNotNull {
             val uid = it.getString("uid") ?: return@mapNotNull null
-            val displayName = it.getString("displayName") ?: return@mapNotNull null
-
             if (uid == currentUserId) return@mapNotNull null
 
-            FriendUser(
-                uid = uid,
-                displayName = displayName,
-                avatarId = it.getString("avatarId") ?: "avatar_default",
-                major = it.getString("major") ?: "",
-            )
+            FriendUser(uid = uid)
         }
     }
 
     suspend fun acceptFriendRequest(currentUserId: String, fromUserId: String) {
-        val currentUserDoc = firestore.collection("users").document(currentUserId).get().await()
-        val fromUserDoc = firestore.collection("users").document(fromUserId).get().await()
-
-        if (!currentUserDoc.exists() || !fromUserDoc.exists()) return
-
-        val currentUserData = mapOf(
-            "uid" to currentUserId,
-            "displayName" to (currentUserDoc.getString("displayName") ?: ""),
-            "avatarId" to (currentUserDoc.getString("avatarId") ?: "avatar_default"),
-            "major" to (currentUserDoc.getString("major") ?: ""),
-        )
-
-        val fromUserData = mapOf(
-            "uid" to fromUserId,
-            "displayName" to (fromUserDoc.getString("displayName") ?: ""),
-            "avatarId" to (fromUserDoc.getString("avatarId") ?: "avatar_default"),
-            "major" to (fromUserDoc.getString("major") ?: ""),
-        )
-
         val batch = firestore.batch()
 
         val incomingRef = firestore.collection("users")
@@ -280,8 +278,8 @@ open class SocialRepository @Inject constructor() {
         batch.delete(reverseIncomingRef)
         batch.delete(reverseOutgoingRef)
 
-        batch.set(currentFriendRef, fromUserData)
-        batch.set(fromFriendRef, currentUserData)
+        batch.set(currentFriendRef, mapOf("uid" to fromUserId))
+        batch.set(fromFriendRef, mapOf("uid" to currentUserId))
 
         batch.commit().await()
     }
