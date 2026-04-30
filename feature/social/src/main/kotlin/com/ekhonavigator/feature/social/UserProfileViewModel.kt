@@ -53,13 +53,12 @@ class UserProfileViewModel @Inject constructor(
 
             try {
                 val currentUserId = authRepository.getCurrentUserUid()
-                val friends = if (currentUserId != null) repository.getFriends(currentUserId) else emptyList()
-                val isFriend = friends.any { it.uid == userId }
-
-                _uiState.update {
-                    it.copy(
-                        isFriend = isFriend,
-                    )
+                if (currentUserId != null) {
+                    launch {
+                        repository.observeIsFriend(currentUserId, userId).collect { isFriend ->
+                            _uiState.update { it.copy(isFriend = isFriend) }
+                        }
+                    }
                 }
 
                 observePresence(userId)

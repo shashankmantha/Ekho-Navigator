@@ -174,6 +174,37 @@ open class SocialRepository @Inject constructor() {
         major = getString("major") ?: "",
     )
 
+    open fun observeUser(userId: String): Flow<SocialUser?> = callbackFlow {
+        val registration = firestore.collection("users")
+            .document(userId)
+            .addSnapshotListener { doc, error ->
+                if (error != null) {
+                    trySend(null)
+                    return@addSnapshotListener
+                }
+                if (doc == null || !doc.exists()) {
+                    trySend(null)
+                    return@addSnapshotListener
+                }
+
+                val user = SocialUser(
+                    id = doc.id,
+                    displayName = doc.getString("displayName") ?: "",
+                    email = doc.getString("email") ?: "",
+                    major = doc.getString("major") ?: "",
+                    description = doc.getString("description") ?: "",
+                    links = doc.getString("links") ?: "",
+                    avatarId = doc.getString("avatarId") ?: "avatar_default",
+                    majorVisible = doc.getBoolean("majorVisible") ?: false,
+                    descriptionVisible = doc.getBoolean("descriptionVisible") ?: false,
+                    linksVisible = doc.getBoolean("linksVisible") ?: false,
+                    showOnlineStatus = doc.getBoolean("showOnlineStatus") ?: true,
+                )
+                trySend(user)
+            }
+        awaitClose { registration.remove() }
+    }
+
     open fun observeFriends(currentUserId: String): Flow<List<FriendUser>> = callbackFlow {
         val registration = firestore.collection("users")
             .document(currentUserId)
@@ -200,6 +231,21 @@ open class SocialRepository @Inject constructor() {
                 } ?: emptyList()
 
                 trySend(friendList)
+            }
+        awaitClose { registration.remove() }
+    }
+
+    open fun observeIsFriend(currentUserId: String, targetUserId: String): Flow<Boolean> = callbackFlow {
+        val registration = firestore.collection("users")
+            .document(currentUserId)
+            .collection("friends")
+            .document(targetUserId)
+            .addSnapshotListener { doc, error ->
+                if (error != null) {
+                    trySend(false)
+                    return@addSnapshotListener
+                }
+                trySend(doc?.exists() == true)
             }
         awaitClose { registration.remove() }
     }
