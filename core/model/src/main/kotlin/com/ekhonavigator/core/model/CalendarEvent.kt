@@ -16,12 +16,16 @@ data class CalendarEvent(
     val lastSyncedAt: Instant,
     val source: EventSource = EventSource.ICAL_FEED,
     val ownerUid: String? = null,
+    val ownerDisplayName: String = "",
     val pendingSync: Boolean = false,
     val myRsvpStatus: RsvpStatus? = null,
     val eventName: String = "",
     val organization: String = "",
     val eventType: String = "",
     val placeId: String? = null,
+    val externalSourceId: String? = null,
+    val externalSourceType: String? = null,
+    val dueAt: Instant? = null,
 ) {
     val primaryCategory: EventCategory
         get() = categories.firstOrNull() ?: EventCategory.GENERAL

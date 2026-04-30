@@ -45,6 +45,12 @@ class TestCustomEventRepository : CustomEventRepository {
 
     override suspend fun updateEvent(event: CalendarEvent) {}
 
+    val addedAttendees = mutableListOf<Pair<String, Map<String, String>>>()
+
+    override suspend fun addAttendees(eventId: String, sharedWith: Map<String, String>) {
+        addedAttendees += eventId to sharedWith
+    }
+
     override suspend fun deleteEvent(eventId: String) {
         deletedEventIds += eventId
     }

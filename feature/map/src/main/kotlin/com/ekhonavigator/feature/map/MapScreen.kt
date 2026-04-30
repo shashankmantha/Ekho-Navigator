@@ -1,7 +1,5 @@
 package com.ekhonavigator.feature.map
 
-import com.ekhonavigator.core.model.SharedLocation
-import com.ekhonavigator.feature.map.FriendInfo
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
@@ -55,8 +53,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.navigation.compose.navigation
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.ekhonavigator.core.model.SharedLocation
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
@@ -79,6 +77,17 @@ data class UserMarker(
     val droppedMarkerLocation: LatLng,
     val markerLabelComment: String = ""
 )
+
+// Must match the prefix used by DefaultPlaceRepository when wrapping
+// UserDroppedMarkers as Place entries — the navigated focusPlaceId arrives
+// from the event WHERE row in that namespaced form.
+private const val MARKER_FOCUS_PREFIX = "marker_"
+
+// Google Maps' InfoWindow draws a white tooltip background regardless of app theme
+// (the SDK snapshots the content into a Bitmap, so MaterialTheme can't override it).
+// These are fixed dark text colors that read on that white in both light and dark mode.
+internal val InfoWindowPrimary = androidx.compose.ui.graphics.Color(0xFF1A1A1A)
+internal val InfoWindowSecondary = androidx.compose.ui.graphics.Color(0xFF606060)
 
 // - MAP CONTROLS
 @Composable
@@ -156,6 +165,21 @@ fun MapScreen(
         focusPlaceId?.let { id -> CampusPlacesData.places.firstOrNull { it.id == id } }
     }
 
+    // User markers may not be loaded yet when navigation arrives; track via derivedStateOf
+    // so the camera animates as soon as the matching marker streams in from Firestore.
+    val focusedUserMarker by remember(focusPlaceId) {
+        derivedStateOf {
+            val rawId = focusPlaceId
+                ?.takeIf { it.startsWith(MARKER_FOCUS_PREFIX) }
+                ?.removePrefix(MARKER_FOCUS_PREFIX)
+                ?.toLongOrNull()
+                ?: return@derivedStateOf null
+            viewModel.droppedMarkers.firstOrNull { it.id == rawId }
+        }
+    }
+
+    val focusTarget: LatLng? = focusedPlace?.position ?: focusedUserMarker?.droppedMarkerLocation
+
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(csuciCenter, 15f)
     }
@@ -164,10 +188,11 @@ fun MapScreen(
 
     // Animate (not initial position) — contentPadding is only honored on CameraUpdate moves.
     // Gate on isMapLoaded to avoid the world-view flash from racing the SDK's map init.
-    LaunchedEffect(focusPlaceId, isMapLoaded) {
-        if (focusedPlace != null && isMapLoaded) {
+    LaunchedEffect(focusTarget, isMapLoaded) {
+        val target = focusTarget
+        if (target != null && isMapLoaded) {
             cameraPositionState.animate(
-                CameraUpdateFactory.newLatLngZoom(focusedPlace.position, 17f),
+                CameraUpdateFactory.newLatLngZoom(target, 17f),
             )
         }
     }
@@ -306,8 +331,15 @@ fun MapScreen(
 
             droppedMarkers.forEach { droppedMarker ->
                 key("user-marker-${droppedMarker.id}") {
+                    val markerState =
+                        rememberMarkerState(position = droppedMarker.droppedMarkerLocation)
+                    if (focusPlaceId == "$MARKER_FOCUS_PREFIX${droppedMarker.id}") {
+                        LaunchedEffect(focusPlaceId) {
+                            markerState.showInfoWindow()
+                        }
+                    }
                     MarkerInfoWindowContent(
-                        state = rememberMarkerState(position = droppedMarker.droppedMarkerLocation),
+                        state = markerState,
                         icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE),
                         onInfoWindowClick = {
                             selectedDroppedMarkerForOptions = droppedMarker
@@ -316,26 +348,25 @@ fun MapScreen(
                             selectedDroppedMarkerForOptions = droppedMarker
                         }
                     ) {
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        // No Card wrapper — Google Maps' SDK draws the surrounding white
+                        // tooltip already, and an inner Card was rendering as a black box
+                        // on top of it in dark mode.
+                        Column(
+                            modifier = Modifier.padding(8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Column(
-                                modifier = Modifier.padding(8.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = droppedMarker.markerLabelComment.ifBlank { "Dropped Marker" },
-                                    textAlign = TextAlign.Center,
-                                    style = MaterialTheme.typography.labelLarge
-                                )
-                                Text(
-                                    text = "Tap bubble for options (edit/remove)",
-                                    textAlign = TextAlign.Center,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                            Text(
+                                text = droppedMarker.markerLabelComment.ifBlank { "Dropped Marker" },
+                                textAlign = TextAlign.Center,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = InfoWindowPrimary,
+                            )
+                            Text(
+                                text = "Tap bubble for options (edit/remove)",
+                                textAlign = TextAlign.Center,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = InfoWindowSecondary,
+                            )
                         }
                     }
                 }
@@ -534,9 +565,14 @@ fun MapScreen(
             val marker = showFriendPickerForMarker!!
             FriendPickerCard(
                 markerLabel = marker.markerLabelComment.ifBlank { "Dropped Marker" },
-                friends = viewModel.friends,
+                searchText = viewModel.searchTextForFriendPicker,
+                onSearchTextChange = { newText ->
+                    viewModel.updateSearchTextForFriendPicker(newText)
+                },
+                friends = viewModel.friendsListMatchingSearchQuery,
                 onFriendSelected = { friend ->
                     showFriendPickerForMarker = null
+                    viewModel.updateSearchTextForFriendPicker("") // Reset on success
                     val sharedLoc = SharedLocation(
                         title = marker.markerLabelComment.ifBlank { "Dropped Marker" },
                         latitude = marker.droppedMarkerLocation.latitude,
@@ -544,7 +580,10 @@ fun MapScreen(
                     )
                     onShareLocationToChat(friend.id, friend.name, sharedLoc)
                 },
-                onDismiss = { showFriendPickerForMarker = null }
+                onDismiss = {
+                    showFriendPickerForMarker = null
+                    viewModel.updateSearchTextForFriendPicker("") // Reset on cancel
+                }
             )
         }
 

@@ -3,55 +3,15 @@ package com.ekhonavigator.core.data.social
 import android.util.Log
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
-import javax.inject.Inject
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
+import javax.inject.Inject
 
 open class SocialRepository @Inject constructor() {
 
     private val firestore by lazy { FirebaseFirestore.getInstance() }
-
-    fun observeUser(userId: String): Flow<SocialUser?> = callbackFlow {
-        val registration = firestore.collection("users")
-            .document(userId)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    trySend(null)
-                    return@addSnapshotListener
-                }
-                if (snapshot == null || !snapshot.exists()) {
-                    trySend(null)
-                    return@addSnapshotListener
-                }
-
-                trySend(snapshot.toSocialUser())
-            }
-        awaitClose { registration.remove() }
-    }
-
-    private fun DocumentSnapshot.toSocialUser(): SocialUser? {
-        if (!exists()) return null
-        return SocialUser(
-            id = id,
-            displayName = getString("displayName") ?: "",
-            email = getString("email") ?: "",
-            major = getString("major") ?: "",
-            description = getString("description") ?: "",
-            links = getString("links") ?: "",
-            avatarId = getString("avatarId") ?: "avatar_default",
-            majorVisible = getBoolean("majorVisible") ?: false,
-            descriptionVisible = getBoolean("descriptionVisible") ?: false,
-            linksVisible = getBoolean("linksVisible") ?: false,
-            showOnlineStatus = getBoolean("showOnlineStatus") ?: true,
-        )
-    }
 
     suspend fun getUserById(userId: String): SocialUser? {
         val doc = firestore.collection("users")
@@ -59,7 +19,23 @@ open class SocialRepository @Inject constructor() {
             .get()
             .await()
 
-        return doc.toSocialUser()
+        if (!doc.exists()) return null
+
+        val displayName = doc.getString("displayName") ?: return null
+
+        return SocialUser(
+            id = doc.id,
+            displayName = displayName,
+            email = doc.getString("email") ?: "",
+            major = doc.getString("major") ?: "",
+            description = doc.getString("description") ?: "",
+            links = doc.getString("links") ?: "",
+            avatarId = doc.getString("avatarId") ?: "avatar_default",
+            majorVisible = doc.getBoolean("majorVisible") ?: false,
+            descriptionVisible = doc.getBoolean("descriptionVisible") ?: false,
+            linksVisible = doc.getBoolean("linksVisible") ?: false,
+            showOnlineStatus = doc.getBoolean("showOnlineStatus") ?: true,
+        )
     }
 
     suspend fun getOutgoingRequestIds(currentUserId: String): Set<String> {
@@ -69,28 +45,85 @@ open class SocialRepository @Inject constructor() {
             .get()
             .await()
 
-        return snapshot.documents.mapNotNull { it.getString("uid") }.toSet()
+        return snapshot.documents.map { it.id }.toSet()
     }
 
-    suspend fun searchUsersByName(query: String, currentUserId: String?): List<SocialUser> {
-        val lowercaseQuery = query.lowercase()
+    suspend fun searchUsersByName(
+        query: String,
+        currentUserId: String? = null,
+    ): List<SocialUser> {
+        val trimmed = query.trim().lowercase()
+
+        if (trimmed.isBlank()) return emptyList()
+
         val snapshot = firestore.collection("users")
-            .whereGreaterThanOrEqualTo("displayNameLower", lowercaseQuery)
-            .whereLessThanOrEqualTo("displayNameLower", lowercaseQuery + "\uf8ff")
+            .orderBy("displayNameLower")
+            .whereGreaterThanOrEqualTo("displayNameLower", trimmed)
+            .whereLessThanOrEqualTo("displayNameLower", trimmed + "\uf8ff")
             .limit(20)
             .get()
             .await()
 
+        Log.d(
+            "SocialSearch",
+            "docs=${
+                snapshot.documents.map {
+                    "${it.id}:${it.getString("displayNameLower")}:${it.getBoolean("searchable")}"
+                }
+            }"
+        )
+
         return snapshot.documents.mapNotNull { doc ->
+            val displayName = doc.getString("displayName") ?: return@mapNotNull null
             val searchable = doc.getBoolean("searchable") ?: false
+
             if (!searchable) return@mapNotNull null
 
-            doc.toSocialUser()
+            SocialUser(
+                id = doc.id,
+                displayName = displayName,
+                email = doc.getString("email") ?: "",
+                major = doc.getString("major") ?: "",
+                description = doc.getString("description") ?: "",
+                links = doc.getString("links") ?: "",
+                avatarId = doc.getString("avatarId") ?: "avatar_default",
+                majorVisible = doc.getBoolean("majorVisible") ?: false,
+                descriptionVisible = doc.getBoolean("descriptionVisible") ?: false,
+                linksVisible = doc.getBoolean("linksVisible") ?: false,
+                showOnlineStatus = doc.getBoolean("showOnlineStatus") ?: true,
+            )
         }.filter { it.id != currentUserId }
     }
 
     suspend fun sendFriendRequest(currentUserId: String, targetUserId: String) {
         if (currentUserId == targetUserId) return
+
+        val currentUserDoc = firestore.collection("users").document(currentUserId).get().await()
+        val targetUserDoc = firestore.collection("users").document(targetUserId).get().await()
+
+        if (!currentUserDoc.exists() || !targetUserDoc.exists()) return
+
+        val currentDisplayName = currentUserDoc.getString("displayName") ?: ""
+        val currentAvatarId = currentUserDoc.getString("avatarId") ?: "avatar_default"
+        val currentMajor = currentUserDoc.getString("major") ?: ""
+
+        val targetDisplayName = targetUserDoc.getString("displayName") ?: ""
+        val targetAvatarId = targetUserDoc.getString("avatarId") ?: "avatar_default"
+        val targetMajor = targetUserDoc.getString("major") ?: ""
+
+        val incomingRequestData = mapOf(
+            "uid" to currentUserId,
+            "displayName" to currentDisplayName,
+            "avatarId" to currentAvatarId,
+            "major" to currentMajor,
+        )
+
+        val outgoingRequestData = mapOf(
+            "uid" to targetUserId,
+            "displayName" to targetDisplayName,
+            "avatarId" to targetAvatarId,
+            "major" to targetMajor,
+        )
 
         val batch = firestore.batch()
 
@@ -104,8 +137,8 @@ open class SocialRepository @Inject constructor() {
             .collection("outgoingRequests")
             .document(targetUserId)
 
-        batch.set(incomingRef, mapOf("uid" to currentUserId, "timestamp" to System.currentTimeMillis()))
-        batch.set(outgoingRef, mapOf("uid" to targetUserId, "timestamp" to System.currentTimeMillis()))
+        batch.set(incomingRef, incomingRequestData)
+        batch.set(outgoingRef, outgoingRequestData)
         batch.commit().await()
     }
 
@@ -116,43 +149,10 @@ open class SocialRepository @Inject constructor() {
             .get()
             .await()
 
-        return snapshot.documents.mapNotNull { doc ->
-            val uid = doc.getString("uid") ?: return@mapNotNull null
-            val user = getUserById(uid) ?: return@mapNotNull null
-            FriendRequest(
-                uid = user.id,
-                displayName = user.displayName,
-                avatarId = user.avatarId,
-                major = user.major
-            )
-        }
+        return snapshot.documents.map { it.toFriendRequest() }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    open fun observeIncomingRequests(userId: String): Flow<List<FriendRequest>> {
-        return observeIncomingRequestUids(userId).flatMapLatest { uids ->
-            if (uids.isEmpty()) return@flatMapLatest flowOf(emptyList())
-            
-            val requestFlows = uids.map { uid ->
-                observeUser(uid).map { user ->
-                    user?.let {
-                        FriendRequest(
-                            uid = it.id,
-                            displayName = it.displayName,
-                            avatarId = it.avatarId,
-                            major = it.major
-                        )
-                    }
-                }
-            }
-            
-            combine(requestFlows) { requests ->
-                requests.filterNotNull()
-            }
-        }
-    }
-
-    private fun observeIncomingRequestUids(userId: String): Flow<List<String>> = callbackFlow {
+    open fun observeIncomingRequests(userId: String): Flow<List<FriendRequest>> = callbackFlow {
         val registration = firestore.collection("users")
             .document(userId)
             .collection("incomingRequests")
@@ -161,40 +161,20 @@ open class SocialRepository @Inject constructor() {
                     trySend(emptyList())
                     return@addSnapshotListener
                 }
-                val uids = snapshot?.documents?.mapNotNull { doc ->
-                    doc.getString("uid")
-                } ?: emptyList()
-                trySend(uids)
+                val requests = snapshot?.documents?.map { it.toFriendRequest() } ?: emptyList()
+                trySend(requests)
             }
         awaitClose { registration.remove() }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    open fun observeFriends(currentUserId: String): Flow<List<FriendUser>> {
-        return observeFriendUids(currentUserId).flatMapLatest { uids ->
-            if (uids.isEmpty()) return@flatMapLatest flowOf(emptyList())
-            
-            val userFlows = uids.map { uid ->
-                observeUser(uid).map { user ->
-                    user?.let {
-                        FriendUser(
-                            uid = it.id,
-                            displayName = it.displayName,
-                            avatarId = it.avatarId,
-                            major = it.major,
-                            showOnlineStatus = it.showOnlineStatus
-                        )
-                    }
-                }
-            }
-            
-            combine(userFlows) { users ->
-                users.filterNotNull()
-            }
-        }
-    }
+    private fun DocumentSnapshot.toFriendRequest(): FriendRequest = FriendRequest(
+        uid = getString("uid") ?: "",
+        displayName = getString("displayName") ?: "",
+        avatarId = getString("avatarId") ?: "avatar_default",
+        major = getString("major") ?: "",
+    )
 
-    private fun observeFriendUids(currentUserId: String): Flow<List<String>> = callbackFlow {
+    open fun observeFriends(currentUserId: String): Flow<List<FriendUser>> = callbackFlow {
         val registration = firestore.collection("users")
             .document(currentUserId)
             .collection("friends")
@@ -203,35 +183,72 @@ open class SocialRepository @Inject constructor() {
                     trySend(emptyList())
                     return@addSnapshotListener
                 }
-                val uids = snapshot?.documents?.mapNotNull { doc ->
-                    doc.getString("uid")
+
+                val friendList = snapshot?.documents?.mapNotNull { doc ->
+                    val uid = doc.getString("uid") ?: return@mapNotNull null
+                    val name = doc.getString("displayName") ?: return@mapNotNull null
+
+                    if (uid == currentUserId) return@mapNotNull null
+
+                    FriendUser(
+                        uid = uid,
+                        displayName = name,
+                        avatarId = doc.getString("avatarId") ?: "avatar_default",
+                        major = doc.getString("major") ?: "",
+                        showOnlineStatus = doc.getBoolean("showOnlineStatus") ?: true,
+                    )
                 } ?: emptyList()
-                trySend(uids)
+
+                trySend(friendList)
             }
         awaitClose { registration.remove() }
     }
 
-    suspend fun getFriends(currentUserId: String): List<FriendUser> {
+    open suspend fun getFriends(currentUserId: String): List<FriendUser> {
         val snapshot = firestore.collection("users")
             .document(currentUserId)
             .collection("friends")
             .get()
             .await()
 
-        return snapshot.documents.mapNotNull { doc ->
-            val uid = doc.getString("uid") ?: return@mapNotNull null
-            val user = getUserById(uid) ?: return@mapNotNull null
+        return snapshot.documents.mapNotNull {
+            val uid = it.getString("uid") ?: return@mapNotNull null
+            val displayName = it.getString("displayName") ?: return@mapNotNull null
+
+            if (uid == currentUserId) return@mapNotNull null
+
             FriendUser(
-                uid = user.id,
-                displayName = user.displayName,
-                avatarId = user.avatarId,
-                major = user.major,
-                showOnlineStatus = user.showOnlineStatus
+                uid = uid,
+                displayName = displayName,
+                avatarId = it.getString("avatarId") ?: "avatar_default",
+                major = it.getString("major") ?: "",
+                showOnlineStatus = it.getBoolean("showOnlineStatus") ?: true,
             )
         }
     }
 
     suspend fun acceptFriendRequest(currentUserId: String, fromUserId: String) {
+        val currentUserDoc = firestore.collection("users").document(currentUserId).get().await()
+        val fromUserDoc = firestore.collection("users").document(fromUserId).get().await()
+
+        if (!currentUserDoc.exists() || !fromUserDoc.exists()) return
+
+        val currentUserData = mapOf(
+            "uid" to currentUserId,
+            "displayName" to (currentUserDoc.getString("displayName") ?: ""),
+            "avatarId" to (currentUserDoc.getString("avatarId") ?: "avatar_default"),
+            "major" to (currentUserDoc.getString("major") ?: ""),
+            "showOnlineStatus" to (currentUserDoc.getBoolean("showOnlineStatus") ?: true),
+        )
+
+        val fromUserData = mapOf(
+            "uid" to fromUserId,
+            "displayName" to (fromUserDoc.getString("displayName") ?: ""),
+            "avatarId" to (fromUserDoc.getString("avatarId") ?: "avatar_default"),
+            "major" to (fromUserDoc.getString("major") ?: ""),
+            "showOnlineStatus" to (fromUserDoc.getBoolean("showOnlineStatus") ?: true),
+        )
+
         val batch = firestore.batch()
 
         val incomingRef = firestore.collection("users")
@@ -243,6 +260,16 @@ open class SocialRepository @Inject constructor() {
             .document(fromUserId)
             .collection("outgoingRequests")
             .document(currentUserId)
+
+        val reverseIncomingRef = firestore.collection("users")
+            .document(fromUserId)
+            .collection("incomingRequests")
+            .document(currentUserId)
+
+        val reverseOutgoingRef = firestore.collection("users")
+            .document(currentUserId)
+            .collection("outgoingRequests")
+            .document(fromUserId)
 
         val currentFriendRef = firestore.collection("users")
             .document(currentUserId)
@@ -256,8 +283,11 @@ open class SocialRepository @Inject constructor() {
 
         batch.delete(incomingRef)
         batch.delete(outgoingRef)
-        batch.set(currentFriendRef, mapOf("uid" to fromUserId))
-        batch.set(fromFriendRef, mapOf("uid" to currentUserId))
+        batch.delete(reverseIncomingRef)
+        batch.delete(reverseOutgoingRef)
+
+        batch.set(currentFriendRef, fromUserData)
+        batch.set(fromFriendRef, currentUserData)
 
         batch.commit().await()
     }

@@ -10,8 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -27,59 +25,59 @@ import androidx.compose.ui.window.DialogProperties
 
 @Composable
 fun CampusPlacePreviewCard(place: CampusPlace) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    // No Card wrapper — Google Maps' SDK draws the surrounding white tooltip already,
+    // and an inner themed Card was rendering as a black box on top of it in dark mode.
+    // Text colors are fixed near-black/gray to read on the SDK's white background in
+    // both light and dark mode.
+    Column(
+        modifier = Modifier
+            .padding(16.dp)
+            .widthIn(max = 280.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column(
-            modifier = Modifier
-                .padding(16.dp)
-                .widthIn(max = 280.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
+        Text(
+            text = place.name,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.ExtraBold,
+            textAlign = TextAlign.Center,
+            color = InfoWindowPrimary,
+        )
 
-            Text(
-                text = place.name,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.ExtraBold,
-                textAlign = TextAlign.Center
-            )
+        Text(
+            text = place.category.label.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = InfoWindowSecondary,
+            fontWeight = FontWeight.ExtraBold,
+            modifier = Modifier.padding(top = 2.dp)
+        )
 
-            Text(
-                text = place.category.label.uppercase(),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.ExtraBold,
-                modifier = Modifier.padding(top = 2.dp)
-            )
+        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
+        Text(
+            text = place.quickPreviewSummary,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            color = InfoWindowPrimary,
+        )
 
-            Text(
-                text = place.quickPreviewSummary,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
+        Text(
+            text = place.fullLocationDescription,
+            style = MaterialTheme.typography.bodySmall,
+            color = InfoWindowSecondary,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 4.dp)
+        )
 
-            Text(
-                text = place.fullLocationDescription,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 4.dp)
-            )
+        Spacer(modifier = Modifier.height(12.dp))
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = "Tap bubble for more details",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.error,
-                textAlign = TextAlign.Center,
-                fontWeight = FontWeight.Bold
-            )
-        }
+        Text(
+            text = "Tap bubble for more details",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.error,
+            textAlign = TextAlign.Center,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 

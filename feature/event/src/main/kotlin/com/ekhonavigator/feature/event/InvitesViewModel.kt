@@ -10,13 +10,17 @@ import com.ekhonavigator.core.data.social.SocialRepository
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.RsvpStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class InvitesViewModel @Inject constructor(
     private val calendarRepository: CalendarRepository,
@@ -25,12 +29,15 @@ class InvitesViewModel @Inject constructor(
     private val authRepository: AuthRepository,
 ) : ViewModel() {
 
-    val pendingInvites: StateFlow<List<CalendarEvent>> = calendarRepository
-        .observePendingInvites()
+    private val _showPast = MutableStateFlow(false)
+    val showPast: StateFlow<Boolean> = _showPast.asStateFlow()
+
+    val pendingInvites: StateFlow<List<CalendarEvent>> = _showPast
+        .flatMapLatest { calendarRepository.observePendingInvites(includePast = it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val declinedInvites: StateFlow<List<CalendarEvent>> = calendarRepository
-        .observeDeclinedInvites()
+    val declinedInvites: StateFlow<List<CalendarEvent>> = _showPast
+        .flatMapLatest { calendarRepository.observeDeclinedInvites(includePast = it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val friendRequests: StateFlow<List<FriendRequest>> = run {
@@ -41,6 +48,10 @@ class InvitesViewModel @Inject constructor(
             socialRepository.observeIncomingRequests(uid)
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
         }
+    }
+
+    fun togglePast() {
+        _showPast.value = !_showPast.value
     }
 
     fun rsvp(eventId: String, status: RsvpStatus) {

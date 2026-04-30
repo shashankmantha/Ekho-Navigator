@@ -8,10 +8,7 @@ import com.ekhonavigator.core.network.model.NetworkCalendarEvent
 import com.google.firebase.firestore.DocumentSnapshot
 import java.time.Instant
 
-/**
- * Maps a network event to a database entity.
- * [existingBookmark] preserves the user's bookmark if the event already exists locally.
- */
+/** [existingBookmark] preserves the user's bookmark across re-syncs — the iCal feed has no awareness of it. */
 fun NetworkCalendarEvent.toEntity(
     existingBookmark: Boolean = false,
     syncedAt: Instant = Instant.now(),
@@ -34,11 +31,7 @@ fun NetworkCalendarEvent.toEntity(
     placeId = placeId,
 )
 
-/**
- * Maps a domain [CalendarEvent] to a database entity for user-created events.
- * Sets [EventSource.USER_CREATED] and marks as pending sync by default.
- * Always bookmarked — the user owns this event, so it's inherently "saved".
- */
+/** [isBookmarked] is forced true: the user owns this event, so "saved" is implicit — they can't un-save their own creation. */
 fun CalendarEvent.toCustomEventEntity(
     eventId: String = id,
 ): CalendarEventEntity = CalendarEventEntity(
@@ -55,19 +48,18 @@ fun CalendarEvent.toCustomEventEntity(
     lastSyncedAt = Instant.now(),
     source = EventSource.USER_CREATED,
     ownerUid = ownerUid,
+    ownerDisplayName = ownerDisplayName,
     pendingSync = true,
     eventName = eventName,
     organization = organization,
     eventType = eventType,
     placeId = placeId,
+    externalSourceId = externalSourceId,
+    externalSourceType = externalSourceType,
+    dueAt = dueAt,
 )
 
-/**
- * Maps a Firestore event document to a [CalendarEventEntity].
- * [source] defaults to [EventSource.SHARED] but can be overridden for owned events
- * syncing to a second device.
- * Returns null if required fields are missing.
- */
+/** [source] defaults to SHARED but is overridden when an owner's second device receives their own event back through the listener. */
 fun firestoreDocToEntity(
     doc: DocumentSnapshot,
     source: EventSource = EventSource.SHARED,
@@ -99,6 +91,7 @@ fun firestoreDocToEntity(
         lastSyncedAt = Instant.now(),
         source = source,
         ownerUid = doc.getString("ownerUid"),
+        ownerDisplayName = doc.getString("ownerDisplayName") ?: "",
         pendingSync = false,
         eventName = doc.getString("eventName") ?: "",
         organization = doc.getString("organization") ?: "",
