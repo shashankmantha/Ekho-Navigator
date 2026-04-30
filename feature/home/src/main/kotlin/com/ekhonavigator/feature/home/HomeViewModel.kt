@@ -38,6 +38,8 @@ class HomeViewModel @Inject constructor(
     private val customEventRepository: CustomEventRepository,
 ) : ViewModel() {
 
+    private val json = Json { ignoreUnknownKeys = true }
+
     init {
         if (authRepository.getCurrentUserUid() != null) {
             customEventRepository.startSync(viewModelScope)
@@ -153,7 +155,7 @@ class HomeViewModel @Inject constructor(
 
             try {
                 val body = connection.inputStream.bufferedReader().use { it.readText() }
-                Json { ignoreUnknownKeys = true }.decodeFromString<OpenMeteoResponse>(body)
+                json.decodeFromString<OpenMeteoResponse>(body)
             } finally {
                 connection.disconnect()
             }

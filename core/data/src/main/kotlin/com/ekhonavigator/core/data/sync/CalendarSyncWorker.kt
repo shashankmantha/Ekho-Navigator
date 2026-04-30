@@ -1,6 +1,10 @@
 package com.ekhonavigator.core.data.sync
 
+import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -21,15 +25,18 @@ class CalendarSyncWorker @AssistedInject constructor(
     private val dailyEventNotificationManager: DailyEventNotificationManager,
 ) : CoroutineWorker(appContext, params) {
 
+    @SuppressLint("MissingPermission")
     override suspend fun doWork(): Result {
         val feedUrl = inputData.getString(KEY_FEED_URL) ?: return Result.failure()
 
         return when (val result = calendarRepository.sync(feedUrl)) {
             is SyncResult.Success -> {
                 calendarRepository.restoreBookmarks()
-                runCatching {
-                    dailyEventNotificationManager.notifyTodaysEventsIfNeeded()
-                    dailyEventNotificationManager.notifyBookmarkedEventsIfNeeded()
+                if (hasPostNotificationsPermission()) {
+                    runCatching {
+                        dailyEventNotificationManager.notifyTodaysEventsIfNeeded()
+                        dailyEventNotificationManager.notifyBookmarkedEventsIfNeeded()
+                    }
                 }
                 Result.success()
             }
@@ -37,6 +44,17 @@ class CalendarSyncWorker @AssistedInject constructor(
                 if (runAttemptCount < MAX_RETRIES) Result.retry()
                 else Result.failure()
             }
+        }
+    }
+
+    private fun hasPostNotificationsPermission(): Boolean {
+        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(
+                applicationContext,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
         }
     }
 
