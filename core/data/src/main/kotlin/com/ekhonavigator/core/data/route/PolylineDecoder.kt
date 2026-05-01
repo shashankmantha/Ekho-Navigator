@@ -19,10 +19,16 @@ object PolylineDecoder {
         var currentLngAccumulator = 0
 
         while (currentPositionInString < totalPathLength) {
-            val (latOffset, nextPositionAfterLat) = decodeNextValueInPath(encodedPathString, currentPositionInString)
+            val (latOffset, nextPositionAfterLat) = decodeNextValueInPath(
+                encodedPathString,
+                currentPositionInString
+            )
             currentLatAccumulator += latOffset
 
-            val (lngOffset, finalPositionAfterLng) = decodeNextValueInPath(encodedPathString, nextPositionAfterLat)
+            val (lngOffset, finalPositionAfterLng) = decodeNextValueInPath(
+                encodedPathString,
+                nextPositionAfterLat
+            )
             currentLngAccumulator += lngOffset
 
             currentPositionInString = finalPositionAfterLng

@@ -9,8 +9,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -85,7 +88,9 @@ fun CampusPlacePreviewCard(place: CampusPlace) {
 fun CampusPlaceDetailCard(
     place: CampusPlace,
     onDismiss: () -> Unit,
-    onViewLocationEvents: () -> Unit
+    onViewLocationEvents: () -> Unit,
+    onGetWalkingDirections: () -> Unit,
+    onGetDrivingDirections: () -> Unit
 ) {
     Dialog(
         onDismissRequest = onDismiss,
@@ -131,8 +136,22 @@ fun CampusPlaceDetailCard(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
+                    androidx.compose.material3.IconButton(onClick = onGetWalkingDirections) {
+                        Icon(
+                            imageVector = androidx.compose.material.icons.Icons.Default.DirectionsWalk,
+                            contentDescription = "Walk"
+                        )
+                    }
+                    androidx.compose.material3.IconButton(onClick = onGetDrivingDirections) {
+                        Icon(
+                            imageVector = androidx.compose.material.icons.Icons.Default.DirectionsCar,
+                            contentDescription = "Drive"
+                        )
+                    }
+
                     androidx.compose.material3.TextButton(
                         onClick = onViewLocationEvents,
                         modifier = Modifier.padding(end = 8.dp)

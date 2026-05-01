@@ -1,7 +1,5 @@
 package com.ekhonavigator.feature.map
 
-import com.ekhonavigator.core.model.SharedLocation
-import com.ekhonavigator.feature.map.FriendInfo
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
@@ -27,6 +25,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -56,7 +55,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.compose.navigation
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ekhonavigator.core.data.route.TravelMode
+import com.ekhonavigator.core.model.SharedLocation
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
@@ -161,6 +162,10 @@ fun MapScreen(
     viewModel: MapViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+
+    val activeRoutePoints by viewModel.activeRoutePoints.collectAsStateWithLifecycle()
+    val isRouteLoading by viewModel.isRouteLoading.collectAsStateWithLifecycle()
+
     val csuciCenter = LatLng(34.162134342787105, -119.04400892418893)
 
     val focusedPlace = remember(focusPlaceId) {
@@ -209,6 +214,18 @@ fun MapScreen(
                 Manifest.permission.ACCESS_FINE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED
         )
+    }
+
+    val fusedLocationClientForRouting =
+        remember { LocationServices.getFusedLocationProviderClient(context) }
+    var userCurrentLocationForRouting by remember { mutableStateOf<LatLng?>(null) }
+
+    LaunchedEffect(hasLocationPermission, isMapLoaded) {
+        if (hasLocationPermission) {
+            fusedLocationClientForRouting.lastLocation.addOnSuccessListener { location ->
+                location?.let { userCurrentLocationForRouting = LatLng(it.latitude, it.longitude) }
+            }
+        }
     }
 
     var requestLocationPermission by remember { mutableStateOf(false) }
@@ -295,7 +312,8 @@ fun MapScreen(
             properties = MapProperties(isMyLocationEnabled = hasLocationPermission),
             uiSettings = MapUiSettings(
                 myLocationButtonEnabled = false, // hide default to use custom square one
-                zoomControlsEnabled = true
+                zoomControlsEnabled = true,
+                mapToolbarEnabled = false    // disables the external app button
             ),
             onMapLongClick = { latLng ->
                 viewModel.addMarker(latLng)
@@ -333,7 +351,8 @@ fun MapScreen(
 
             droppedMarkers.forEach { droppedMarker ->
                 key("user-marker-${droppedMarker.id}") {
-                    val markerState = rememberMarkerState(position = droppedMarker.droppedMarkerLocation)
+                    val markerState =
+                        rememberMarkerState(position = droppedMarker.droppedMarkerLocation)
                     if (focusPlaceId == "$MARKER_FOCUS_PREFIX${droppedMarker.id}") {
                         LaunchedEffect(focusPlaceId) {
                             markerState.showInfoWindow()
@@ -372,6 +391,13 @@ fun MapScreen(
                     }
                 }
             }
+            if (activeRoutePoints.isNotEmpty()) {
+                com.google.maps.android.compose.Polyline(
+                    points = activeRoutePoints,
+                    color = androidx.compose.ui.graphics.Color(0xFF2196F3),
+                    width = 12f
+                )
+            }
         }
         // --- Custom Center Button ---
         if (hasLocationPermission) {
@@ -385,6 +411,21 @@ fun MapScreen(
             )
         }
 
+        if (activeRoutePoints.isNotEmpty()) {
+            androidx.compose.material3.SmallFloatingActionButton(
+                onClick = { viewModel.clearActiveRoute() },
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 16.dp, bottom = 115.dp),
+                containerColor = MaterialTheme.colorScheme.errorContainer
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Clear Route"
+                )
+            }
+        }
+
         // Search & Filter Overlay
         Column(
             modifier = Modifier
@@ -392,6 +433,14 @@ fun MapScreen(
                 .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            if (isRouteLoading) {
+                androidx.compose.material3.LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 12.dp, end = 12.dp, bottom = 8.dp),
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
 
             // Search Card UI
             Card(
@@ -496,6 +545,25 @@ fun MapScreen(
                 text = {
                     Column {
                         Text(text = selectedMarker.markerLabelComment.ifBlank { "Details: (none)" })
+
+                        TextButton(onClick = {
+                            selectedDroppedMarkerForOptions = null
+                            viewModel.getDirectionsToDestination(
+                                selectedMarker.droppedMarkerLocation,
+                                TravelMode.WALK,
+                                userCurrentLocationForRouting
+                            )
+                        }) { Text("Walk here") }
+
+                        TextButton(onClick = {
+                            selectedDroppedMarkerForOptions = null
+                            viewModel.getDirectionsToDestination(
+                                selectedMarker.droppedMarkerLocation,
+                                TravelMode.DRIVE,
+                                userCurrentLocationForRouting
+                            )
+                        }) { Text("Drive here") }
+
                         TextButton(onClick = {
                             selectedDroppedMarkerForOptions = null
                             markerBeingEdited = selectedMarker
@@ -587,6 +655,22 @@ fun MapScreen(
                 onViewLocationEvents = {
                     selectedCampusPlace = null
                     onOpenDiscoverForPlace(place.id)
+                },
+                onGetWalkingDirections = {
+                    selectedCampusPlace = null
+                    viewModel.getDirectionsToDestination(
+                        place.position,
+                        TravelMode.WALK,
+                        userCurrentLocationForRouting
+                    )
+                },
+                onGetDrivingDirections = {
+                    selectedCampusPlace = null
+                    viewModel.getDirectionsToDestination(
+                        place.position,
+                        TravelMode.DRIVE,
+                        userCurrentLocationForRouting
+                    )
                 }
             )
         }

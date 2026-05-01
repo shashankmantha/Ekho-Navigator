@@ -29,21 +29,29 @@ class RouteRepository @Inject constructor(
         travelMode: TravelMode
     ): List<LatLng> = withContext(Dispatchers.IO) {
 
-        val requestBody = createRoutingRequestBody(startLocation, endLocation, travelMode)
-        val httpRequest = createHttpRequest(requestBody)
+        try {
+            val requestBody = createRoutingRequestBody(startLocation, endLocation, travelMode)
+            val httpRequest = createHttpRequest(requestBody)
 
-        val networkResponse = networkClient.newCall(httpRequest).execute()
+            val networkResponse = networkClient.newCall(httpRequest).execute()
 
-        if (!networkResponse.isSuccessful) return@withContext emptyList()
+            if (!networkResponse.isSuccessful) return@withContext emptyList()
 
-        val responseBodyString = networkResponse.body.string()
-        val parsedResponse = jsonSerializer.decodeFromString<ComputeRouteResponse>(responseBodyString)
+            val responseBodyString = networkResponse.body.string()
+            val parsedResponse =
+                jsonSerializer.decodeFromString<ComputeRouteResponse>(responseBodyString)
 
-        val encodedPathString = parsedResponse.routesList.firstOrNull()?.polylinePath?.encodedPolylinePathString
+            val encodedPathString =
+                parsedResponse.routesList.firstOrNull()?.polylinePath?.encodedPolylinePathString
 
-        return@withContext if (encodedPathString != null) {
-            PolylineDecoder.decodeEncodedPath(encodedPathString)
-        } else {
+            if (encodedPathString != null) {
+                PolylineDecoder.decodeEncodedPath(encodedPathString)
+            } else {
+                emptyList()
+            }
+        } catch (e: Exception) {
+            println("ROUTING_DEBUG: Error fetching route: ${e.message}")
+            e.printStackTrace()
             emptyList()
         }
     }
@@ -54,8 +62,22 @@ class RouteRepository @Inject constructor(
         mode: TravelMode
     ): String {
         val routingRequest = ComputeRouteRequest(
-            originLocation = RouteWaypoint(LocationWrapper(RouteLocation(start.latitude, start.longitude))),
-            destinationLocation = RouteWaypoint(LocationWrapper(RouteLocation(end.latitude, end.longitude))),
+            originLocation = RouteWaypoint(
+                LocationWrapper(
+                    RouteLocation(
+                        start.latitude,
+                        start.longitude
+                    )
+                )
+            ),
+            destinationLocation = RouteWaypoint(
+                LocationWrapper(
+                    RouteLocation(
+                        end.latitude,
+                        end.longitude
+                    )
+                )
+            ),
             travelModeType = if (mode == TravelMode.WALK) "WALK" else "DRIVE",
             routingPreference = if (mode == TravelMode.DRIVE) "TRAFFIC_AWARE" else null
         )
@@ -70,7 +92,10 @@ class RouteRepository @Inject constructor(
             .url(routesApiEndpoint)
             .post(requestBody)
             .addHeader("X-Goog-Api-Key", directionsApiKey)
-            .addHeader("X-Goog-FieldMask", "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline")
+            .addHeader(
+                "X-Goog-FieldMask",
+                "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline"
+            )
             .build()
     }
 }
