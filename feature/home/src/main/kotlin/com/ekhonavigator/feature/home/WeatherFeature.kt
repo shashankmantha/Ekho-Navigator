@@ -189,21 +189,21 @@ private fun WeatherCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(
-                    modifier = Modifier
-                        .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                ) {
-                    Text(
-                        text = if (state.hourlyForecast.isNotEmpty()) {
-                            "Tap for full-day forecast"
-                        } else {
-                            state.errorMessage ?: "Weather unavailable"
-                        },
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                    )
+                if (state.hourlyForecast.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                    ) {
+                        Text(
+                            text = state.errorMessage ?: "Weather unavailable",
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    }
+                } else {
+                    Spacer(Modifier.weight(1f))
                 }
 
                 Text(
@@ -214,6 +214,14 @@ private fun WeatherCard(
                 )
             }
         }
+    }
+}
+
+private fun forecastIcon(conditionLabel: String): androidx.compose.ui.graphics.vector.ImageVector {
+    return if (conditionLabel.contains("Clear", ignoreCase = true)) {
+        EkhoIcons.Sun
+    } else {
+        EkhoIcons.Cloud
     }
 }
 
@@ -279,11 +287,20 @@ private fun FullDayForecastDialog(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Text(
-                                    text = hour.timeLabel,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = forecastIcon(hour.conditionLabel),
+                                        contentDescription = hour.conditionLabel,
+                                        modifier = Modifier.size(22.dp),
+                                        tint = MaterialTheme.colorScheme.primary,
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        text = hour.timeLabel,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
+                                }
                                 Text(
                                     text = hour.temperatureLabel,
                                     style = MaterialTheme.typography.bodyMedium,
