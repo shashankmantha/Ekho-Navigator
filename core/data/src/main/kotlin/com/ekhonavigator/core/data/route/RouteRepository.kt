@@ -62,24 +62,10 @@ class RouteRepository @Inject constructor(
         mode: TravelMode
     ): String {
         val routingRequest = ComputeRouteRequest(
-            originLocation = RouteWaypoint(
-                LocationWrapper(
-                    RouteLocation(
-                        start.latitude,
-                        start.longitude
-                    )
-                )
-            ),
-            destinationLocation = RouteWaypoint(
-                LocationWrapper(
-                    RouteLocation(
-                        end.latitude,
-                        end.longitude
-                    )
-                )
-            ),
+            originLocation = RouteWaypoint(LocationWrapper(RouteLocation(start.latitude, start.longitude))),
+            destinationLocation = RouteWaypoint(LocationWrapper(RouteLocation(end.latitude, end.longitude))),
             travelModeType = if (mode == TravelMode.WALK) "WALK" else "DRIVE",
-            routingPreference = if (mode == TravelMode.DRIVE) "TRAFFIC_AWARE" else null
+            routingPreference = if (mode == TravelMode.WALK) "ROUTING_PREFERENCE_UNSPECIFIED" else "TRAFFIC_AWARE"
         )
         return jsonSerializer.encodeToString(ComputeRouteRequest.serializer(), routingRequest)
     }

@@ -205,6 +205,7 @@ fun MapScreen(
     }
 
     var selectedCampusPlace by remember { mutableStateOf<CampusPlace?>(null) }
+    var isAnyMarkerInfoShowing by remember { mutableStateOf(false) }
 
     // Permission state
     var hasLocationPermission by remember {
@@ -220,11 +221,23 @@ fun MapScreen(
         remember { LocationServices.getFusedLocationProviderClient(context) }
     var userCurrentLocationForRouting by remember { mutableStateOf<LatLng?>(null) }
 
-    LaunchedEffect(hasLocationPermission, isMapLoaded) {
+    LaunchedEffect(hasLocationPermission) {
         if (hasLocationPermission) {
-            fusedLocationClientForRouting.lastLocation.addOnSuccessListener { location ->
-                location?.let { userCurrentLocationForRouting = LatLng(it.latitude, it.longitude) }
+            val locationRequest = com.google.android.gms.location.LocationRequest.Builder(
+                com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, 5000
+            ).build()
+
+            val locationCallback = object : com.google.android.gms.location.LocationCallback() {
+                override fun onLocationResult(result: com.google.android.gms.location.LocationResult) {
+                    result.lastLocation?.let {
+                        userCurrentLocationForRouting = LatLng(it.latitude, it.longitude)
+                    }
+                }
             }
+
+            fusedLocationClientForRouting.requestLocationUpdates(
+                locationRequest, locationCallback, android.os.Looper.getMainLooper()
+            )
         }
     }
 
@@ -309,12 +322,18 @@ fun MapScreen(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
             contentPadding = mapPaddingForInfoCards,
-            properties = MapProperties(isMyLocationEnabled = hasLocationPermission),
-            uiSettings = MapUiSettings(
-                myLocationButtonEnabled = false, // hide default to use custom square one
-                zoomControlsEnabled = true,
-                mapToolbarEnabled = false    // disables the external app button
+            properties = MapProperties(
+                isMyLocationEnabled = hasLocationPermission &&
+                        !isAnyMarkerInfoShowing &&
+                        selectedCampusPlace == null &&
+                        selectedDroppedMarkerForOptions == null
             ),
+            uiSettings = MapUiSettings(
+                myLocationButtonEnabled = false,
+                zoomControlsEnabled = true,
+                mapToolbarEnabled = false
+            ),
+            onMapClick = { isAnyMarkerInfoShowing = false },
             onMapLongClick = { latLng ->
                 viewModel.addMarker(latLng)
             },
@@ -339,6 +358,10 @@ fun MapScreen(
                         }
                         MarkerInfoWindowContent(
                             state = markerState,
+                            onClick = {
+                                isAnyMarkerInfoShowing = true
+                                false
+                            },
                             onInfoWindowClick = {
                                 selectedCampusPlace = place
                             }

@@ -1,5 +1,6 @@
 package com.ekhonavigator.core.data.route
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
@@ -15,32 +16,32 @@ enum class TravelMode {
  */
 @Serializable
 data class RouteLocation(
-    val latitude: Double,
-    val longitude: Double
+    @SerialName("latitude") val latitude: Double,
+    @SerialName("longitude") val longitude: Double
 )
 
 /**
- * Request body for the Google Routes API v2 computeRoutes endpoint.
+ * Request body for the Google Routes API v2.
  */
 @Serializable
 data class ComputeRouteRequest(
-    val originLocation: RouteWaypoint,
-    val destinationLocation: RouteWaypoint,
-    val travelModeType: String,
-    val routingPreference: String? = null,
-    val computeAlternativeRoutes: Boolean = false,
-    val languageCode: String = "en-US",
-    val measurementUnits: String = "IMPERIAL"
+    @SerialName("origin") val originLocation: RouteWaypoint,
+    @SerialName("destination") val destinationLocation: RouteWaypoint,
+    @SerialName("travelMode") val travelModeType: String,
+    @SerialName("routingPreference") val routingPreference: String? = null,
+    @SerialName("computeAlternativeRoutes") val computeAlternativeRoutes: Boolean = false,
+    @SerialName("languageCode") val languageCode: String = "en-US",
+    @SerialName("units") val measurementUnits: String = "IMPERIAL"
 )
 
 @Serializable
 data class RouteWaypoint(
-    val locationContainer: LocationWrapper
+    @SerialName("location") val locationContainer: LocationWrapper
 )
 
 @Serializable
 data class LocationWrapper(
-    val latLngCoordinates: RouteLocation
+    @SerialName("latLng") val latLngCoordinates: RouteLocation
 )
 
 /**
@@ -48,17 +49,17 @@ data class LocationWrapper(
  */
 @Serializable
 data class ComputeRouteResponse(
-    val routesList: List<RouteResult> = emptyList()
+    @SerialName("routes") val routesList: List<RouteResult> = emptyList()
 )
 
 @Serializable
 data class RouteResult(
-    val durationInSeconds: String? = null,
-    val distanceInMeters: Int? = null,
-    val polylinePath: EncodedPolyline? = null
+    @SerialName("duration") val durationInSeconds: String? = null,
+    @SerialName("distanceMeters") val distanceInMeters: Int? = null,
+    @SerialName("polyline") val polylinePath: EncodedPolyline? = null
 )
 
 @Serializable
 data class EncodedPolyline(
-    val encodedPolylinePathString: String
+    @SerialName("encodedPolyline") val encodedPolylinePathString: String
 )

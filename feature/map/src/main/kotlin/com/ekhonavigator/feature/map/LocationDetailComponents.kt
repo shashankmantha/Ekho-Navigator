@@ -134,33 +134,37 @@ fun CampusPlaceDetailCard(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                Row(
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    androidx.compose.material3.IconButton(onClick = onGetWalkingDirections) {
-                        Icon(
-                            imageVector = androidx.compose.material.icons.Icons.Default.DirectionsWalk,
-                            contentDescription = "Walk"
-                        )
-                    }
-                    androidx.compose.material3.IconButton(onClick = onGetDrivingDirections) {
-                        Icon(
-                            imageVector = androidx.compose.material.icons.Icons.Default.DirectionsCar,
-                            contentDescription = "Drive"
-                        )
-                    }
-
-                    androidx.compose.material3.TextButton(
-                        onClick = onViewLocationEvents,
-                        modifier = Modifier.padding(end = 8.dp)
+                    // First Row: Navigation Icons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Start,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("View Events Here")
+                        androidx.compose.material3.IconButton(onClick = onGetWalkingDirections) {
+                            Icon(imageVector = androidx.compose.material.icons.Icons.Default.DirectionsWalk, contentDescription = "Walk")
+                        }
+                        androidx.compose.material3.IconButton(onClick = onGetDrivingDirections) {
+                            Icon(imageVector = androidx.compose.material.icons.Icons.Default.DirectionsCar, contentDescription = "Drive")
+                        }
                     }
 
-                    Button(onClick = onDismiss) {
-                        Text("Close")
+                    // Second Row: Action Buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        androidx.compose.material3.TextButton(onClick = onViewLocationEvents) {
+                            Text("View Events Here")
+                        }
+
+                        Button(onClick = onDismiss) {
+                            Text("Close")
+                        }
                     }
                 }
             }
