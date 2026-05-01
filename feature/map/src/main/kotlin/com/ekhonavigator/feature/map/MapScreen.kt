@@ -26,6 +26,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -430,7 +432,7 @@ fun MapScreen(
                 csuciCenter = csuciCenter,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(end = 12.dp, bottom = 115.dp) // Sits exactly above zoom controls
+                    .padding(end = 11.dp, bottom = 100.dp) // Sits exactly above zoom controls
             )
         }
 
@@ -438,8 +440,8 @@ fun MapScreen(
             androidx.compose.material3.SmallFloatingActionButton(
                 onClick = { viewModel.clearActiveRoute() },
                 modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(start = 16.dp, bottom = 115.dp),
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 8.dp, bottom = 140.dp), // Sits exactly above target button
                 containerColor = MaterialTheme.colorScheme.errorContainer
             ) {
                 Icon(
@@ -559,39 +561,25 @@ fun MapScreen(
             }
         }
 
-        // --- DIALOGS ---
         if (selectedDroppedMarkerForOptions != null) {
             val selectedMarker = selectedDroppedMarkerForOptions!!
             AlertDialog(
                 onDismissRequest = { selectedDroppedMarkerForOptions = null },
                 title = { Text("Marker options") },
                 text = {
-                    Column {
-                        Text(text = selectedMarker.markerLabelComment.ifBlank { "Details: (none)" })
-
-                        TextButton(onClick = {
-                            selectedDroppedMarkerForOptions = null
-                            viewModel.getDirectionsToDestination(
-                                selectedMarker.droppedMarkerLocation,
-                                TravelMode.WALK,
-                                userCurrentLocationForRouting
-                            )
-                        }) { Text("Walk here") }
-
-                        TextButton(onClick = {
-                            selectedDroppedMarkerForOptions = null
-                            viewModel.getDirectionsToDestination(
-                                selectedMarker.droppedMarkerLocation,
-                                TravelMode.DRIVE,
-                                userCurrentLocationForRouting
-                            )
-                        }) { Text("Drive here") }
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = selectedMarker.markerLabelComment.ifBlank { "Details: (none)" },
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
 
                         TextButton(onClick = {
                             selectedDroppedMarkerForOptions = null
                             markerBeingEdited = selectedMarker
                             editLabelText = selectedMarker.markerLabelComment
                         }) { Text("Edit label") }
+
                         TextButton(onClick = {
                             selectedDroppedMarkerForOptions = null
                             markerPendingRemoval = selectedMarker
@@ -601,6 +589,40 @@ fun MapScreen(
                             selectedDroppedMarkerForOptions = null
                             showFriendPickerForMarker = selectedMarker
                         }) { Text("Send to Friend") }
+
+                        // Navigation Row at the bottom
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Start,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(onClick = {
+                                selectedDroppedMarkerForOptions = null
+                                viewModel.getDirectionsToDestination(
+                                    selectedMarker.droppedMarkerLocation,
+                                    TravelMode.WALK,
+                                    userCurrentLocationForRouting
+                                )
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Default.DirectionsWalk,
+                                    contentDescription = "Walk"
+                                )
+                            }
+                            IconButton(onClick = {
+                                selectedDroppedMarkerForOptions = null
+                                viewModel.getDirectionsToDestination(
+                                    selectedMarker.droppedMarkerLocation,
+                                    TravelMode.DRIVE,
+                                    userCurrentLocationForRouting
+                                )
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Default.DirectionsCar,
+                                    contentDescription = "Drive"
+                                )
+                            }
+                        }
                     }
                 },
                 confirmButton = {
