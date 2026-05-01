@@ -679,9 +679,14 @@ fun MapScreen(
             val marker = showFriendPickerForMarker!!
             FriendPickerCard(
                 markerLabel = marker.markerLabelComment.ifBlank { "Dropped Marker" },
-                friends = viewModel.friends,
+                searchText = viewModel.searchTextForFriendPicker,
+                onSearchTextChange = { newText ->
+                    viewModel.updateSearchTextForFriendPicker(newText)
+                },
+                friends = viewModel.friendsListMatchingSearchQuery,
                 onFriendSelected = { friend ->
                     showFriendPickerForMarker = null
+                    viewModel.updateSearchTextForFriendPicker("") // Reset on success
                     val sharedLoc = SharedLocation(
                         title = marker.markerLabelComment.ifBlank { "Dropped Marker" },
                         latitude = marker.droppedMarkerLocation.latitude,
@@ -689,7 +694,10 @@ fun MapScreen(
                     )
                     onShareLocationToChat(friend.id, friend.name, sharedLoc)
                 },
-                onDismiss = { showFriendPickerForMarker = null }
+                onDismiss = {
+                    showFriendPickerForMarker = null
+                    viewModel.updateSearchTextForFriendPicker("") // Reset on cancel
+                }
             )
         }
 

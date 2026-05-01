@@ -3,11 +3,11 @@ package com.ekhonavigator.core.data.social
 import android.util.Log
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
-import javax.inject.Inject
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import javax.inject.Inject
 
 open class SocialRepository @Inject constructor() {
 
@@ -173,6 +173,36 @@ open class SocialRepository @Inject constructor() {
         avatarId = getString("avatarId") ?: "avatar_default",
         major = getString("major") ?: "",
     )
+
+    open fun observeFriends(currentUserId: String): Flow<List<FriendUser>> = callbackFlow {
+        val registration = firestore.collection("users")
+            .document(currentUserId)
+            .collection("friends")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+
+                val friendList = snapshot?.documents?.mapNotNull { doc ->
+                    val uid = doc.getString("uid") ?: return@mapNotNull null
+                    val name = doc.getString("displayName") ?: return@mapNotNull null
+
+                    if (uid == currentUserId) return@mapNotNull null
+
+                    FriendUser(
+                        uid = uid,
+                        displayName = name,
+                        avatarId = doc.getString("avatarId") ?: "avatar_default",
+                        major = doc.getString("major") ?: "",
+                        showOnlineStatus = doc.getBoolean("showOnlineStatus") ?: true,
+                    )
+                } ?: emptyList()
+
+                trySend(friendList)
+            }
+        awaitClose { registration.remove() }
+    }
 
     open suspend fun getFriends(currentUserId: String): List<FriendUser> {
         val snapshot = firestore.collection("users")
