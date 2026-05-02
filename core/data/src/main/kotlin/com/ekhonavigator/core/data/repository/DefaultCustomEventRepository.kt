@@ -272,6 +272,8 @@ class DefaultCustomEventRepository @Inject constructor(
             "categories" to event.categories.map { it.name },
             "participants" to participants,
             "createdAt" to com.google.firebase.Timestamp.now(),
+            "placeId" to event.placeId,
+            "customLocation" to event.customLocation?.toFirestoreMap(),
         )
         firestore.collection("events").document(eventId).set(data).await()
     }
@@ -287,9 +289,17 @@ class DefaultCustomEventRepository @Inject constructor(
             "startTime" to event.startTime.toEpochMilli(),
             "endTime" to event.endTime.toEpochMilli(),
             "categories" to event.categories.map { it.name },
+            "placeId" to event.placeId,
+            "customLocation" to event.customLocation?.toFirestoreMap(),
         )
         firestore.collection("events").document(eventId).update(data).await()
     }
+
+    private fun com.ekhonavigator.core.model.SharedLocation.toFirestoreMap(): Map<String, Any> = mapOf(
+        "title" to title,
+        "latitude" to latitude,
+        "longitude" to longitude,
+    )
 
     override fun startSync(scope: CoroutineScope) {
         sharedEventSyncService.startListening(scope)

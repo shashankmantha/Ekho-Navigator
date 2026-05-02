@@ -4,6 +4,7 @@ import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSource
 import com.ekhonavigator.core.model.RsvpStatus
+import com.ekhonavigator.core.model.SharedLocation
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -54,6 +55,7 @@ fun testCalendarEvent(
     externalSourceId: String? = null,
     externalSourceType: String? = null,
     dueAt: Instant? = null,
+    customLocation: SharedLocation? = null,
 ): CalendarEvent = CalendarEvent(
     id = id,
     title = title,
@@ -78,4 +80,5 @@ fun testCalendarEvent(
     externalSourceId = externalSourceId,
     externalSourceType = externalSourceType,
     dueAt = dueAt,
+    customLocation = customLocation,
 )
