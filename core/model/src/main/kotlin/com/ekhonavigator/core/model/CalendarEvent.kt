@@ -26,6 +26,10 @@ data class CalendarEvent(
     val externalSourceId: String? = null,
     val externalSourceType: String? = null,
     val dueAt: Instant? = null,
+    /** Denormalized snapshot of a user-marker's coordinates and label, populated when
+     *  the event is pinned to a custom marker. Lets recipients of a shared event resolve
+     *  the location without owning the source marker — they can save it as their own. */
+    val customLocation: SharedLocation? = null,
 ) {
     val primaryCategory: EventCategory
         get() = categories.firstOrNull() ?: EventCategory.GENERAL

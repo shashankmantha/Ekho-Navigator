@@ -57,6 +57,9 @@ fun CalendarEvent.toCustomEventEntity(
     externalSourceId = externalSourceId,
     externalSourceType = externalSourceType,
     dueAt = dueAt,
+    customLocationTitle = customLocation?.title,
+    customLocationLatitude = customLocation?.latitude,
+    customLocationLongitude = customLocation?.longitude,
 )
 
 /** [source] defaults to SHARED but is overridden when an owner's second device receives their own event back through the listener. */
@@ -77,6 +80,11 @@ fun firestoreDocToEntity(
         }
     }.ifEmpty { listOf(EventCategory.GENERAL) }
 
+    val customLocation = doc.get("customLocation") as? Map<*, *>
+    val customLocationTitle = customLocation?.get("title") as? String
+    val customLocationLat = (customLocation?.get("latitude") as? Number)?.toDouble()
+    val customLocationLng = (customLocation?.get("longitude") as? Number)?.toDouble()
+
     return CalendarEventEntity(
         uid = doc.id,
         title = title,
@@ -96,5 +104,9 @@ fun firestoreDocToEntity(
         eventName = doc.getString("eventName") ?: "",
         organization = doc.getString("organization") ?: "",
         eventType = doc.getString("eventType") ?: "",
+        placeId = doc.getString("placeId"),
+        customLocationTitle = customLocationTitle,
+        customLocationLatitude = customLocationLat,
+        customLocationLongitude = customLocationLng,
     )
 }

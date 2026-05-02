@@ -17,7 +17,7 @@ import com.ekhonavigator.core.database.model.EventAttendeeEntity
         CalendarEventEntity::class,
         EventAttendeeEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = false,
 )
 @TypeConverters(
