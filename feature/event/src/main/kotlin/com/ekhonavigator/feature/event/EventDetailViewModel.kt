@@ -3,6 +3,8 @@ package com.ekhonavigator.feature.event
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ekhonavigator.core.data.auth.AuthRepository
+import com.ekhonavigator.core.data.markers.MarkerRepository
+import com.ekhonavigator.core.data.markers.UserDroppedMarker
 import com.ekhonavigator.core.data.place.PlaceRepository
 import com.ekhonavigator.core.data.repository.CalendarRepository
 import com.ekhonavigator.core.data.repository.CustomEventRepository
@@ -12,6 +14,10 @@ import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventAttendee
 import com.ekhonavigator.core.model.EventSource
 import com.ekhonavigator.core.model.RsvpStatus
+import com.ekhonavigator.core.model.SharedLocation
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,6 +39,7 @@ class EventDetailViewModel @Inject constructor(
     private val socialRepository: SocialRepository,
     private val authRepository: AuthRepository,
     private val placeRepository: PlaceRepository,
+    private val markerRepository: MarkerRepository,
 ) : ViewModel() {
 
     private val _eventId = MutableStateFlow("")
@@ -49,13 +56,30 @@ class EventDetailViewModel @Inject constructor(
         .flatMapLatest { id -> customEventRepository.observeAttendees(id) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** Resolves to the event's `placeId` only while the place still exists in the repository.
-     *  Drops to null when a user marker the event was pinned to has since been deleted, so the
-     *  WHERE row gracefully degrades to its un-linked styling instead of dangling on the dead id. */
+    /** Resolves to a place id the user can navigate to. Falls through three checks:
+     *   1. Direct match (campus or owner's own marker).
+     *   2. Coord match against any of the user's own markers — covers recipients who already
+     *      saved this customLocation as a marker; their local marker id won't equal the event's
+     *      original `marker_<ownerId>` but the coordinates do, so the WHERE row navs straight
+     *      to their copy without re-prompting "Save to map?".
+     *   3. Otherwise null — WHERE row degrades to un-linked styling. */
     val effectivePlaceId: StateFlow<String?> = combine(event, placeRepository.observePlaces()) { ev, places ->
-        val pid = ev?.placeId ?: return@combine null
-        if (places.any { it.id == pid }) pid else null
+        ev?.resolveTargetPlaceId(places)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Non-null when the event was pinned to a custom marker the current user does NOT own
+     *  (recipient case, or owner whose marker was deleted) AND the user has not already saved
+     *  the customLocation as a personal marker. Drives the one-shot "Save to map?" prompt. */
+    val customLocationOffer: StateFlow<SharedLocation?> = combine(event, placeRepository.observePlaces()) { ev, places ->
+        val pid = ev?.placeId ?: return@combine null
+        val custom = ev.customLocation ?: return@combine null
+        if (!pid.startsWith(MARKER_ID_PREFIX)) return@combine null
+        val targetResolved = ev.resolveTargetPlaceId(places) != null
+        if (targetResolved) null else custom
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    private val _navigateToMarker = MutableSharedFlow<String>(replay = 0, extraBufferCapacity = 1)
+    val navigateToMarker: SharedFlow<String> = _navigateToMarker.asSharedFlow()
 
     /** Current user's RSVP status for this event, or null if not an attendee. */
     val currentUserRsvp: StateFlow<RsvpStatus?> = attendees
@@ -167,6 +191,30 @@ class EventDetailViewModel @Inject constructor(
         }
     }
 
+    /** Saves the event's customLocation as a personal marker, dedup-by-coords (mirrors
+     *  ChatViewModel.saveSharedLocationToMap), then emits a focusPlaceId so the screen can
+     *  navigate to the map and pan to it. */
+    fun saveCustomLocationToMyMarkers() {
+        val offer = customLocationOffer.value ?: return
+        val uid = authRepository.getCurrentUserUid() ?: return
+        viewModelScope.launch {
+            val existing = markerRepository.getUserMarkers(uid)
+                .firstOrNull { it.latitude == offer.latitude && it.longitude == offer.longitude }
+            val markerId = existing?.id ?: System.currentTimeMillis().toString().also { newId ->
+                markerRepository.saveMarker(
+                    uid,
+                    UserDroppedMarker(
+                        id = newId,
+                        latitude = offer.latitude,
+                        longitude = offer.longitude,
+                        comment = offer.title,
+                    ),
+                )
+            }
+            _navigateToMarker.emit("$MARKER_ID_PREFIX$markerId")
+        }
+    }
+
     private fun loadFriendsIfNeeded() {
         if (_friends.value.isNotEmpty()) return
         val uid = authRepository.getCurrentUserUid() ?: return
@@ -178,4 +226,17 @@ class EventDetailViewModel @Inject constructor(
             }
         }
     }
+}
+
+// Must match DefaultPlaceRepository's namespacing scheme for user-marker Place ids.
+private const val MARKER_ID_PREFIX = "marker_"
+
+private fun CalendarEvent.resolveTargetPlaceId(places: List<com.ekhonavigator.core.model.Place>): String? {
+    val pid = placeId ?: return null
+    if (places.any { it.id == pid }) return pid
+    // Coord-match fallback: matches the recipient's saved-marker copy of a shared customLocation.
+    val custom = customLocation ?: return null
+    return places.firstOrNull {
+        it.isCustom && it.latitude == custom.latitude && it.longitude == custom.longitude
+    }?.id
 }

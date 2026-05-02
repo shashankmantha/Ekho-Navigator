@@ -97,8 +97,19 @@ fun EventScreen(
     val attendees by viewModel.attendees.collectAsStateWithLifecycle()
     val currentUserRsvp by viewModel.currentUserRsvp.collectAsStateWithLifecycle()
     val effectivePlaceId by viewModel.effectivePlaceId.collectAsStateWithLifecycle()
+    val customLocationOffer by viewModel.customLocationOffer.collectAsStateWithLifecycle()
     val friends by viewModel.friends.collectAsStateWithLifecycle()
     val shareSheetVisible by viewModel.shareSheetVisible.collectAsStateWithLifecycle()
+
+    // The VM emits the new (or deduped existing) marker placeId after save; route it
+    // through the same nav callback the campus path uses so the camera-pan animation runs.
+    LaunchedEffect(viewModel) {
+        viewModel.navigateToMarker.collect { placeId ->
+            onLocationClick(placeId)
+        }
+    }
+
+    var showSaveMarkerPrompt by remember { mutableStateOf(false) }
 
     // Track whether we ever loaded an event — if it disappears after loading,
     // the event was deleted (by owner, by self, or by remote sync) and we navigate back.
@@ -125,6 +136,7 @@ fun EventScreen(
         EventDetailContent(
             event = event!!,
             effectivePlaceId = effectivePlaceId,
+            customLocationOfferAvailable = customLocationOffer != null,
             onBookmarkClick = viewModel::toggleBookmark,
             canDelete = viewModel.canDelete,
             onDeleteClick = viewModel::deleteEvent,
@@ -139,8 +151,37 @@ fun EventScreen(
             attendees = attendees,
             onRsvp = viewModel::rsvp,
             onLocationClick = onLocationClick,
+            onLocationSaveOfferClick = { showSaveMarkerPrompt = true },
             modifier = modifier,
         )
+
+        customLocationOffer?.let { offer ->
+            if (showSaveMarkerPrompt) {
+                AlertDialog(
+                    onDismissRequest = { showSaveMarkerPrompt = false },
+                    title = { Text("Save to your map?") },
+                    text = {
+                        Text(
+                            "\u201C${offer.title}\u201D was pinned to a marker by the event creator. " +
+                                "Save it to your map so you can navigate there.",
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            showSaveMarkerPrompt = false
+                            viewModel.saveCustomLocationToMyMarkers()
+                        }) {
+                            Text("Save")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showSaveMarkerPrompt = false }) {
+                            Text("Cancel")
+                        }
+                    },
+                )
+            }
+        }
 
         if (shareSheetVisible) {
             val attendeeUids = remember(attendees) { attendees.map { it.userId }.toSet() }
@@ -171,6 +212,7 @@ fun EventScreen(
 private fun EventDetailContent(
     event: CalendarEvent,
     effectivePlaceId: String?,
+    customLocationOfferAvailable: Boolean = false,
     onBookmarkClick: () -> Unit,
     canDelete: Boolean = false,
     onDeleteClick: () -> Unit = {},
@@ -185,6 +227,7 @@ private fun EventDetailContent(
     attendees: List<EventAttendee> = emptyList(),
     onRsvp: (RsvpStatus) -> Unit = {},
     onLocationClick: (placeId: String) -> Unit = {},
+    onLocationSaveOfferClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val zone = remember { ZoneId.systemDefault() }
@@ -254,10 +297,18 @@ private fun EventDetailContent(
             MetaTextRow(label = "HOSTED BY", value = event.organization.prettifyAllCaps())
         }
         if (event.location.isNotBlank()) {
+            // Three states: existing place id resolves → nav directly; offer available
+            // (recipient or owner-with-deleted-marker) → prompt to save first; otherwise
+            // no click and the row stays in its un-linked styling.
+            val locationClick: (() -> Unit)? = when {
+                effectivePlaceId != null -> { -> onLocationClick(effectivePlaceId) }
+                customLocationOfferAvailable -> onLocationSaveOfferClick
+                else -> null
+            }
             MetaTextRow(
                 label = "WHERE",
                 value = event.location,
-                onClick = effectivePlaceId?.let { placeId -> { onLocationClick(placeId) } },
+                onClick = locationClick,
             )
         }
         if (event.status != "CONFIRMED") {
