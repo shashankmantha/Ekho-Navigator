@@ -172,6 +172,36 @@ class EventDetailViewModelTest {
     }
 
     @Test
+    fun `effectivePlaceId coord-matches a saved marker when ids differ`() = runTest {
+        // Recipient already saved the shared customLocation as their own marker — same coords,
+        // different local id. The WHERE row must navigate straight to their copy and the offer
+        // prompt must stay suppressed instead of asking them to save again on every tap.
+        val recipientLocalMarker = com.ekhonavigator.core.model.Place(
+            id = "marker_99",
+            name = "Coffee spot",
+            latitude = 34.16,
+            longitude = -119.04,
+            category = com.ekhonavigator.core.model.PlaceCategory.GENERAL,
+            isCustom = true,
+        )
+        placeRepository.emit(listOf(recipientLocalMarker))
+        repository.emit(
+            listOf(
+                testCalendarEvent(
+                    id = "shared-1",
+                    placeId = "marker_42",
+                    customLocation = SharedLocation("Coffee spot", 34.16, -119.04),
+                ),
+            ),
+        )
+
+        viewModel.setEventId("shared-1")
+        viewModel.event.first { it != null }
+        assertEquals("marker_99", viewModel.effectivePlaceId.first { it != null })
+        assertEquals(null, viewModel.customLocationOffer.value)
+    }
+
+    @Test
     fun `toggleBookmark delegates to repository`() = runTest {
         viewModel.setEventId("event-42")
         viewModel.toggleBookmark()
