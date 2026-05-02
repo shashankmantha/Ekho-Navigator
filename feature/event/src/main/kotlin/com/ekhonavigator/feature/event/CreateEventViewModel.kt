@@ -13,6 +13,7 @@ import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSource
 import com.ekhonavigator.core.model.Place
+import com.ekhonavigator.core.model.SharedLocation
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -36,6 +37,10 @@ data class CreateEventUiState(
     val description: String = "",
     val location: String = "",
     val placeId: String? = null,
+    /** Captured at suggestion-pick time for custom (user-marker) locations so the save can
+     *  denormalize a SharedLocation onto the event — recipients can resolve the place
+     *  even though they don't own the source marker. Null for campus or free-text. */
+    val pickedCustomLocation: SharedLocation? = null,
     val date: LocalDate? = null,
     val startTime: LocalTime? = null,
     val endTime: LocalTime? = null,
@@ -114,6 +119,7 @@ class CreateEventViewModel @Inject constructor(
                     description = event.description,
                     location = event.location,
                     placeId = event.placeId,
+                    pickedCustomLocation = event.customLocation,
                     date = zoned.toLocalDate(),
                     startTime = zoned.toLocalTime(),
                     endTime = zonedEnd.toLocalTime(),
@@ -147,15 +153,21 @@ class CreateEventViewModel @Inject constructor(
     /** Free-text edit clears any previously-chosen suggestion id — typing past a selected
      *  place implies the user is no longer pinning it to that exact location. */
     fun setLocationText(value: String) = _uiState.update {
-        it.copy(location = value, placeId = null)
+        it.copy(location = value, placeId = null, pickedCustomLocation = null)
     }
 
     fun selectLocationSuggestion(suggestion: LocationSuggestion) = _uiState.update {
-        it.copy(location = suggestion.name, placeId = suggestion.id)
+        // Local vals avoid the cross-module public-property smart-cast restriction.
+        val lat = suggestion.latitude
+        val lng = suggestion.longitude
+        val custom = if (suggestion.isCustom && lat != null && lng != null) {
+            SharedLocation(suggestion.name, lat, lng)
+        } else null
+        it.copy(location = suggestion.name, placeId = suggestion.id, pickedCustomLocation = custom)
     }
 
     fun useCustomLocationText(value: String) = _uiState.update {
-        it.copy(location = value, placeId = null)
+        it.copy(location = value, placeId = null, pickedCustomLocation = null)
     }
 
     fun toggleFriend(uid: String) {
@@ -191,11 +203,22 @@ class CreateEventViewModel @Inject constructor(
                 ?: state.location.takeIf { it.isNotBlank() }
                     ?.let { placeRepository.resolveFromText(it) }
 
+            // If the resolution landed on a custom marker but the user never tapped a
+            // suggestion (typed the name freehand), fetch the marker's coords now so the
+            // event still carries a customLocation snapshot for recipients.
+            val resolvedCustomLocation = state.pickedCustomLocation
+                ?: resolvedPlaceId
+                    ?.takeIf { it.startsWith("marker_") }
+                    ?.let { placeRepository.getPlace(it) }
+                    ?.let { place ->
+                        SharedLocation(place.name, place.latitude, place.longitude)
+                    }
+
             val editingId = state.editingEventId
             if (editingId != null) {
-                applyEdit(editingId, ownerUid, state, startInstant, endInstant, resolvedPlaceId)
+                applyEdit(editingId, ownerUid, state, startInstant, endInstant, resolvedPlaceId, resolvedCustomLocation)
             } else {
-                applyCreate(ownerUid, state, startInstant, endInstant, resolvedPlaceId)
+                applyCreate(ownerUid, state, startInstant, endInstant, resolvedPlaceId, resolvedCustomLocation)
             }
             _uiState.update { it.copy(isSaving = false, isSaved = true) }
         }
@@ -207,6 +230,7 @@ class CreateEventViewModel @Inject constructor(
         startInstant: Instant,
         endInstant: Instant,
         resolvedPlaceId: String?,
+        resolvedCustomLocation: SharedLocation?,
     ) {
         val sharedWith = state.friends
             .filter { it.uid in state.selectedFriendUids }
@@ -219,6 +243,7 @@ class CreateEventViewModel @Inject constructor(
             startInstant = startInstant,
             endInstant = endInstant,
             resolvedPlaceId = resolvedPlaceId,
+            resolvedCustomLocation = resolvedCustomLocation,
         )
         customEventRepository.createEvent(event, sharedWith)
     }
@@ -230,6 +255,7 @@ class CreateEventViewModel @Inject constructor(
         startInstant: Instant,
         endInstant: Instant,
         resolvedPlaceId: String?,
+        resolvedCustomLocation: SharedLocation?,
     ) {
         val event = baseEvent(
             id = eventId,
@@ -238,6 +264,7 @@ class CreateEventViewModel @Inject constructor(
             startInstant = startInstant,
             endInstant = endInstant,
             resolvedPlaceId = resolvedPlaceId,
+            resolvedCustomLocation = resolvedCustomLocation,
         )
         customEventRepository.updateEvent(event)
 
@@ -263,23 +290,35 @@ class CreateEventViewModel @Inject constructor(
         startInstant: Instant,
         endInstant: Instant,
         resolvedPlaceId: String?,
-    ): CalendarEvent = CalendarEvent(
-        id = id,
-        title = state.title.trim(),
-        description = state.description.trim(),
-        location = state.location.trim(),
-        startTime = startInstant,
-        endTime = endInstant,
-        categories = listOf(state.category),
-        url = "",
-        status = "CONFIRMED",
-        isBookmarked = true,
-        lastSyncedAt = Instant.now(),
-        source = EventSource.USER_CREATED,
-        ownerUid = ownerUid,
-        ownerDisplayName = authRepository.getCurrentUserDisplayName().orEmpty(),
-        placeId = resolvedPlaceId,
-    )
+        resolvedCustomLocation: SharedLocation?,
+    ): CalendarEvent {
+        // Only attach a SharedLocation snapshot when the event is pinned to a custom marker
+        // (placeId namespaced as marker_*). Campus place IDs are stable cross-user, so denormalizing
+        // their coords would just be storage waste. On edits, also re-sync the snapshot's title to
+        // the current location text so a renamed marker propagates to recipients.
+        val customLocation = resolvedCustomLocation
+            ?.takeIf { resolvedPlaceId?.startsWith("marker_") == true }
+            ?.copy(title = state.location.trim())
+
+        return CalendarEvent(
+            id = id,
+            title = state.title.trim(),
+            description = state.description.trim(),
+            location = state.location.trim(),
+            startTime = startInstant,
+            endTime = endInstant,
+            categories = listOf(state.category),
+            url = "",
+            status = "CONFIRMED",
+            isBookmarked = true,
+            lastSyncedAt = Instant.now(),
+            source = EventSource.USER_CREATED,
+            ownerUid = ownerUid,
+            ownerDisplayName = authRepository.getCurrentUserDisplayName().orEmpty(),
+            placeId = resolvedPlaceId,
+            customLocation = customLocation,
+        )
+    }
 }
 
 private fun Place.toSuggestion(): LocationSuggestion = LocationSuggestion(
@@ -287,4 +326,6 @@ private fun Place.toSuggestion(): LocationSuggestion = LocationSuggestion(
     name = name,
     isCustom = isCustom,
     subtitle = if (isCustom) "Your marker" else "",
+    latitude = latitude.takeIf { isCustom },
+    longitude = longitude.takeIf { isCustom },
 )
