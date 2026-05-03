@@ -44,6 +44,7 @@ import androidx.compose.material.icons.rounded.ViewDay
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.outlined.Air
 import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material.icons.outlined.WaterDrop
 
 /**
@@ -55,6 +56,7 @@ object EkhoIcons {
     val AccountCircle = Icons.Default.AccountCircle
     val Air = Icons.Outlined.Air
     val Cloud = Icons.Outlined.Cloud
+    val Sun = Icons.Outlined.WbSunny
     val WaterDrop = Icons.Outlined.WaterDrop
     val ArrowBack = Icons.AutoMirrored.Rounded.ArrowBack
     val Bookmark = Icons.Rounded.Bookmark
