@@ -133,9 +133,9 @@ fun AccountScreen(
                                     .padding(horizontal = 24.dp),
                                 shape = RoundedCornerShape(28.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surface,
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                 ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                             ) {
                                 Column(
                                     modifier = Modifier
