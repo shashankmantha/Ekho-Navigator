@@ -2,6 +2,7 @@ package com.ekhonavigator.feature.canvas.settings
 
 import com.ekhonavigator.core.canvas.auth.CanvasAccount
 import com.ekhonavigator.core.testing.MainDispatcherRule
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -117,7 +118,7 @@ class ConnectCanvasViewModelTest {
         val viewModel = newViewModel()
         viewModel.disconnect()
         // disconnect() launches the cache wipe in viewModelScope — drain it.
-        kotlinx.coroutines.test.advanceUntilIdle()
+        advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value is ConnectCanvasUiState.NotConnected)
         assertNull(tokens.get(CanvasAccount("uid-1", "csuci.instructure.com")))

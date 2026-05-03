@@ -74,6 +74,12 @@ internal class FakeCanvasCourseRepository(
         coursesFlow.value = coursesAfterSync
         return nextSyncResult
     }
+
+    var clearAllCalls = 0
+    override suspend fun clearAll() {
+        clearAllCalls++
+        coursesFlow.value = emptyList()
+    }
 }
 
 internal class FakeCanvasCourseDao : CanvasCourseDao {
@@ -151,6 +157,7 @@ internal class FakeCalendarEventDao : CalendarEventDao {
     override suspend fun deleteEvent(id: String) = unsupported()
     override suspend fun deleteAllUserEvents() = unsupported()
     override suspend fun clearAllBookmarks() = unsupported()
+    override suspend fun deleteByExternalSource(sourceType: String) = unsupported()
 
     private fun unsupported(): Nothing =
         error("FakeCalendarEventDao: extend this fake with the method you need.")

@@ -93,4 +93,8 @@ private class MutableCanvasCourseRepository : CanvasCourseRepository {
         syncCalls++
         return nextSyncResult
     }
+
+    override suspend fun clearAll() {
+        coursesFlow.value = emptyList()
+    }
 }
