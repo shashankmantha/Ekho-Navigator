@@ -229,6 +229,5 @@ private fun eventPillColors(
 
     event.source == EventSource.USER_CREATED || event.source == EventSource.SHARED ->
         customPill to onCustom
-    // CLASS_SCHEDULE (future) falls through to calendar accent
     else -> calendarPill to onCalendar
 }

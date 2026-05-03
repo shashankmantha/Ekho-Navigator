@@ -41,7 +41,6 @@ internal fun sourceTypeThemeColors(
     colors: androidx.compose.material3.ColorScheme,
 ): Pair<Color, Color> = when (type) {
     EventSourceType.CANVAS -> colors.primary to colors.onPrimary
-    EventSourceType.SCHEDULE -> colors.primary to colors.onPrimary
     EventSourceType.CUSTOM -> colors.secondary to colors.onSecondary
     EventSourceType.CAMPUS -> colors.onSurfaceVariant to colors.surface
     EventSourceType.BOOKMARKED -> colors.tertiary to colors.onTertiary
@@ -90,10 +89,7 @@ fun FilterSheetContent(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // SCHEDULE excluded until class calendar import is implemented
-            EventSourceType.entries
-                .filter { it != EventSourceType.SCHEDULE }
-                .forEach { type ->
+            EventSourceType.entries.forEach { type ->
                     val isActive = type in activeSourceTypes
                     val (accentColor, _) = sourceTypeThemeColors(type, colors)
 

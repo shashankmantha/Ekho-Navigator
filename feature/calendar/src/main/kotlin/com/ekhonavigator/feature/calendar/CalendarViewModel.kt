@@ -67,7 +67,7 @@ class CalendarViewModel @Inject constructor(
     /** Multi-select source filter: all types active by default. */
     // calendar excluded until class calendar import is implemented
     private val _activeSourceTypes = MutableStateFlow(
-        EventSourceType.entries.toSet() - EventSourceType.SCHEDULE - EventSourceType.CAMPUS,
+        EventSourceType.entries.toSet() - EventSourceType.CAMPUS,
     )
     val activeSourceTypes: StateFlow<Set<EventSourceType>> = _activeSourceTypes.asStateFlow()
 
@@ -352,7 +352,7 @@ private fun CalendarEvent.toSourceType(): EventSourceType = when {
     source == EventSource.ICAL_FEED -> EventSourceType.CAMPUS
     source == EventSource.USER_CREATED || source == EventSource.SHARED -> EventSourceType.CUSTOM
     source == EventSource.CANVAS -> EventSourceType.CANVAS
-    else -> EventSourceType.SCHEDULE
+    else -> EventSourceType.CAMPUS
 }
 
 /** Get the Sunday that starts the week containing [date]. */

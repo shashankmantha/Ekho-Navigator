@@ -57,11 +57,14 @@ private val TimeLabelWidth: Dp = 48.dp
 private const val HourCount = 24
 
 /**
- * Floor for an event pill's rendered height. Canvas assignments are due-time-driven
- * (start == end), so without a floor they collapse to a 1-px sliver with no readable
- * text. 28dp leaves room for one line of labelSmall + the 2dp vertical padding.
+ * Floor for an event pill's rendered height. Generic events get a small floor so
+ * tiny-duration items still show readable text; ASSIGNMENT rows are due-time-only
+ * (start == end) and benefit from a full-hour block so the title + course tag have
+ * enough room to read at a glance — assignments dominate calendar attention,
+ * shrinking them to a sliver buries the most actionable item on the day.
  */
 private val MinBlockHeight: Dp = 28.dp
+private val MinAssignmentBlockHeight: Dp = HourHeight
 
 /**
  * Reusable timeline grid for day and week views.
@@ -159,7 +162,12 @@ fun TimelineGrid(
                         val endFraction = endZoned.hour + endZoned.minute / 60f
                         val durationFraction = (endFraction - startFraction).coerceAtLeast(0f)
 
-                        val blockHeight = (HourHeight * durationFraction).coerceAtLeast(MinBlockHeight)
+                        val minHeight = if (event.type == EventType.ASSIGNMENT) {
+                            MinAssignmentBlockHeight
+                        } else {
+                            MinBlockHeight
+                        }
+                        val blockHeight = (HourHeight * durationFraction).coerceAtLeast(minHeight)
                         // Anchor late-day pills (11:59 PM "due" assignments) so their bottom
                         // edge sits flush with the grid bottom rather than spilling off-screen
                         // and getting clipped to a sliver.

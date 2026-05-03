@@ -48,11 +48,10 @@ class DiscoverViewModel @Inject constructor(
     private val _isSignedIn = MutableStateFlow(authRepository.getCurrentUserUid() != null)
     val isSignedIn: StateFlow<Boolean> = _isSignedIn.asStateFlow()
 
-    // SCHEDULE excluded until class schedule import is implemented.
     // CANVAS excluded by default — Discover is for browsing campus-authored events;
     // Canvas assignments belong on Calendar / the future Campus tab, not Discover.
     private val _activeSourceTypes = MutableStateFlow(
-        EventSourceType.entries.toSet() - EventSourceType.SCHEDULE - EventSourceType.CANVAS,
+        EventSourceType.entries.toSet() - EventSourceType.CANVAS,
     )
     val activeSourceTypes: StateFlow<Set<EventSourceType>> = _activeSourceTypes.asStateFlow()
 

@@ -132,7 +132,6 @@ fun MiniMonthCalendar(
  */
 @Composable
 private fun dotColorForSourceType(type: EventSourceType): Color = when (type) {
-    EventSourceType.SCHEDULE -> MaterialTheme.colorScheme.primary
     EventSourceType.CUSTOM -> MaterialTheme.colorScheme.secondary
     EventSourceType.CAMPUS -> MaterialTheme.colorScheme.onSurfaceVariant
     EventSourceType.BOOKMARKED -> MaterialTheme.colorScheme.tertiary
