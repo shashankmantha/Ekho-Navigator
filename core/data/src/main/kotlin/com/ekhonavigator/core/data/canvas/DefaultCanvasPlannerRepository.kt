@@ -2,6 +2,7 @@ package com.ekhonavigator.core.data.canvas
 
 import com.ekhonavigator.core.canvas.model.PlannerItem
 import com.ekhonavigator.core.canvas.network.CanvasApiProvider
+import com.ekhonavigator.core.database.dao.CalendarEventDao
 import com.ekhonavigator.core.database.dao.CanvasPlannerItemDao
 import com.ekhonavigator.core.database.model.CanvasPlannerItemEntity
 import kotlinx.coroutines.flow.Flow
@@ -15,6 +16,7 @@ import javax.inject.Singleton
 internal class DefaultCanvasPlannerRepository @Inject constructor(
     private val apiProvider: CanvasApiProvider,
     private val plannerDao: CanvasPlannerItemDao,
+    private val calendarEventDao: CalendarEventDao,
 ) : CanvasPlannerRepository {
 
     override fun observeItems(start: Instant, end: Instant): Flow<List<PlannerItem>> =
@@ -30,6 +32,15 @@ internal class DefaultCanvasPlannerRepository @Inject constructor(
         val entities = dtos.map { it.toEntity() }
         plannerDao.upsertAll(entities)
         plannerDao.deleteInRangeExcept(start, end, entities.map { it.id })
+
+        val calendarEntities = entities.mapNotNull { it.toCalendarEventOrNull() }
+        calendarEventDao.upsertEvents(calendarEntities)
+        calendarEventDao.deleteByExternalSourceInRangeExcept(
+            sourceType = CANVAS_PLANNER_ITEM_SOURCE,
+            rangeStart = start,
+            rangeEnd = end,
+            keepUids = calendarEntities.map { it.uid },
+        )
     }
 
     companion object {

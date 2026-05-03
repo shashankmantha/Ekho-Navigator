@@ -69,4 +69,19 @@ interface CalendarEventDao {
 
     @Query("UPDATE calendar_events SET isBookmarked = 0 WHERE isBookmarked = 1")
     suspend fun clearAllBookmarks()
+
+    @Query(
+        """
+        DELETE FROM calendar_events
+        WHERE externalSourceType = :sourceType
+          AND startTime >= :rangeStart AND startTime < :rangeEnd
+          AND uid NOT IN (:keepUids)
+        """
+    )
+    suspend fun deleteByExternalSourceInRangeExcept(
+        sourceType: String,
+        rangeStart: Instant,
+        rangeEnd: Instant,
+        keepUids: List<String>,
+    )
 }

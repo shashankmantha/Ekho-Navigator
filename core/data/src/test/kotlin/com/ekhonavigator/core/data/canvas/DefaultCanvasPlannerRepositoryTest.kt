@@ -5,6 +5,8 @@ import com.ekhonavigator.core.canvas.network.dto.PlannableDto
 import com.ekhonavigator.core.canvas.network.dto.PlannerItemDto
 import com.ekhonavigator.core.canvas.network.dto.SubmissionsDto
 import com.ekhonavigator.core.database.model.CanvasPlannerItemEntity
+import com.ekhonavigator.core.model.EventSource
+import com.ekhonavigator.core.model.EventType
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -19,7 +21,8 @@ class DefaultCanvasPlannerRepositoryTest {
     private val api = FakeCanvasApi()
     private val provider = FakeCanvasApiProvider(api = api)
     private val dao = FakeCanvasPlannerItemDao()
-    private val repo = DefaultCanvasPlannerRepository(provider, dao)
+    private val calendarDao = FakeCalendarEventDao()
+    private val repo = DefaultCanvasPlannerRepository(provider, dao, calendarDao)
 
     private val windowStart = Instant.parse("2026-04-01T00:00:00Z")
     private val windowEnd = Instant.parse("2026-05-01T00:00:00Z")
@@ -112,6 +115,50 @@ class DefaultCanvasPlannerRepositoryTest {
         assertEquals(PlannerKind.DISCUSSION, items[2].kind)
         // Unknown plannable types fall back to UNKNOWN — never crash.
         assertEquals(PlannerKind.UNKNOWN, items[3].kind)
+    }
+
+    @Test
+    fun `sync mirrors surfaced plannable kinds into calendar_events with the right EventType`() = runTest {
+        api.plannerItemsToReturn = listOf(
+            // Assignment → ASSIGNMENT row at due-time
+            PlannerItemDto(
+                plannableId = "100",
+                plannableType = "assignment",
+                plannableDate = "2026-04-15T18:59:00Z",
+                htmlUrl = "/courses/1/assignments/100",
+                plannable = PlannableDto(title = "Lab 8", dueAt = "2026-04-15T18:59:00Z"),
+            ),
+            // Canvas calendar_event → EVENT row at plannable_date
+            PlannerItemDto(
+                plannableId = "300",
+                plannableType = "calendar_event",
+                plannableDate = "2026-04-20T15:00:00Z",
+                htmlUrl = "/calendar?event_id=300",
+                plannable = PlannableDto(title = "Office hours"),
+            ),
+            // Announcement → does NOT surface on calendar
+            PlannerItemDto(
+                plannableId = "200",
+                plannableType = "announcement",
+                plannableDate = "2026-04-16T00:00:00Z",
+                htmlUrl = "/courses/1/announcements/200",
+                plannable = PlannableDto(title = "Class canceled"),
+            ),
+        )
+
+        repo.sync(windowStart, windowEnd)
+
+        val mirrored = calendarDao.upserted.associateBy { it.uid }
+        assertEquals(setOf("assignment_100", "calendar_event_300"), mirrored.keys)
+        assertEquals(EventType.ASSIGNMENT, mirrored.getValue("assignment_100").type)
+        assertEquals(EventType.EVENT, mirrored.getValue("calendar_event_300").type)
+        assertTrue(mirrored.values.all { it.source == EventSource.CANVAS })
+
+        val prune = calendarDao.pruneCalls.single()
+        assertEquals(CANVAS_PLANNER_ITEM_SOURCE, prune.sourceType)
+        assertEquals(setOf("assignment_100", "calendar_event_300"), prune.keepUids.toSet())
+        assertEquals(windowStart, prune.rangeStart)
+        assertEquals(windowEnd, prune.rangeEnd)
     }
 
     @Test

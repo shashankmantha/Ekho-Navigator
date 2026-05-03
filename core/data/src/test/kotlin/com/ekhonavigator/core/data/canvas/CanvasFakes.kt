@@ -4,8 +4,10 @@ import com.ekhonavigator.core.canvas.network.CanvasApi
 import com.ekhonavigator.core.canvas.network.CanvasApiProvider
 import com.ekhonavigator.core.canvas.network.dto.CanvasCourseDto
 import com.ekhonavigator.core.canvas.network.dto.PlannerItemDto
+import com.ekhonavigator.core.database.dao.CalendarEventDao
 import com.ekhonavigator.core.database.dao.CanvasCourseDao
 import com.ekhonavigator.core.database.dao.CanvasPlannerItemDao
+import com.ekhonavigator.core.database.model.CalendarEventEntity
 import com.ekhonavigator.core.database.model.CanvasCourseEntity
 import com.ekhonavigator.core.database.model.CanvasPlannerItemEntity
 import kotlinx.coroutines.flow.Flow
@@ -72,6 +74,57 @@ internal class FakeCanvasCourseDao : CanvasCourseDao {
     override suspend fun deleteAll() {
         state.value = emptyList()
     }
+}
+
+/**
+ * Minimal CalendarEventDao stand-in for tests that exercise Canvas-side writers.
+ * Records upserts and prune calls; other methods throw to flag any test that
+ * accidentally exercises a path the fake doesn't support — extend in place
+ * rather than silently no-op.
+ */
+internal class FakeCalendarEventDao : CalendarEventDao {
+    val upserted = mutableListOf<CalendarEventEntity>()
+    val pruneCalls = mutableListOf<PruneCall>()
+
+    data class PruneCall(
+        val sourceType: String,
+        val rangeStart: Instant,
+        val rangeEnd: Instant,
+        val keepUids: List<String>,
+    )
+
+    override suspend fun upsertEvents(events: List<CalendarEventEntity>) {
+        upserted += events
+    }
+
+    override suspend fun deleteByExternalSourceInRangeExcept(
+        sourceType: String,
+        rangeStart: Instant,
+        rangeEnd: Instant,
+        keepUids: List<String>,
+    ) {
+        pruneCalls += PruneCall(sourceType, rangeStart, rangeEnd, keepUids)
+    }
+
+    override fun observeAllEvents(): Flow<List<CalendarEventEntity>> = unsupported()
+    override fun observeBookmarkedEvents(): Flow<List<CalendarEventEntity>> = unsupported()
+    override fun observeEventsByDateRange(rangeStart: Instant, rangeEnd: Instant): Flow<List<CalendarEventEntity>> = unsupported()
+    override fun observeEventById(id: String): Flow<CalendarEventEntity?> = unsupported()
+    override suspend fun getEventById(id: String): CalendarEventEntity? = unsupported()
+    override suspend fun updateBookmark(id: String, bookmarked: Boolean) = unsupported()
+    override suspend fun upsertEvent(event: CalendarEventEntity) = unsupported()
+    override suspend fun deleteICalEventsNotIn(activeUids: List<String>) = unsupported()
+    override suspend fun deleteOldEvents(cutoff: Instant) = unsupported()
+    override fun observeMyEvents(ownerUid: String): Flow<List<CalendarEventEntity>> = unsupported()
+    override fun observeSharedEvents(): Flow<List<CalendarEventEntity>> = unsupported()
+    override suspend fun getPendingSyncEvents(): List<CalendarEventEntity> = unsupported()
+    override suspend fun updatePendingSync(id: String, pending: Boolean) = unsupported()
+    override suspend fun deleteEvent(id: String) = unsupported()
+    override suspend fun deleteAllUserEvents() = unsupported()
+    override suspend fun clearAllBookmarks() = unsupported()
+
+    private fun unsupported(): Nothing =
+        error("FakeCalendarEventDao: extend this fake with the method you need.")
 }
 
 internal class FakeCanvasPlannerItemDao : CanvasPlannerItemDao {
