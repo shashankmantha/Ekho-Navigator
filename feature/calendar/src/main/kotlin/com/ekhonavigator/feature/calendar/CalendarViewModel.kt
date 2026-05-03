@@ -18,6 +18,7 @@ import com.ekhonavigator.core.model.RsvpStatus
 import com.ekhonavigator.core.model.isPast
 import com.ekhonavigator.core.model.matchesCategories
 import com.ekhonavigator.core.model.matchesSourceTypes
+import com.ekhonavigator.feature.calendar.component.DayDot
 import com.ekhonavigator.feature.event.component.CourseFilterOption
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -213,8 +214,23 @@ class CalendarViewModel @Inject constructor(
 
     private val _miniCalendarMonth = MutableStateFlow(YearMonth.now())
 
-    /** Source types per date in the mini-calendar's visible month, for colored dot indicators. */
-    val miniCalendarDaySourceTypes: StateFlow<Map<LocalDate, Set<EventSourceType>>> =
+    /** Course id → palette slot lookup, used by mini-calendar dot derivation. */
+    private val courseSlotsById: StateFlow<Map<String, Int>> = canvasCourseRepository
+        .observeCourses()
+        .map { courses ->
+            CourseColorAssigner.assign(
+                courses.map { CourseColorInput(id = it.id, code = it.code) },
+            )
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    /**
+     * Per-date dot indicators for the mini-calendar. Canvas events with a
+     * known course render as their per-course palette slot; everything else
+     * falls back to source type. Distinct set per day so dense days show one
+     * dot per identity, not one per event.
+     */
+    val miniCalendarDayDots: StateFlow<Map<LocalDate, Set<DayDot>>> =
         _miniCalendarMonth
             .flatMapLatest { month ->
                 val zone = ZoneId.systemDefault()
@@ -226,12 +242,33 @@ class CalendarViewModel @Inject constructor(
                     _selectedCategories,
                     _selectedCourseIds,
                     eventIdToCourseId,
-                ) { events, activeTypes, categories, courseIds, eventCourseMap ->
+                    courseSlotsById,
+                ) { args ->
+                    @Suppress("UNCHECKED_CAST")
+                    val events = args[0] as List<CalendarEvent>
+                    @Suppress("UNCHECKED_CAST")
+                    val activeTypes = args[1] as Set<EventSourceType>
+                    @Suppress("UNCHECKED_CAST")
+                    val categories = args[2] as Set<EventCategory>
+                    @Suppress("UNCHECKED_CAST")
+                    val courseIds = args[3] as Set<String>
+                    @Suppress("UNCHECKED_CAST")
+                    val eventCourseMap = args[4] as Map<String, String>
+                    @Suppress("UNCHECKED_CAST")
+                    val slotsByCourseId = args[5] as Map<String, Int>
+
                     events
                         .applyVisibilityFilters(activeTypes, categories, courseIds, eventCourseMap)
                         .groupBy { it.startTime.atZone(zone).toLocalDate() }
                         .mapValues { (_, dayEvents) ->
-                            dayEvents.map { it.toSourceType() }.toSet()
+                            dayEvents.map { event ->
+                                val slot = eventCourseMap[event.id]?.let { slotsByCourseId[it] }
+                                if (event.source == EventSource.CANVAS && slot != null) {
+                                    DayDot.CourseSlot(slot)
+                                } else {
+                                    DayDot.Source(event.toSourceType())
+                                }
+                            }.toSet()
                         }
                 }
             }

@@ -55,7 +55,7 @@ internal fun WeekTab(
     snapToTodayTrigger: Int = 0,
 ) {
     val eventsForWeek by viewModel.eventsForWeek.collectAsStateWithLifecycle()
-    val miniCalendarDaySourceTypes by viewModel.miniCalendarDaySourceTypes.collectAsStateWithLifecycle()
+    val miniCalendarDayDots by viewModel.miniCalendarDayDots.collectAsStateWithLifecycle()
 
     val today = remember { LocalDate.now() }
     val todayWeekStart = remember { weekStartFor(today) }
@@ -138,7 +138,7 @@ internal fun WeekTab(
         ) {
             MiniMonthCalendar(
                 selectedDate = currentWeekStart,
-                daySourceTypes = miniCalendarDaySourceTypes,
+                dayDots = miniCalendarDayDots,
                 onDayClick = { date ->
                     viewModel.selectWeek(date)
                     viewModel.setMiniCalendarMonth(java.time.YearMonth.from(date))

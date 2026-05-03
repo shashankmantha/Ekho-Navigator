@@ -134,7 +134,7 @@ fun DayTimelineContent(
 ) {
     val eventsForDay by viewModel.eventsForSelectedDate.collectAsStateWithLifecycle()
     val selectedDate by viewModel.selectedDate.collectAsStateWithLifecycle()
-    val miniCalendarDaySourceTypes by viewModel.miniCalendarDaySourceTypes.collectAsStateWithLifecycle()
+    val miniCalendarDayDots by viewModel.miniCalendarDayDots.collectAsStateWithLifecycle()
 
     val today = remember { LocalDate.now() }
     val dayFormatter = remember { DateTimeFormatter.ofPattern("EEEE, MMMM d") }
@@ -214,7 +214,7 @@ fun DayTimelineContent(
         ) {
             MiniMonthCalendar(
                 selectedDate = selectedDate,
-                daySourceTypes = miniCalendarDaySourceTypes,
+                dayDots = miniCalendarDayDots,
                 onDayClick = { date ->
                     val page = DAY_PAGE_RANGE + (date.toEpochDay() - today.toEpochDay()).toInt()
                     scope.launch { pagerState.animateScrollToPage(page) }
