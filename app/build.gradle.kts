@@ -31,9 +31,12 @@ android {
             localProperties.load(localPropertiesFile.inputStream())
         }
         val mapsApiKey = localProperties.getProperty("MAPS_API_KEY") ?: ""
+        val routesApiKey = localProperties.getProperty("ROUTES_API_KEY") ?: ""
 
         // This makes the key available to AndroidManifest.xml as ${MAPS_API_KEY}
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+
+        buildConfigField("String", "ROUTES_API_KEY", "\"$routesApiKey\"")
     }
 
     buildTypes {
@@ -52,6 +55,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
