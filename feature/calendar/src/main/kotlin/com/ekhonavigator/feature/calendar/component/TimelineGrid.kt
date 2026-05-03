@@ -162,16 +162,19 @@ fun TimelineGrid(
                         val endFraction = endZoned.hour + endZoned.minute / 60f
                         val durationFraction = (endFraction - startFraction).coerceAtLeast(0f)
 
-                        val minHeight = if (event.type == EventType.ASSIGNMENT) {
-                            MinAssignmentBlockHeight
-                        } else {
-                            MinBlockHeight
-                        }
+                        val isAssignment = event.type == EventType.ASSIGNMENT
+                        val minHeight = if (isAssignment) MinAssignmentBlockHeight else MinBlockHeight
                         val blockHeight = (HourHeight * durationFraction).coerceAtLeast(minHeight)
-                        // Anchor late-day pills (11:59 PM "due" assignments) so their bottom
-                        // edge sits flush with the grid bottom rather than spilling off-screen
-                        // and getting clipped to a sliver.
-                        val rawY = HourHeight * startFraction
+                        // Assignments are due-time-only: anchor the pill's BOTTOM edge at the
+                        // due time so it reads as "ends when due" rather than "starts when due"
+                        // (a 10 AM-due assignment showing 10–11 AM looks like it runs through
+                        // 11). For early-morning dues, clamp the top to 0 so we don't bleed off
+                        // the grid; for late-day dues, the same clamp keeps it on-screen.
+                        val rawY = if (isAssignment) {
+                            (HourHeight * startFraction - blockHeight).coerceAtLeast(0.dp)
+                        } else {
+                            HourHeight * startFraction
+                        }
                         val maxY = (totalHeight - blockHeight).coerceAtLeast(0.dp)
                         val yOffset = rawY.coerceAtMost(maxY)
 
