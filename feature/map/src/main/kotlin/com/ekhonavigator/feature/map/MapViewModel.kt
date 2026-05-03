@@ -9,8 +9,11 @@ import androidx.lifecycle.viewModelScope
 import com.ekhonavigator.core.data.auth.AuthRepository
 import com.ekhonavigator.core.data.markers.MarkerRepository
 import com.ekhonavigator.core.data.markers.UserDroppedMarker
+import com.ekhonavigator.core.data.social.SocialRepository
 import com.google.android.gms.maps.model.LatLng
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -18,22 +21,20 @@ import javax.inject.Inject
 class MapViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val markerRepository: MarkerRepository,
-    private val socialRepository: com.ekhonavigator.core.data.social.SocialRepository
+    private val socialRepository: SocialRepository,
 ) : ViewModel() {
 
     val droppedMarkers = mutableStateListOf<UserMarker>()
-
-    val friends = androidx.compose.runtime.mutableStateListOf<FriendInfo>()
-
+    val friends = mutableStateListOf<FriendInfo>()
 
     var searchTextForFriendPicker by mutableStateOf("")
         private set
 
-    private var activeFriendsListener: kotlinx.coroutines.Job? = null
+    private var activeFriendsListener: Job? = null
+    private var activeMarkersListener: Job? = null
 
-    fun updateSearchTextForFriendPicker(newText: String) {
-        searchTextForFriendPicker = newText
-    }
+    private val currentUserId: String?
+        get() = authRepository.getCurrentUserUid()
 
     val friendsListMatchingSearchQuery: List<FriendInfo>
         get() = if (searchTextForFriendPicker.isBlank()) {
@@ -44,43 +45,80 @@ class MapViewModel @Inject constructor(
             }
         }
 
-    private val currentUserId: String?
-        get() = authRepository.getCurrentUserUid()
-
     init {
         viewModelScope.launch {
             authRepository.userFlow().collect { userId ->
                 if (userId != null) {
-                    loadUserMarkers()
-                    loadFriends(userId) // Fetch friends when user is logged in
+                    startUserListeners(userId)
                 } else {
-                    droppedMarkers.clear()
-                    friends.clear()
+                    stopUserListeners()
+                    clearUserData()
                 }
             }
         }
+    }
+
+    fun updateSearchTextForFriendPicker(newText: String) {
+        searchTextForFriendPicker = newText
+    }
+
+    private fun startUserListeners(userId: String) {
+        loadUserMarkers(userId)
+        loadFriends(userId)
+    }
+
+    private fun stopUserListeners() {
+        activeFriendsListener?.cancel()
+        activeFriendsListener = null
+
+        activeMarkersListener?.cancel()
+        activeMarkersListener = null
+    }
+
+    private fun clearUserData() {
+        droppedMarkers.clear()
+        friends.clear()
+        searchTextForFriendPicker = ""
     }
 
     private fun loadFriends(userId: String) {
         activeFriendsListener?.cancel()
 
         activeFriendsListener = viewModelScope.launch {
-            socialRepository.observeFriends(userId).collect { latestFriendsFromFirebase ->
-                friends.clear()
-                friends.addAll(latestFriendsFromFirebase.map { friend ->
-                    FriendInfo(friend.uid, friend.displayName)
-                })
-            }
+            socialRepository.observeFriends(userId)
+                .catch {
+                    friends.clear()
+                }
+                .collect { latestFriendsFromFirebase ->
+                    friends.clear()
+                    friends.addAll(
+                        latestFriendsFromFirebase.map { friend ->
+                            FriendInfo(
+                                id = friend.uid,
+                                name = friend.displayName,
+                            )
+                        }
+                    )
+                }
         }
     }
 
-    private fun loadUserMarkers() {
-        val userId = currentUserId ?: return
-        viewModelScope.launch {
-            markerRepository.observeUserMarkers(userId).collect { remoteMarkers ->
-                droppedMarkers.clear()
-                droppedMarkers.addAll(remoteMarkers.map { it.toUserMarker() })
-            }
+    private fun loadUserMarkers(userId: String) {
+        activeMarkersListener?.cancel()
+
+        activeMarkersListener = viewModelScope.launch {
+            markerRepository.observeUserMarkers(userId)
+                .catch {
+                    droppedMarkers.clear()
+                }
+                .collect { remoteMarkers ->
+                    droppedMarkers.clear()
+                    droppedMarkers.addAll(
+                        remoteMarkers.map { marker ->
+                            marker.toUserMarker()
+                        }
+                    )
+                }
         }
     }
 
@@ -92,27 +130,35 @@ class MapViewModel @Inject constructor(
             id = newMarkerId,
             latitude = newMarkerLocation.latitude,
             longitude = newMarkerLocation.longitude,
-            comment = ""
+            comment = "",
         )
 
         droppedMarkers.add(newDroppedMarker.toUserMarker())
 
         viewModelScope.launch {
-            markerRepository.saveMarker(userId, newDroppedMarker)
+            runCatching {
+                markerRepository.saveMarker(userId, newDroppedMarker)
+            }
         }
     }
 
     fun updateMarkerLabel(markerIdToUpdate: Long, newMarkerCommentText: String) {
         val userId = currentUserId ?: return
-        val markerIndexToUpdate =
-            droppedMarkers.indexOfFirst { currentMarker -> currentMarker.id == markerIdToUpdate }
 
-        if (markerIndexToUpdate != -1) {
-            val updatedMarker =
-                droppedMarkers[markerIndexToUpdate].copy(markerLabelComment = newMarkerCommentText)
-            droppedMarkers[markerIndexToUpdate] = updatedMarker
+        val markerIndexToUpdate = droppedMarkers.indexOfFirst { currentMarker ->
+            currentMarker.id == markerIdToUpdate
+        }
 
-            viewModelScope.launch {
+        if (markerIndexToUpdate == -1) return
+
+        val updatedMarker = droppedMarkers[markerIndexToUpdate].copy(
+            markerLabelComment = newMarkerCommentText,
+        )
+
+        droppedMarkers[markerIndexToUpdate] = updatedMarker
+
+        viewModelScope.launch {
+            runCatching {
                 markerRepository.saveMarker(userId, updatedMarker.toRemoteMarker())
             }
         }
@@ -124,20 +170,27 @@ class MapViewModel @Inject constructor(
         droppedMarkers.remove(markerForRemoval)
 
         viewModelScope.launch {
-            markerRepository.deleteMarker(userId, markerForRemoval.id.toString())
+            runCatching {
+                markerRepository.deleteMarker(userId, markerForRemoval.id.toString())
+            }
         }
+    }
+
+    override fun onCleared() {
+        stopUserListeners()
+        super.onCleared()
     }
 
     private fun UserDroppedMarker.toUserMarker() = UserMarker(
         id = id.toLongOrNull() ?: 0L,
         droppedMarkerLocation = LatLng(latitude, longitude),
-        markerLabelComment = comment
+        markerLabelComment = comment,
     )
 
     private fun UserMarker.toRemoteMarker() = UserDroppedMarker(
         id = id.toString(),
         latitude = droppedMarkerLocation.latitude,
         longitude = droppedMarkerLocation.longitude,
-        comment = markerLabelComment
+        comment = markerLabelComment,
     )
 }

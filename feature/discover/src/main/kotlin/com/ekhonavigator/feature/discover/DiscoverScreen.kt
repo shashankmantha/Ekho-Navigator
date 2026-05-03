@@ -4,7 +4,6 @@ package com.ekhonavigator.feature.discover
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -74,10 +73,12 @@ fun DiscoverScreen(
 
     var showFilterSheet by remember { mutableStateOf(false) }
     val filterSheetState = rememberModalBottomSheetState()
+
     val activeSourceTypes by viewModel.activeSourceTypes.collectAsStateWithLifecycle()
     val selectedCategories by viewModel.selectedCategories.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val focusedPlace by viewModel.focusedPlace.collectAsStateWithLifecycle()
+    val isSignedIn by viewModel.isSignedIn.collectAsStateWithLifecycle()
 
     val onDayHeaderClick: (Long) -> Unit = { epochDay ->
         onDayClick(epochDay, activeSourceTypes, selectedCategories)
@@ -88,7 +89,7 @@ fun DiscoverScreen(
     }
 
     Scaffold(
-        modifier,
+        modifier = modifier,
         floatingActionButton = {
             if (selectedTab == DiscoverTab.EVENTS) {
                 Column(
@@ -97,7 +98,9 @@ fun DiscoverScreen(
                 ) {
                     SmallFloatingActionButton(
                         onClick = {
-                            scope.launch { listState.animateScrollToItem(0) }
+                            scope.launch {
+                                listState.animateScrollToItem(0)
+                            }
                         },
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
                         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -109,7 +112,7 @@ fun DiscoverScreen(
                         )
                     }
 
-                    if (viewModel.isSignedIn) {
+                    if (isSignedIn) {
                         FloatingActionButton(
                             onClick = { onCreateEventClick(null) },
                             containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -154,7 +157,9 @@ fun DiscoverScreen(
                     listState = listState,
                 )
 
-                DiscoverTab.STUDY -> StudyScreen(onViewLibraryOnMap = onViewLibraryOnMap)
+                DiscoverTab.STUDY -> StudyScreen(
+                    onViewLibraryOnMap = onViewLibraryOnMap,
+                )
             }
         }
     }
@@ -178,7 +183,7 @@ fun DiscoverScreen(
 
 enum class DiscoverTab(val title: String) {
     STUDY("Study"),
-    EVENTS("Events")
+    EVENTS("Events"),
 }
 
 @Composable
@@ -200,7 +205,7 @@ private fun DiscoverTabStrip(
                     index = index,
                     count = DiscoverTab.entries.size,
                 ),
-                icon = { },
+                icon = {},
                 colors = SegmentedButtonDefaults.colors(
                     activeContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                     activeContentColor = MaterialTheme.colorScheme.onSurface,
@@ -208,7 +213,10 @@ private fun DiscoverTabStrip(
                     inactiveContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 ),
                 label = {
-                    Text(tab.title, style = MaterialTheme.typography.labelMedium)
+                    Text(
+                        text = tab.title,
+                        style = MaterialTheme.typography.labelMedium,
+                    )
                 },
             )
         }
@@ -250,6 +258,7 @@ private fun EventsTabContent(
 
                 val allSourcesActive = activeSourceTypes.size == EventSourceType.entries.size
                 val hasActiveFilters = selectedCategories.isNotEmpty() || !allSourcesActive
+
                 IconButton(
                     onClick = onOpenFilters,
                     modifier = Modifier.size(48.dp),
@@ -324,8 +333,14 @@ private fun FocusedPlaceChip(
 
 @Composable
 private fun LazyListState.isScrollingUp(): Boolean {
-    var previousIndex by remember(this) { mutableIntStateOf(firstVisibleItemIndex) }
-    var previousScrollOffset by remember(this) { mutableIntStateOf(firstVisibleItemScrollOffset) }
+    var previousIndex by remember(this) {
+        mutableIntStateOf(firstVisibleItemIndex)
+    }
+
+    var previousScrollOffset by remember(this) {
+        mutableIntStateOf(firstVisibleItemScrollOffset)
+    }
+
     return remember(this) {
         derivedStateOf {
             if (previousIndex != firstVisibleItemIndex) {
@@ -339,4 +354,3 @@ private fun LazyListState.isScrollingUp(): Boolean {
         }
     }.value
 }
-
