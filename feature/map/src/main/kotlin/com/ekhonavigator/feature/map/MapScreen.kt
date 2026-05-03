@@ -25,6 +25,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -54,6 +57,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ekhonavigator.core.data.route.TravelMode
 import com.ekhonavigator.core.model.SharedLocation
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -159,6 +164,10 @@ fun MapScreen(
     viewModel: MapViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+
+    val activeRoutePoints by viewModel.activeRoutePoints.collectAsStateWithLifecycle()
+    val isRouteLoading by viewModel.isRouteLoading.collectAsStateWithLifecycle()
+
     val csuciCenter = LatLng(34.162134342787105, -119.04400892418893)
 
     val focusedPlace = remember(focusPlaceId) {
@@ -198,6 +207,7 @@ fun MapScreen(
     }
 
     var selectedCampusPlace by remember { mutableStateOf<CampusPlace?>(null) }
+    var isAnyMarkerInfoShowing by remember { mutableStateOf(false) }
 
     // Permission state
     var hasLocationPermission by remember {
@@ -207,6 +217,30 @@ fun MapScreen(
                 Manifest.permission.ACCESS_FINE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED
         )
+    }
+
+    val fusedLocationClientForRouting =
+        remember { LocationServices.getFusedLocationProviderClient(context) }
+    var userCurrentLocationForRouting by remember { mutableStateOf<LatLng?>(null) }
+
+    LaunchedEffect(hasLocationPermission) {
+        if (hasLocationPermission) {
+            val locationRequest = com.google.android.gms.location.LocationRequest.Builder(
+                com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, 5000
+            ).build()
+
+            val locationCallback = object : com.google.android.gms.location.LocationCallback() {
+                override fun onLocationResult(result: com.google.android.gms.location.LocationResult) {
+                    result.lastLocation?.let {
+                        userCurrentLocationForRouting = LatLng(it.latitude, it.longitude)
+                    }
+                }
+            }
+
+            fusedLocationClientForRouting.requestLocationUpdates(
+                locationRequest, locationCallback, android.os.Looper.getMainLooper()
+            )
+        }
     }
 
     var requestLocationPermission by remember { mutableStateOf(false) }
@@ -290,11 +324,18 @@ fun MapScreen(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
             contentPadding = mapPaddingForInfoCards,
-            properties = MapProperties(isMyLocationEnabled = hasLocationPermission),
-            uiSettings = MapUiSettings(
-                myLocationButtonEnabled = false, // hide default to use custom square one
-                zoomControlsEnabled = true
+            properties = MapProperties(
+                isMyLocationEnabled = hasLocationPermission &&
+                        !isAnyMarkerInfoShowing &&
+                        selectedCampusPlace == null &&
+                        selectedDroppedMarkerForOptions == null
             ),
+            uiSettings = MapUiSettings(
+                myLocationButtonEnabled = false,
+                zoomControlsEnabled = true,
+                mapToolbarEnabled = false
+            ),
+            onMapClick = { isAnyMarkerInfoShowing = false },
             onMapLongClick = { latLng ->
                 viewModel.addMarker(latLng)
             },
@@ -319,6 +360,10 @@ fun MapScreen(
                         }
                         MarkerInfoWindowContent(
                             state = markerState,
+                            onClick = {
+                                isAnyMarkerInfoShowing = true
+                                false
+                            },
                             onInfoWindowClick = {
                                 selectedCampusPlace = place
                             }
@@ -371,6 +416,13 @@ fun MapScreen(
                     }
                 }
             }
+            if (activeRoutePoints.isNotEmpty()) {
+                com.google.maps.android.compose.Polyline(
+                    points = activeRoutePoints,
+                    color = androidx.compose.ui.graphics.Color(0xFF2196F3),
+                    width = 12f
+                )
+            }
         }
         // --- Custom Center Button ---
         if (hasLocationPermission) {
@@ -380,8 +432,23 @@ fun MapScreen(
                 csuciCenter = csuciCenter,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(end = 12.dp, bottom = 115.dp) // Sits exactly above zoom controls
+                    .padding(end = 11.dp, bottom = 100.dp) // Sits exactly above zoom controls
             )
+        }
+
+        if (activeRoutePoints.isNotEmpty()) {
+            androidx.compose.material3.SmallFloatingActionButton(
+                onClick = { viewModel.clearActiveRoute() },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 8.dp, bottom = 140.dp), // Sits exactly above target button
+                containerColor = MaterialTheme.colorScheme.errorContainer
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Clear Route"
+                )
+            }
         }
 
         // Search & Filter Overlay
@@ -391,6 +458,14 @@ fun MapScreen(
                 .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            if (isRouteLoading) {
+                androidx.compose.material3.LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 12.dp, end = 12.dp, bottom = 8.dp),
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
 
             // Search Card UI
             Card(
@@ -486,20 +561,25 @@ fun MapScreen(
             }
         }
 
-        // --- DIALOGS ---
         if (selectedDroppedMarkerForOptions != null) {
             val selectedMarker = selectedDroppedMarkerForOptions!!
             AlertDialog(
                 onDismissRequest = { selectedDroppedMarkerForOptions = null },
                 title = { Text("Marker options") },
                 text = {
-                    Column {
-                        Text(text = selectedMarker.markerLabelComment.ifBlank { "Details: (none)" })
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = selectedMarker.markerLabelComment.ifBlank { "Details: (none)" },
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+
                         TextButton(onClick = {
                             selectedDroppedMarkerForOptions = null
                             markerBeingEdited = selectedMarker
                             editLabelText = selectedMarker.markerLabelComment
                         }) { Text("Edit label") }
+
                         TextButton(onClick = {
                             selectedDroppedMarkerForOptions = null
                             markerPendingRemoval = selectedMarker
@@ -509,6 +589,40 @@ fun MapScreen(
                             selectedDroppedMarkerForOptions = null
                             showFriendPickerForMarker = selectedMarker
                         }) { Text("Send to Friend") }
+
+                        // Navigation Row at the bottom
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Start,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(onClick = {
+                                selectedDroppedMarkerForOptions = null
+                                viewModel.getDirectionsToDestination(
+                                    selectedMarker.droppedMarkerLocation,
+                                    TravelMode.WALK,
+                                    userCurrentLocationForRouting
+                                )
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Default.DirectionsWalk,
+                                    contentDescription = "Walk"
+                                )
+                            }
+                            IconButton(onClick = {
+                                selectedDroppedMarkerForOptions = null
+                                viewModel.getDirectionsToDestination(
+                                    selectedMarker.droppedMarkerLocation,
+                                    TravelMode.DRIVE,
+                                    userCurrentLocationForRouting
+                                )
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Default.DirectionsCar,
+                                    contentDescription = "Drive"
+                                )
+                            }
+                        }
                     }
                 },
                 confirmButton = {
@@ -594,6 +708,22 @@ fun MapScreen(
                 onViewLocationEvents = {
                     selectedCampusPlace = null
                     onOpenDiscoverForPlace(place.id)
+                },
+                onGetWalkingDirections = {
+                    selectedCampusPlace = null
+                    viewModel.getDirectionsToDestination(
+                        place.position,
+                        TravelMode.WALK,
+                        userCurrentLocationForRouting
+                    )
+                },
+                onGetDrivingDirections = {
+                    selectedCampusPlace = null
+                    viewModel.getDirectionsToDestination(
+                        place.position,
+                        TravelMode.DRIVE,
+                        userCurrentLocationForRouting
+                    )
                 }
             )
         }

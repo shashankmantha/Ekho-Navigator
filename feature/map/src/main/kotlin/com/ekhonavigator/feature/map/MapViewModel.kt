@@ -9,8 +9,12 @@ import androidx.lifecycle.viewModelScope
 import com.ekhonavigator.core.data.auth.AuthRepository
 import com.ekhonavigator.core.data.markers.MarkerRepository
 import com.ekhonavigator.core.data.markers.UserDroppedMarker
+import com.ekhonavigator.core.data.route.RouteRepository
+import com.ekhonavigator.core.data.route.TravelMode
 import com.google.android.gms.maps.model.LatLng
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -18,10 +22,17 @@ import javax.inject.Inject
 class MapViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val markerRepository: MarkerRepository,
-    private val socialRepository: com.ekhonavigator.core.data.social.SocialRepository
+    private val socialRepository: com.ekhonavigator.core.data.social.SocialRepository,
+    private val routeRepository: RouteRepository,
 ) : ViewModel() {
 
     val droppedMarkers = mutableStateListOf<UserMarker>()
+
+    private val _activeRoutePoints = MutableStateFlow<List<LatLng>>(emptyList())
+    val activeRoutePoints = _activeRoutePoints.asStateFlow()
+
+    private val _isRouteLoading = MutableStateFlow(false)
+    val isRouteLoading = _isRouteLoading.asStateFlow()
 
     val friends = androidx.compose.runtime.mutableStateListOf<FriendInfo>()
 
@@ -140,4 +151,35 @@ class MapViewModel @Inject constructor(
         longitude = droppedMarkerLocation.longitude,
         comment = markerLabelComment
     )
+
+    fun getDirectionsToDestination(
+        destination: LatLng,
+        travelMode: TravelMode,
+        userLocation: LatLng?
+    ) {
+        viewModelScope.launch {
+            _isRouteLoading.value = true
+
+            // Use user's real location if available, otherwise fallback to CSUCI center
+            val origin = userLocation ?: LatLng(34.162134342787105, -119.04400892418893)
+
+            val routePath = routeRepository.fetchRouteBetweenPoints(
+                startLocation = origin,
+                endLocation = destination,
+                travelMode = travelMode
+            )
+
+            if (routePath.isNotEmpty()) {
+                _activeRoutePoints.value = routePath
+            } else {
+                _activeRoutePoints.value = listOf(origin, destination) // Fallback
+            }
+
+            _isRouteLoading.value = false
+        }
+    }
+
+    fun clearActiveRoute() {
+        _activeRoutePoints.value = emptyList()
+    }
 }

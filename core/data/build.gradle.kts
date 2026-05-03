@@ -1,7 +1,10 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -10,11 +13,23 @@ android {
 
     defaultConfig {
         minSdk = 29
+
+        val localProperties = Properties()
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            localProperties.load(localPropertiesFile.inputStream())
+        }
+        val routesApiKey = localProperties.getProperty("ROUTES_API_KEY") ?: ""
+        buildConfigField("String", "ROUTES_API_KEY", "\"$routesApiKey\"")
     }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 }
 
@@ -33,6 +48,10 @@ dependencies {
     implementation(projects.core.model)
     implementation(projects.core.database)
     implementation(projects.core.network)
+
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.play.services.maps)
+    implementation(libs.okhttp)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.work.runtime.ktx)
