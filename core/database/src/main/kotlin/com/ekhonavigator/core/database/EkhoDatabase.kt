@@ -8,16 +8,19 @@ import com.ekhonavigator.core.database.converter.EventSourceConverter
 import com.ekhonavigator.core.database.converter.InstantConverter
 import com.ekhonavigator.core.database.converter.RsvpStatusConverter
 import com.ekhonavigator.core.database.dao.CalendarEventDao
+import com.ekhonavigator.core.database.dao.CanvasCourseDao
 import com.ekhonavigator.core.database.dao.EventAttendeeDao
 import com.ekhonavigator.core.database.model.CalendarEventEntity
+import com.ekhonavigator.core.database.model.CanvasCourseEntity
 import com.ekhonavigator.core.database.model.EventAttendeeEntity
 
 @Database(
     entities = [
         CalendarEventEntity::class,
         EventAttendeeEntity::class,
+        CanvasCourseEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = false,
 )
 @TypeConverters(
@@ -29,4 +32,5 @@ import com.ekhonavigator.core.database.model.EventAttendeeEntity
 abstract class EkhoDatabase : RoomDatabase() {
     abstract fun calendarEventDao(): CalendarEventDao
     abstract fun eventAttendeeDao(): EventAttendeeDao
+    abstract fun canvasCourseDao(): CanvasCourseDao
 }

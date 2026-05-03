@@ -12,4 +12,9 @@ internal abstract class CanvasBridgeModule {
 
     @Binds
     internal abstract fun bindCanvasIdentitySource(impl: FirebaseCanvasIdentitySource): CanvasIdentitySource
+
+    @Binds
+    internal abstract fun bindCanvasCourseRepository(
+        impl: DefaultCanvasCourseRepository,
+    ): CanvasCourseRepository
 }
