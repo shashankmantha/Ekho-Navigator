@@ -9,8 +9,10 @@ import com.ekhonavigator.core.canvas.auth.DefaultCanvasAuthValidator
 import com.ekhonavigator.core.canvas.auth.DefaultCanvasInstitutionStore
 import com.ekhonavigator.core.canvas.auth.DefaultCanvasTokenStore
 import com.ekhonavigator.core.canvas.network.BearerInterceptor
+import com.ekhonavigator.core.canvas.network.CanvasApiProvider
 import com.ekhonavigator.core.canvas.network.CanvasHeadersInterceptor
 import com.ekhonavigator.core.canvas.network.CanvasOkHttp
+import com.ekhonavigator.core.canvas.network.DefaultCanvasApiProvider
 import com.ekhonavigator.core.canvas.network.RateLimitObserverInterceptor
 import com.ekhonavigator.core.canvas.network.canvasJson
 import dagger.Binds
@@ -38,6 +40,9 @@ internal abstract class CanvasModule {
 
     @Binds
     internal abstract fun bindCanvasAuthValidator(impl: DefaultCanvasAuthValidator): CanvasAuthValidator
+
+    @Binds
+    internal abstract fun bindCanvasApiProvider(impl: DefaultCanvasApiProvider): CanvasApiProvider
 
     companion object {
 

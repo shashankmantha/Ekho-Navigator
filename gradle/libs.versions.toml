@@ -33,6 +33,7 @@ workManager = "2.11.1"
 
 # Networking
 okhttp = "5.3.2"
+retrofit = "2.11.0"
 
 # Encrypted Storage
 androidxSecurityCrypto = "1.1.0-alpha06"
@@ -112,6 +113,10 @@ okhttp-mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver",
 
 # Encrypted Storage
 androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "androidxSecurityCrypto" }
+
+# Retrofit
+retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
+retrofit-converter-kotlinx-serialization = { group = "com.squareup.retrofit2", name = "converter-kotlinx-serialization", version.ref = "retrofit" }
 
 # iCal4j
 ical4j = { group = "org.mnode.ical4j", name = "ical4j", version.ref = "ical4j" }
