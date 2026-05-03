@@ -156,6 +156,7 @@ fun EkhoTheme(
         MaterialTheme(
             colorScheme = colorScheme,
             typography = EkhoTypography,
+            shapes = EkhoShapes,
             content = content,
         )
     }

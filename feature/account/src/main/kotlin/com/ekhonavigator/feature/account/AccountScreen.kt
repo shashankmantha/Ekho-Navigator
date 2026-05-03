@@ -131,7 +131,7 @@ fun AccountScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 24.dp),
-                                shape = RoundedCornerShape(24.dp),
+                                shape = RoundedCornerShape(28.dp),
                                 colors = CardDefaults.cardColors(
                                     containerColor = MaterialTheme.colorScheme.surface,
                                 ),
@@ -186,7 +186,7 @@ fun AccountScreen(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .height(52.dp),
-                                        shape = RoundedCornerShape(14.dp),
+                                        shape = RoundedCornerShape(16.dp),
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = MaterialTheme.colorScheme.primary,
                                         ),

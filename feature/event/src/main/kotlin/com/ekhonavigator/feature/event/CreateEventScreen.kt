@@ -388,7 +388,7 @@ private fun CategoryDropdown(
 private fun PastDateWarning() {
     Surface(
         color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f),
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(12.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(

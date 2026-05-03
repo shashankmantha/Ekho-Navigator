@@ -84,13 +84,13 @@ fun DayContent(
             .fillMaxWidth()
             .height(DayCellHeight)
             .padding(1.dp)
-            .clip(RoundedCornerShape(6.dp))
+            .clip(RoundedCornerShape(4.dp))
             .background(cellColor)
             .drawBehind {
                 if (isSelected && !(isToday && isCurrentMonth)) {
                     drawRoundRect(
                         color = selectedBg.copy(alpha = 0.5f),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(6.dp.toPx()),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx()),
                     )
                 }
             }

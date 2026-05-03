@@ -136,7 +136,7 @@ fun InvitesScreen(
                         Button(
                             onClick = { viewModel.rsvp(event.id, RsvpStatus.GOING) },
                             modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp),
+                            shape = RoundedCornerShape(12.dp),
                         ) {
                             Icon(EkhoIcons.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.size(6.dp))
@@ -147,7 +147,7 @@ fun InvitesScreen(
                         OutlinedButton(
                             onClick = { viewModel.rsvp(event.id, RsvpStatus.NOT_GOING) },
                             modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp),
+                            shape = RoundedCornerShape(12.dp),
                         ) {
                             Icon(EkhoIcons.Close, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.size(6.dp))
@@ -175,7 +175,7 @@ fun InvitesScreen(
                             Button(
                                 onClick = { viewModel.rsvp(event.id, RsvpStatus.GOING) },
                                 modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(10.dp),
+                                shape = RoundedCornerShape(12.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                                     contentColor = MaterialTheme.colorScheme.onSurface,
@@ -237,7 +237,7 @@ private fun CategoryHeader(
 private fun PastBadge() {
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
-        shape = RoundedCornerShape(6.dp),
+        shape = RoundedCornerShape(4.dp),
     ) {
         Text(
             text = "PAST",
@@ -354,7 +354,7 @@ private fun FriendRequestRow(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp)),
+            .clip(RoundedCornerShape(16.dp)),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         tonalElevation = 1.dp,
     ) {
@@ -405,7 +405,7 @@ private fun FriendRequestRow(
                 Button(
                     onClick = onAccept,
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(12.dp),
                 ) {
                     Icon(EkhoIcons.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.size(6.dp))
@@ -414,7 +414,7 @@ private fun FriendRequestRow(
                 OutlinedButton(
                     onClick = onDeny,
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(12.dp),
                 ) {
                     Icon(EkhoIcons.Close, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.size(6.dp))
@@ -440,7 +440,7 @@ private fun InviteRow(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onClick),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         tonalElevation = 1.dp,

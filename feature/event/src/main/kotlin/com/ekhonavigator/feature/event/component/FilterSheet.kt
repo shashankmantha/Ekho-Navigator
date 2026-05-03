@@ -204,7 +204,7 @@ fun FilterSheetContent(
                         )
                     },
                     modifier = Modifier.height(32.dp),
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(12.dp),
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = colors.primaryContainer,
                         selectedLabelColor = colors.onPrimaryContainer,
