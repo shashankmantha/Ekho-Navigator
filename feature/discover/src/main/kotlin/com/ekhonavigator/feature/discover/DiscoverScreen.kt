@@ -76,6 +76,8 @@ fun DiscoverScreen(
 
     val activeSourceTypes by viewModel.activeSourceTypes.collectAsStateWithLifecycle()
     val selectedCategories by viewModel.selectedCategories.collectAsStateWithLifecycle()
+    val availableCourses by viewModel.availableCourses.collectAsStateWithLifecycle()
+    val selectedCourseIds by viewModel.selectedCourseIds.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val focusedPlace by viewModel.focusedPlace.collectAsStateWithLifecycle()
     val isSignedIn by viewModel.isSignedIn.collectAsStateWithLifecycle()
@@ -176,6 +178,10 @@ fun DiscoverScreen(
                 onToggleSourceType = viewModel::toggleSourceType,
                 onToggleCategory = viewModel::toggleCategory,
                 onClearCategories = viewModel::clearCategories,
+                courses = availableCourses,
+                selectedCourseIds = selectedCourseIds,
+                onToggleCourse = viewModel::toggleCourse,
+                onClearCourses = viewModel::clearCourses,
             )
         }
     }

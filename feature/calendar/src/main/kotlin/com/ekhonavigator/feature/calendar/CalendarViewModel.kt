@@ -3,17 +3,22 @@ package com.ekhonavigator.feature.calendar
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ekhonavigator.core.data.auth.AuthRepository
+import com.ekhonavigator.core.data.canvas.CanvasCourseRepository
 import com.ekhonavigator.core.data.canvas.CanvasPlannerRepository
 import com.ekhonavigator.core.data.repository.CalendarRepository
 import com.ekhonavigator.core.data.repository.CustomEventRepository
+import com.ekhonavigator.core.designsystem.theme.CourseColorAssigner
+import com.ekhonavigator.core.designsystem.theme.CourseColorInput
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSource
 import com.ekhonavigator.core.model.EventSourceType
+import com.ekhonavigator.core.model.EventType
 import com.ekhonavigator.core.model.RsvpStatus
 import com.ekhonavigator.core.model.isPast
 import com.ekhonavigator.core.model.matchesCategories
 import com.ekhonavigator.core.model.matchesSourceTypes
+import com.ekhonavigator.feature.event.component.CourseFilterOption
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,6 +27,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
@@ -39,6 +45,7 @@ class CalendarViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val customEventRepository: CustomEventRepository,
     private val canvasPlannerRepository: CanvasPlannerRepository,
+    canvasCourseRepository: CanvasCourseRepository,
 ) : ViewModel() {
 
     val isSignedIn: Boolean
@@ -67,6 +74,41 @@ class CalendarViewModel @Inject constructor(
     /** Multi-select category filter: empty = show all categories. */
     private val _selectedCategories = MutableStateFlow<Set<EventCategory>>(emptySet())
     val selectedCategories: StateFlow<Set<EventCategory>> = _selectedCategories.asStateFlow()
+
+    /** Multi-select course filter: empty = show all courses (no filtering). */
+    private val _selectedCourseIds = MutableStateFlow<Set<String>>(emptySet())
+    val selectedCourseIds: StateFlow<Set<String>> = _selectedCourseIds.asStateFlow()
+
+    /** Event id → owning course id, used by [applyVisibilityFilters] for course filter. */
+    private val eventIdToCourseId: StateFlow<Map<String, String>> = canvasPlannerRepository
+        .observeAllItems()
+        .map { items ->
+            items.mapNotNull { item -> item.courseId?.let { item.id to it } }.toMap()
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    /**
+     * Course list with palette slots — driven off the cached Canvas course set.
+     * Repository already filters to current-term courses (term.endAt > now), so the
+     * Courses chip list reflects only what the user is actively enrolled in this
+     * semester. Palette slots are stable: same family always lands in the same slot.
+     */
+    val availableCourses: StateFlow<List<CourseFilterOption>> = canvasCourseRepository
+        .observeCourses()
+        .map { courses ->
+            if (courses.isEmpty()) return@map emptyList()
+            val slots = CourseColorAssigner.assign(
+                courses.map { CourseColorInput(id = it.id, code = it.code) },
+            )
+            courses.map { course ->
+                CourseFilterOption(
+                    id = course.id,
+                    displayLabel = course.code,
+                    paletteSlot = slots[course.id] ?: 0,
+                )
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     // ══════════════════════════════════════════════════
     // Month tab state
@@ -110,16 +152,18 @@ class CalendarViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** Events for the month, filtered by source types + categories. */
+    /** Events for the month, filtered by source types + categories + courses. */
     val eventsForMonth: StateFlow<List<CalendarEvent>> = combine(
         rawEventsForMonth,
         _activeSourceTypes,
         _selectedCategories,
-    ) { events, activeTypes, categories ->
-        events.applyVisibilityFilters(activeTypes, categories)
+        _selectedCourseIds,
+        eventIdToCourseId,
+    ) { events, activeTypes, categories, courseIds, eventCourseMap ->
+        events.applyVisibilityFilters(activeTypes, categories, courseIds, eventCourseMap)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** Events for the selected date, filtered by source types + categories (for DayScreen). */
+    /** Events for the selected date, filtered by source types + categories + courses (for DayScreen). */
     val eventsForSelectedDate: StateFlow<List<CalendarEvent>> = _selectedDate
         .flatMapLatest { date ->
             val zone = ZoneId.systemDefault()
@@ -129,8 +173,10 @@ class CalendarViewModel @Inject constructor(
                 repository.observeEventsByDateRange(start, end),
                 _activeSourceTypes,
                 _selectedCategories,
-            ) { events, activeTypes, categories ->
-                events.applyVisibilityFilters(activeTypes, categories)
+                _selectedCourseIds,
+                eventIdToCourseId,
+            ) { events, activeTypes, categories, courseIds, eventCourseMap ->
+                events.applyVisibilityFilters(activeTypes, categories, courseIds, eventCourseMap)
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -153,8 +199,10 @@ class CalendarViewModel @Inject constructor(
                 repository.observeEventsByDateRange(start, end),
                 _activeSourceTypes,
                 _selectedCategories,
-            ) { events, activeTypes, categories ->
-                events.applyVisibilityFilters(activeTypes, categories)
+                _selectedCourseIds,
+                eventIdToCourseId,
+            ) { events, activeTypes, categories, courseIds, eventCourseMap ->
+                events.applyVisibilityFilters(activeTypes, categories, courseIds, eventCourseMap)
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -176,9 +224,11 @@ class CalendarViewModel @Inject constructor(
                     repository.observeEventsByDateRange(start, end),
                     _activeSourceTypes,
                     _selectedCategories,
-                ) { events, activeTypes, categories ->
+                    _selectedCourseIds,
+                    eventIdToCourseId,
+                ) { events, activeTypes, categories, courseIds, eventCourseMap ->
                     events
-                        .applyVisibilityFilters(activeTypes, categories)
+                        .applyVisibilityFilters(activeTypes, categories, courseIds, eventCourseMap)
                         .groupBy { it.startTime.atZone(zone).toLocalDate() }
                         .mapValues { (_, dayEvents) ->
                             dayEvents.map { it.toSourceType() }.toSet()
@@ -218,6 +268,15 @@ class CalendarViewModel @Inject constructor(
 
     fun clearCategories() {
         _selectedCategories.value = emptySet()
+    }
+
+    fun toggleCourse(courseId: String) {
+        val current = _selectedCourseIds.value
+        _selectedCourseIds.value = if (courseId in current) current - courseId else current + courseId
+    }
+
+    fun clearCourses() {
+        _selectedCourseIds.value = emptySet()
     }
 
     /**
@@ -266,15 +325,24 @@ class CalendarViewModel @Inject constructor(
 private fun List<CalendarEvent>.applyVisibilityFilters(
     activeTypes: Set<EventSourceType>,
     categories: Set<EventCategory>,
+    selectedCourseIds: Set<String>,
+    eventIdToCourseId: Map<String, String>,
 ): List<CalendarEvent> {
     val now = Instant.now()
     return filter { event ->
         val isStalePendingInvite = event.source == EventSource.SHARED &&
             event.myRsvpStatus == RsvpStatus.PENDING &&
             event.isPast(now)
+        // Course filter only applies to ASSIGNMENT events; an empty set means
+        // "no filter" (show all). When non-empty, ASSIGNMENT events without a
+        // bridged courseId are hidden — they belong to no selected course.
+        val coursePasses = selectedCourseIds.isEmpty() ||
+            event.type != EventType.ASSIGNMENT ||
+            eventIdToCourseId[event.id] in selectedCourseIds
         !isStalePendingInvite &&
             event.matchesSourceTypes(activeTypes) &&
-            event.matchesCategories(categories)
+            event.matchesCategories(categories) &&
+            coursePasses
     }
 }
 

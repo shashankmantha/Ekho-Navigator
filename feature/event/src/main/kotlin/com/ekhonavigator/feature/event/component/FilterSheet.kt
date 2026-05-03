@@ -26,8 +26,10 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.ekhonavigator.core.designsystem.component.CollapsibleMultiSelectSection
 import com.ekhonavigator.core.designsystem.component.EkhoMonogramBadge
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import com.ekhonavigator.core.designsystem.theme.coursePalette
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSourceType
 
@@ -38,12 +40,22 @@ internal fun sourceTypeThemeColors(
     type: EventSourceType,
     colors: androidx.compose.material3.ColorScheme,
 ): Pair<Color, Color> = when (type) {
+    EventSourceType.CANVAS -> colors.primary to colors.onPrimary
     EventSourceType.SCHEDULE -> colors.primary to colors.onPrimary
     EventSourceType.CUSTOM -> colors.secondary to colors.onSecondary
     EventSourceType.CAMPUS -> colors.onSurfaceVariant to colors.surface
     EventSourceType.BOOKMARKED -> colors.tertiary to colors.onTertiary
-    EventSourceType.CANVAS -> colors.primary to colors.onPrimary
 }
+
+/**
+ * One row in the Courses filter section. Index into the course palette so the
+ * leading dot matches what the calendar pill renders.
+ */
+data class CourseFilterOption(
+    val id: String,
+    val displayLabel: String,
+    val paletteSlot: Int,
+)
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -54,6 +66,10 @@ fun FilterSheetContent(
     onToggleCategory: (EventCategory) -> Unit,
     onClearCategories: () -> Unit,
     modifier: Modifier = Modifier,
+    courses: List<CourseFilterOption> = emptyList(),
+    selectedCourseIds: Set<String> = emptySet(),
+    onToggleCourse: (String) -> Unit = {},
+    onClearCourses: () -> Unit = {},
 ) {
     val colors = MaterialTheme.colorScheme
 
@@ -138,82 +154,141 @@ fun FilterSheetContent(
 
         HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.3f))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+        CollapsibleMultiSelectSection(
+            title = "Categories",
+            selectedCount = selectedCategories.size,
+            headerTrailingContent = {
+                if (selectedCategories.isNotEmpty()) {
+                    ClearLink(onClick = onClearCategories)
+                }
+            },
         ) {
-            Text(
-                text = "Categories",
-                style = MaterialTheme.typography.titleSmall,
-                color = colors.onSurface,
-            )
-
-            if (selectedCategories.isNotEmpty()) {
-                FilterChip(
-                    selected = false,
-                    onClick = onClearCategories,
-                    label = {
-                        Text(
-                            text = "Clear",
-                            style = MaterialTheme.typography.labelSmall,
-                        )
-                    },
-                    modifier = Modifier.height(28.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = FilterChipDefaults.filterChipColors(
-                        containerColor = Color.Transparent,
-                        labelColor = colors.primary,
-                    ),
-                    border = FilterChipDefaults.filterChipBorder(
-                        enabled = true,
-                        selected = false,
-                        borderColor = Color.Transparent,
-                    ),
-                )
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                EventCategory.entries.forEach { category ->
+                    val isSelected = category in selectedCategories
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { onToggleCategory(category) },
+                        label = {
+                            Text(
+                                text = category.displayName,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            )
+                        },
+                        leadingIcon = {
+                            EkhoMonogramBadge(
+                                monogram = category.monogram,
+                                containerColor = colors.surfaceContainerHighest,
+                                contentColor = if (isSelected) {
+                                    colors.onPrimaryContainer
+                                } else {
+                                    colors.onSurfaceVariant
+                                },
+                            )
+                        },
+                        modifier = Modifier.height(32.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = colors.primaryContainer,
+                            selectedLabelColor = colors.onPrimaryContainer,
+                            selectedLeadingIconColor = colors.onPrimaryContainer,
+                            containerColor = colors.surfaceContainerHigh,
+                            labelColor = colors.onSurfaceVariant,
+                        ),
+                    )
+                }
             }
         }
 
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            EventCategory.entries.forEach { category ->
-                val isSelected = category in selectedCategories
-
-                FilterChip(
-                    selected = isSelected,
-                    onClick = { onToggleCategory(category) },
-                    label = {
-                        Text(
-                            text = category.displayName,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                        )
-                    },
-                    leadingIcon = {
-                        EkhoMonogramBadge(
-                            monogram = category.monogram,
-                            containerColor = colors.surfaceContainerHighest,
-                            contentColor = if (isSelected) {
-                                colors.onPrimaryContainer
-                            } else {
-                                colors.onSurfaceVariant
+        if (courses.isNotEmpty()) {
+            HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.3f))
+            val palette = coursePalette()
+            CollapsibleMultiSelectSection(
+                title = "Courses",
+                selectedCount = selectedCourseIds.size,
+                headerTrailingContent = {
+                    if (selectedCourseIds.isNotEmpty()) {
+                        ClearLink(onClick = onClearCourses)
+                    }
+                },
+            ) {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    courses.forEach { course ->
+                        val isSelected = course.id in selectedCourseIds
+                        val swatch = palette[course.paletteSlot % palette.size]
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { onToggleCourse(course.id) },
+                            label = {
+                                Text(
+                                    text = course.displayLabel,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                )
                             },
+                            leadingIcon = {
+                                Box(
+                                    Modifier
+                                        .size(10.dp)
+                                        .clip(CircleShape)
+                                        .drawBehind { drawCircle(swatch) },
+                                )
+                            },
+                            modifier = Modifier.height(32.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = swatch.copy(alpha = 0.15f),
+                                selectedLabelColor = swatch,
+                                containerColor = colors.surfaceContainerHigh,
+                                labelColor = colors.onSurfaceVariant,
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = isSelected,
+                                borderColor = Color.Transparent,
+                                selectedBorderColor = swatch.copy(alpha = 0.4f),
+                                borderWidth = 1.dp,
+                                selectedBorderWidth = 1.dp,
+                            ),
                         )
-                    },
-                    modifier = Modifier.height(32.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = colors.primaryContainer,
-                        selectedLabelColor = colors.onPrimaryContainer,
-                        selectedLeadingIconColor = colors.onPrimaryContainer,
-                        containerColor = colors.surfaceContainerHigh,
-                        labelColor = colors.onSurfaceVariant,
-                    ),
-                )
+                    }
+                }
             }
         }
     }
+}
+
+@Composable
+private fun ClearLink(onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    FilterChip(
+        selected = false,
+        onClick = onClick,
+        label = {
+            Text(
+                text = "Clear",
+                style = MaterialTheme.typography.labelSmall,
+            )
+        },
+        modifier = Modifier.height(28.dp),
+        shape = RoundedCornerShape(8.dp),
+        colors = FilterChipDefaults.filterChipColors(
+            containerColor = Color.Transparent,
+            labelColor = colors.primary,
+        ),
+        border = FilterChipDefaults.filterChipBorder(
+            enabled = true,
+            selected = false,
+            borderColor = Color.Transparent,
+        ),
+    )
 }

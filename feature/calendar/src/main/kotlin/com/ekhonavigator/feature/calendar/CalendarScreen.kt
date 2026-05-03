@@ -81,6 +81,8 @@ fun CalendarScreen(
     val filterSheetState = rememberModalBottomSheetState()
     val activeSourceTypes by viewModel.activeSourceTypes.collectAsStateWithLifecycle()
     val selectedCategories by viewModel.selectedCategories.collectAsStateWithLifecycle()
+    val availableCourses by viewModel.availableCourses.collectAsStateWithLifecycle()
+    val selectedCourseIds by viewModel.selectedCourseIds.collectAsStateWithLifecycle()
 
     // Wrap onDayClick to forward current filter state to the DayScreen
     val onDayClickWithFilters: (Long) -> Unit = { epochDay ->
@@ -246,6 +248,10 @@ fun CalendarScreen(
                 onToggleSourceType = viewModel::toggleSourceType,
                 onToggleCategory = viewModel::toggleCategory,
                 onClearCategories = viewModel::clearCategories,
+                courses = availableCourses,
+                selectedCourseIds = selectedCourseIds,
+                onToggleCourse = viewModel::toggleCourse,
+                onClearCourses = viewModel::clearCourses,
             )
         }
     }
