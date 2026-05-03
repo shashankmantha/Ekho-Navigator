@@ -111,11 +111,15 @@ class ChatViewModel @Inject constructor(
                                 )
                             }
 
-                            runCatching {
-                                chatRepository.markMessagesAsRead(
-                                    conversationId = conversation.id,
-                                    currentUserId = currentUserId,
-                                )
+                            if (messages.isNotEmpty()) {
+                                viewModelScope.launch {
+                                    runCatching {
+                                        chatRepository.markMessagesAsRead(
+                                            conversationId = conversation.id,
+                                            currentUserId = currentUserId,
+                                        )
+                                    }
+                                }
                             }
                         }
                 }

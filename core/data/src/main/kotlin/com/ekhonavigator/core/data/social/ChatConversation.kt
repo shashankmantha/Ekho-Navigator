@@ -8,5 +8,6 @@ data class ChatConversation(
     val lastSenderId: String = "",
     val lastTimestamp: Long = 0L,
     val readBy: List<String> = emptyList(),
+    val unreadCount: Int = 0,
     val createdAt: Long = 0L,
 )

@@ -2,6 +2,7 @@ package com.ekhonavigator.feature.social
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ekhonavigator.core.data.auth.AuthRepository
 import com.ekhonavigator.core.data.social.SocialRepository
 import com.ekhonavigator.core.data.social.SocialUser
 import com.ekhonavigator.core.data.repository.PresenceRepository
@@ -21,12 +22,14 @@ data class UserProfileUiState(
     val onlineStatus: OnlineStatus = OnlineStatus.ONLINE,
     val lastSeen: Long = 0L,
     val errorMessage: String? = null,
+    val isFriend: Boolean = false,
 )
 
 @HiltViewModel
 class UserProfileViewModel @Inject constructor(
     private val repository: SocialRepository,
     private val presenceRepository: PresenceRepository,
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(UserProfileUiState())
@@ -42,28 +45,42 @@ class UserProfileViewModel @Inject constructor(
                 )
             }
 
+            launch {
+                repository.observeUser(userId).collect { user ->
+                    _uiState.update { it.copy(user = user, isLoading = false) }
+                }
+            }
+
             try {
-                val user = repository.getUserById(userId)
-
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        user = user,
-                        errorMessage = if (user == null) "User not found" else null,
-                    )
+                val currentUserId = authRepository.getCurrentUserUid()
+                if (currentUserId != null) {
+                    launch {
+                        repository.observeIsFriend(currentUserId, userId).collect { isFriend ->
+                            _uiState.update { it.copy(isFriend = isFriend) }
+                        }
+                    }
                 }
 
-                if (user != null) {
-                    observePresence(userId)
-                }
+                observePresence(userId)
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        user = null,
                         errorMessage = e.message ?: "Failed to load profile",
                     )
                 }
+            }
+        }
+    }
+
+    fun removeFriend(friendUserId: String, onSuccess: () -> Unit) {
+        val currentUserId = authRepository.getCurrentUserUid() ?: return
+        viewModelScope.launch {
+            try {
+                repository.removeFriend(currentUserId, friendUserId)
+                onSuccess()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = e.message ?: "Failed to remove friend") }
             }
         }
     }

@@ -7,6 +7,7 @@ import com.ekhonavigator.core.data.social.SocialRepository
 import com.ekhonavigator.core.data.social.SocialUser
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +26,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 data class SocialUiState(
@@ -37,7 +40,7 @@ data class SocialUiState(
     val errorMessage: String? = null,
 )
 
-@OptIn(FlowPreview::class)
+@OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class SocialViewModel @Inject constructor(
     private val repository: SocialRepository,
@@ -50,11 +53,19 @@ class SocialViewModel @Inject constructor(
     val uiState: StateFlow<SocialUiState> = _uiState.asStateFlow()
 
     private val queryFlow = MutableStateFlow("")
-    private var presenceJob: Job? = null
-    private var messagesJob: Job? = null
+    private var observationJob: Job? = null
 
     init {
-        loadSocialData()
+        viewModelScope.launch {
+            authRepository.userFlow().collectLatest { uid ->
+                observationJob?.cancel()
+                if (uid != null) {
+                    observeSocialData(uid)
+                } else {
+                    _uiState.update { SocialUiState() }
+                }
+            }
+        }
 
         viewModelScope.launch {
             queryFlow
@@ -84,86 +95,49 @@ class SocialViewModel @Inject constructor(
     }
 
     fun loadSocialData() {
+        // Redundant with auth flow observation but kept for manual triggers if needed
         val currentUserId = authRepository.getCurrentUserUid() ?: return
-
-        viewModelScope.launch {
-            runCatching {
-                val requests = repository.getIncomingRequests(currentUserId)
-                val friends = repository.getFriends(currentUserId)
-                val outgoingRequestIds = repository.getOutgoingRequestIds(currentUserId)
-                Triple(requests, friends, outgoingRequestIds)
-            }.onSuccess { (requests, friends, outgoingRequestIds) ->
-                _uiState.update {
-                    it.copy(
-                        incomingRequests = requests,
-                        friends = friends,
-                        outgoingRequestIds = outgoingRequestIds,
-                        errorMessage = null,
-                    )
-                }
-                observeFriendPresence(friends)
-                observeFriendMessages(friends)
-            }.onFailure { e ->
-                _uiState.update {
-                    it.copy(
-                        errorMessage = e.message ?: "Failed to load social data",
-                    )
-                }
-            }
+        if (observationJob == null || observationJob?.isActive == false) {
+            observeSocialData(currentUserId)
         }
     }
 
-    private fun observeFriendMessages(friends: List<FriendUser>) {
-        val currentUserId = authRepository.getCurrentUserUid() ?: return
+    private fun observeSocialData(userId: String) {
+        observationJob?.cancel()
+        observationJob = viewModelScope.launch {
+            val incomingRequestsFlow = repository.observeIncomingRequests(userId)
+            val friendsFlow = repository.observeFriends(userId)
+            val conversationsFlow = chatRepository.observeAllConversations(userId)
 
-        messagesJob?.cancel()
-        messagesJob = viewModelScope.launch {
-            chatRepository.observeAllConversations(currentUserId)
-                .catch { e ->
-                    _uiState.update { it.copy(errorMessage = "Error observing messages: ${e.message}") }
+            combine(
+                incomingRequestsFlow,
+                friendsFlow,
+                conversationsFlow
+            ) { requests, friends, conversations ->
+                val conversationMap = conversations.associateBy { conv ->
+                    conv.participantIds.find { it != userId } ?: ""
                 }
-                .collectLatest { conversations ->
-                    val unreadMap = conversations.associateBy(
-                        keySelector = { conv ->
-                            conv.participantIds.find { it != currentUserId } ?: ""
-                        },
-                        valueTransform = { conv ->
-                            conv.lastSenderId != currentUserId && !conv.readBy.contains(currentUserId)
-                        }
-                    )
-
-                    _uiState.update { state ->
-                        val updatedFriends = state.friends.map { friend ->
-                            friend.copy(
-                                hasUnreadMessages = unreadMap[friend.uid] == true
-                            )
-                        }
-                        state.copy(friends = updatedFriends)
-                    }
+                
+                val friendsWithChat = friends.map { friend ->
+                    val conv = conversationMap[friend.uid]
+                    if (conv != null) {
+                        val isUnread = conv.lastSenderId != userId && (conv.unreadCount > 0 || !conv.readBy.contains(userId))
+                        friend.copy(
+                            lastMessage = conv.lastMessage,
+                            lastMessageTimestamp = conv.lastTimestamp,
+                            lastMessageSenderId = conv.lastSenderId,
+                            hasUnreadMessages = isUnread,
+                            unreadCount = if (isUnread) conv.unreadCount.coerceAtLeast(1) else 0
+                        )
+                    } else friend
                 }
-        }
-    }
-
-    private fun observeFriendPresence(friends: List<FriendUser>) {
-        if (friends.isEmpty()) return
-
-        presenceJob?.cancel()
-        presenceJob = viewModelScope.launch {
-            val presenceFlows: List<Flow<Pair<String, com.ekhonavigator.core.model.PresenceStatus>>> = friends.map { friend ->
-                presenceRepository.observePresence(friend.uid).map { presence ->
-                    friend.uid to presence
-                }
-            }
-
-            combine(presenceFlows) { friendPresences: Array<Pair<String, com.ekhonavigator.core.model.PresenceStatus>> ->
-                friendPresences.toMap()
-            }.catch { e ->
-                _uiState.update { it.copy(errorMessage = "Error observing presence: ${e.message}") }
-            }.collectLatest { presenceMap ->
-                _uiState.update { state ->
-                    val updatedFriends = state.friends.map { friend ->
-                        val presence = presenceMap[friend.uid]
-                        if (presence != null) {
+                requests to friendsWithChat
+            }.flatMapLatest { (requests, friends) ->
+                if (friends.isEmpty()) {
+                    flowOf(requests to emptyList<FriendUser>())
+                } else {
+                    val presenceFlows = friends.map { friend ->
+                        presenceRepository.observePresence(friend.uid).map { presence ->
                             val statusStr = presence.state.uppercase()
                             val onlineStatus = try {
                                 OnlineStatus.valueOf(statusStr)
@@ -175,11 +149,23 @@ class SocialViewModel @Inject constructor(
                                 onlineStatus = onlineStatus,
                                 lastChanged = presence.lastChanged
                             )
-                        } else {
-                            friend
                         }
                     }
-                    state.copy(friends = updatedFriends)
+                    combine(presenceFlows) { updatedFriends ->
+                        requests to updatedFriends.toList()
+                    }
+                }
+            }.catch { e ->
+                _uiState.update { it.copy(errorMessage = "Error observing social data: ${e.message}") }
+            }.collect { (requests, updatedFriends) ->
+                val outgoingRequestIds = repository.getOutgoingRequestIds(userId)
+                _uiState.update {
+                    it.copy(
+                        incomingRequests = requests,
+                        friends = updatedFriends,
+                        outgoingRequestIds = outgoingRequestIds,
+                        errorMessage = null
+                    )
                 }
             }
         }

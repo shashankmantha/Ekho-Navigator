@@ -7,7 +7,6 @@ data class FriendUser(
     val displayName: String = "",
     val avatarId: String = "avatar_default",
     val major: String = "",
-    val showOnlineStatus: Boolean = true,
     val online: Boolean = false,
     val onlineStatus: OnlineStatus = OnlineStatus.ONLINE,
     val lastChanged: Long = 0L,
@@ -15,4 +14,6 @@ data class FriendUser(
     val lastMessageTimestamp: Long = 0L,
     val lastMessageSenderId: String = "",
     val hasUnreadMessages: Boolean = false,
+    val unreadCount: Int = 0,
+    val showOnlineStatus: Boolean = true,
 )

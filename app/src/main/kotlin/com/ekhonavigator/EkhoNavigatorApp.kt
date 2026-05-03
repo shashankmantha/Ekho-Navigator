@@ -97,6 +97,32 @@ fun EkhoNavigatorApp(
     val isTopLevelDestination = topLevelDestination != null
     val isDefaultTopLevel = TOP_LEVEL_NAV_ITEMS.containsKey(currentKey)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     val topAppBarState = rememberTopAppBarState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(topAppBarState)
 
@@ -294,6 +320,7 @@ fun EkhoNavigatorApp(
                         NavEntry(key) {
                             UserProfileScreen(
                                 userId = key.userId,
+                                onBack = navigator::goBack,
                             )
                         }
                     }

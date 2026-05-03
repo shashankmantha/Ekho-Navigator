@@ -1,5 +1,6 @@
 package com.ekhonavigator.feature.social
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,11 +16,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Chat
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -36,10 +41,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.compose.ui.text.style.TextOverflow
 import com.ekhonavigator.core.model.OnlineStatus
+import com.ekhonavigator.core.designsystem.R as DesignR
 
 @Composable
 fun SocialScreen(
@@ -143,11 +151,12 @@ fun SocialScreen(
                         displayName = friend.displayName,
                         avatarId = friend.avatarId,
                         major = friend.major,
-                        showOnlineStatus = friend.showOnlineStatus,
                         online = friend.online,
                         onlineStatus = friend.onlineStatus,
+                        showOnlineStatus = friend.showOnlineStatus,
                         lastMessage = friend.lastMessage,
                         hasUnreadMessages = friend.hasUnreadMessages,
+                        unreadCount = friend.unreadCount,
                         onMessageClick = { uid, displayName, avatarId ->
                             onMessageClick(uid, displayName, avatarId)
                         },
@@ -281,11 +290,12 @@ private fun FriendRow(
     displayName: String,
     avatarId: String,
     major: String,
-    showOnlineStatus: Boolean,
     online: Boolean,
     onlineStatus: OnlineStatus,
+    showOnlineStatus: Boolean,
     lastMessage: String,
     hasUnreadMessages: Boolean,
+    unreadCount: Int,
     onMessageClick: (String, String, String) -> Unit,
     onViewProfileClick: (String) -> Unit,
     onRemoveFriendClick: (String) -> Unit,
@@ -300,28 +310,39 @@ private fun FriendRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable {
-                    showMenu = true
+                    onMessageClick(uid, displayName, avatarId)
                 },
             leadingContent = {
                 Box(
-                    modifier = Modifier.size(40.dp),
+                    modifier = Modifier
+                        .size(44.dp), // Increased from 40.dp to provide room for indicator
                     contentAlignment = Alignment.BottomEnd,
                 ) {
                     Box(
                         modifier = Modifier
-                            .fillMaxSize()
+                            .size(40.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primaryContainer),
-                        contentAlignment = Alignment.Center,
+                            .clickable { onViewProfileClick(uid) },
+                        contentAlignment = Alignment.BottomEnd,
                     ) {
-                        Text(
-                            text = displayName.take(1).uppercase(),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        val resId = when (avatarId) {
+                            "avatar_dolphin" -> DesignR.drawable.avatar_dolphin
+                            "avatar_whale" -> DesignR.drawable.avatar_whale
+                            "avatar_turtle" -> DesignR.drawable.avatar_turtle
+                            else -> DesignR.drawable.avatar_default
+                        }
+
+                        Image(
+                            painter = painterResource(resId),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
                         )
                     }
 
-                    if (showOnlineStatus && online) {
+                    if (online && showOnlineStatus) {
                         val statusColor = when (onlineStatus) {
                             OnlineStatus.ONLINE -> Color(0xFF4CAF50)
                             OnlineStatus.AWAY -> Color(0xFFFFC107)
@@ -329,7 +350,7 @@ private fun FriendRow(
                         }
                         Box(
                             modifier = Modifier
-                                .size(12.dp)
+                                .size(14.dp)
                                 .clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.surface)
                                 .padding(2.dp)
@@ -361,24 +382,68 @@ private fun FriendRow(
                         )
                     }
                     if (lastMessage.isNotBlank()) {
-                        Text(
-                            text = lastMessage,
-                            style = MaterialTheme.typography.bodySmall,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (hasUnreadMessages) {
+                                Box(
+                                    modifier = Modifier
+                                        .padding(end = 6.dp)
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF2196F3))
+                                )
+                            }
+                            val fadeBrush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                colors = listOf(
+                                    if (hasUnreadMessages) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    Color.Transparent
+                                ),
+                                startX = 0f,
+                                endX = 600f
+                            )
+                            Text(
+                                text = lastMessage,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    brush = fadeBrush,
+                                    fontWeight = if (hasUnreadMessages) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Clip,
+                            )
+                        }
                     }
                 }
             },
             trailingContent = {
-                if (hasUnreadMessages) {
-                    Box(
-                        modifier = Modifier
-                            .size(10.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF2196F3)) // Blue dot
-                    )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (hasUnreadMessages) {
+                        Box(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(Color(0xFF2196F3))
+                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "+$unreadCount",
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    IconButton(
+                        onClick = { onMessageClick(uid, displayName, avatarId) }
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.Chat,
+                            contentDescription = "Message",
+                            tint = if (hasUnreadMessages) Color(0xFF2196F3) else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         )
@@ -387,14 +452,6 @@ private fun FriendRow(
             expanded = showMenu,
             onDismissRequest = { showMenu = false },
         ) {
-            DropdownMenuItem(
-                text = { Text("Message") },
-                onClick = {
-                    showMenu = false
-                    onMessageClick(uid, displayName, avatarId)
-                },
-            )
-
             DropdownMenuItem(
                 text = { Text("View Profile") },
                 onClick = {

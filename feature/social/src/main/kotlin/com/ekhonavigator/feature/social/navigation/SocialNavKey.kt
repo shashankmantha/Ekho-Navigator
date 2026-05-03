@@ -46,6 +46,7 @@ fun EntryProviderScope<NavKey>.socialEntry(navigator: Navigator, onNavigateToMap
     entry<UserProfileNavKey> { key ->
         UserProfileScreen(
             userId = key.userId,
+            onBack = { navigator.goBack() }
         )
     }
 
