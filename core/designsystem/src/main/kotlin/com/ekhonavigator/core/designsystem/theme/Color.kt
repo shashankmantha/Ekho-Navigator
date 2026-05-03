@@ -85,6 +85,40 @@ internal val DarkSurfaceContainer = Color(0xFF261D1D)
 internal val DarkSurfaceContainerHigh = Color(0xFF312727)
 internal val DarkSurfaceContainerHighest = Color(0xFF3C3232)
 
+// ── Course palette (8-color rotation for course-tagged assignments) ──
+// Hues spaced ~40° around the color wheel, deliberately skipping the three
+// theme-accent zones so course pills never visually collide with bookmark
+// (amber tertiary ~35°), personal event (sage secondary ~140°), or brand
+// chrome (garnet primary ~355°). Earlier mustard #B89020 and amber #C68729
+// read as "the same yellow" on calendar pills — fixed by pushing slot 4
+// to olive (yellow-green, ~75°). Same logic applied to dusty-rose ↔ garnet
+// (slot 6 is now magenta-pink, clearly purple-leaning) and coral ↔ terracotta
+// (collapsed to one warm-red slot at ~15°, freed slot for plum).
+//
+// Tone40 = light mode; Tone80 = dark mode. Lights are saturated for
+// daylight legibility; darks lift toward tone 80 for contrast on dark surface.
+// No medium-green slot — sage secondary (#3F8C5F, ~140°) owns the green zone
+// for personal events. Forest and basil-type greens were tested; both ride too
+// close to sage on calendar pills regardless of hue gap. Replaced the green
+// slot with a warm earth tone (CourseEarth) that occupies a clearly separate
+// part of the wheel.
+internal val CourseSlateBlue = SlateBlueTone40       // 210° (keep)
+internal val CourseSlateBlueDark = SlateBlueTone80
+internal val CourseTeal = Color(0xFF2D8B7E)          // 175° — distinct from sage via cyan lean
+internal val CourseTealDark = Color(0xFF8FCFC4)
+internal val CourseEarth = Color(0xFF7A5230)         // 30° — dark coffee brown, fills former green slot
+internal val CourseEarthDark = Color(0xFFD9B690)
+internal val CourseOlive = Color(0xFF8AA02E)         // 75° — yellow-green, NOT amber
+internal val CourseOliveDark = Color(0xFFD2DD8F)
+internal val CourseCoral = Color(0xFFC2603F)         // 15° — warm red-orange
+internal val CourseCoralDark = Color(0xFFEFB39E)
+internal val CourseRose = Color(0xFFBF4F8A)          // 335° — magenta-pink
+internal val CourseRoseDark = Color(0xFFEFA8C9)
+internal val CoursePlum = Color(0xFF8E4FBF)          // 290° — saturated purple
+internal val CoursePlumDark = Color(0xFFD2B0EF)
+internal val CourseLavender = Color(0xFF7B6BBF)      // 250° (keep)
+internal val CourseLavenderDark = Color(0xFFC9BFEF)
+
 // ── Error (standard M3 — stops looking like brand red) ─────
 internal val ErrorLight = Color(0xFFBA1A1A)
 internal val ErrorDark = Color(0xFFFFB4AB)

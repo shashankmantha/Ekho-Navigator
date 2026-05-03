@@ -98,28 +98,30 @@ class MainActivity : ComponentActivity() {
             }
 
             EkhoTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background,
-                ) {
-                    EkhoNavigatorApp(
-                        onSignIn = {
-                            customEventRepository.startSync(MainScope())
-                            MainScope().launch {
-                                calendarRepository.restoreBookmarks()
-                            }
-                        },
-                        onSignOut = {
-                            MainScope().launch {
-                                customEventRepository.onSignOut()
-                                calendarRepository.onSignOut()
-                            }
-                        },
-                        notificationChatRequest = notificationChatRequest,
-                        onNotificationChatRequestHandled = {
-                            notificationChatRequest = null
-                        },
-                    )
+                AssignmentDecoratorProvider {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background,
+                    ) {
+                        EkhoNavigatorApp(
+                            onSignIn = {
+                                customEventRepository.startSync(MainScope())
+                                MainScope().launch {
+                                    calendarRepository.restoreBookmarks()
+                                }
+                            },
+                            onSignOut = {
+                                MainScope().launch {
+                                    customEventRepository.onSignOut()
+                                    calendarRepository.onSignOut()
+                                }
+                            },
+                            notificationChatRequest = notificationChatRequest,
+                            onNotificationChatRequestHandled = {
+                                notificationChatRequest = null
+                            },
+                        )
+                    }
                 }
             }
         }
