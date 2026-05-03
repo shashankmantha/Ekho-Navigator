@@ -39,6 +39,7 @@ import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 
 @Composable
 fun ConnectCanvasScreen(
+    onViewCoursesClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ConnectCanvasViewModel = hiltViewModel(),
 ) {
@@ -73,6 +74,7 @@ fun ConnectCanvasScreen(
                 )
                 is ConnectCanvasUiState.Connected -> ConnectedContent(
                     state = state,
+                    onViewCoursesClick = onViewCoursesClick,
                     onDisconnectClick = viewModel::disconnect,
                 )
             }
@@ -157,6 +159,7 @@ private fun NotConnectedContent(
 @Composable
 private fun ConnectedContent(
     state: ConnectCanvasUiState.Connected,
+    onViewCoursesClick: () -> Unit,
     onDisconnectClick: () -> Unit,
 ) {
     Card(
@@ -185,6 +188,13 @@ private fun ConnectedContent(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+
+    Button(
+        onClick = onViewCoursesClick,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text("View My Courses")
     }
 
     OutlinedButton(

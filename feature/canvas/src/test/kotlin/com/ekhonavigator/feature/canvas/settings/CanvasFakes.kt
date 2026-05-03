@@ -1,6 +1,7 @@
 package com.ekhonavigator.feature.canvas.settings
 
 import com.ekhonavigator.core.canvas.auth.CanvasAccount
+import com.ekhonavigator.core.canvas.auth.CanvasAccountSource
 import com.ekhonavigator.core.canvas.auth.CanvasAuthError
 import com.ekhonavigator.core.canvas.auth.CanvasAuthValidator
 import com.ekhonavigator.core.canvas.auth.CanvasIdentitySource
@@ -10,6 +11,10 @@ import com.ekhonavigator.core.canvas.model.CanvasProfile
 
 internal class FakeCanvasIdentitySource(var uid: String? = null) : CanvasIdentitySource {
     override fun currentUid(): String? = uid
+}
+
+internal class FakeCanvasAccountSource(var account: CanvasAccount? = null) : CanvasAccountSource {
+    override fun currentOrNull(): CanvasAccount? = account
 }
 
 internal class FakeCanvasInstitutionStore : CanvasInstitutionStore {

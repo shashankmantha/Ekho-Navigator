@@ -27,7 +27,9 @@ android {
 dependencies {
     api(projects.core.navigation)
     implementation(projects.core.canvas)
+    implementation(projects.core.data)
     implementation(projects.core.designsystem)
+    implementation(libs.coil.compose)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

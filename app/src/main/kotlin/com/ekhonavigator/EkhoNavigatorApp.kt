@@ -46,8 +46,11 @@ import com.ekhonavigator.feature.account.navigation.SettingsNavKey
 import com.ekhonavigator.feature.account.navigation.navigateToAccount
 import com.ekhonavigator.feature.account.navigation.navigateToSettings
 import com.ekhonavigator.feature.canvas.settings.ConnectCanvasScreen
+import com.ekhonavigator.feature.canvas.courses.MyCoursesScreen
 import com.ekhonavigator.feature.canvas.navigation.ConnectCanvasNavKey
+import com.ekhonavigator.feature.canvas.navigation.MyCoursesNavKey
 import com.ekhonavigator.feature.canvas.navigation.navigateToConnectCanvas
+import com.ekhonavigator.feature.canvas.navigation.navigateToMyCourses
 import com.ekhonavigator.feature.calendar.CalendarScreen
 import com.ekhonavigator.feature.calendar.DayScreen
 import com.ekhonavigator.feature.calendar.navigation.CalendarNavKey
@@ -536,7 +539,17 @@ fun EkhoNavigatorApp(
 
                         is ConnectCanvasNavKey -> {
                             NavEntry(key) {
-                                ConnectCanvasScreen()
+                                ConnectCanvasScreen(
+                                    onViewCoursesClick = navigator::navigateToMyCourses,
+                                )
+                            }
+                        }
+
+                        is MyCoursesNavKey -> {
+                            NavEntry(key) {
+                                MyCoursesScreen(
+                                    onConnectClick = navigator::navigateToConnectCanvas,
+                                )
                             }
                         }
 
