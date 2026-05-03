@@ -1,25 +1,44 @@
 package com.ekhonavigator.feature.calendar.component
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.delay
+import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,6 +68,13 @@ import java.time.format.DateTimeFormatter
 
 /** Height of each hour row in the timeline. */
 private val HourHeight: Dp = 60.dp
+
+/**
+ * Trailing scroll padding so the grid's bottom-most pills (e.g. 11:59 PM
+ * assignment dues) clear the FAB stack rather than getting visually clipped
+ * behind it. Sized to fit two stacked 56dp FABs + breathing room.
+ */
+private val ScrollBottomPadding: Dp = 144.dp
 
 /** Width of the time label column on the left. */
 private val TimeLabelWidth: Dp = 48.dp
@@ -99,6 +125,20 @@ fun TimelineGrid(
 
     val scrollState = rememberScrollState()
     val density = LocalDensity.current
+    val coroutineScope = rememberCoroutineScope()
+
+    // Live "now" line — re-emits every minute so the indicator drifts down through
+    // the day in real time. Per-minute granularity is plenty for a 60dp/hour grid
+    // (one minute = 1 dp), and avoids a battery hit from per-second ticks.
+    val nowInstant by produceState(initialValue = Instant.now()) {
+        while (true) {
+            value = Instant.now()
+            delay(60_000L)
+        }
+    }
+    val nowZoned = nowInstant.atZone(zone)
+    val today = nowZoned.toLocalDate()
+    val nowHourFraction = nowZoned.hour + nowZoned.minute / 60f
 
     // Scroll to initial hour on first composition
     LaunchedEffect(Unit) {
@@ -108,9 +148,55 @@ fun TimelineGrid(
 
     val totalHeight = HourHeight * HourCount
 
+    // Earliest rendered-top / latest rendered-bottom hour across visible columns,
+    // used by the off-screen hint chips. ASSIGNMENT pills render bottom-anchored
+    // (top = start - 1hr), so we must use rendered bounds rather than raw start
+    // times — otherwise a 10 AM-due assignment whose pill spans 9–10 AM would
+    // be reported as "earliest = 10" and the hint would mis-fire.
+    val (earliestEventHour, latestEventHour) = remember(layoutsByDate) {
+        val bounds = layoutsByDate.values.flatten().map { layout ->
+            val startZoned = layout.event.startTime.atZone(zone)
+            val endZoned = layout.event.endTime.atZone(zone)
+            val startHour = startZoned.hour + startZoned.minute / 60f
+            val endHour = endZoned.hour + endZoned.minute / 60f
+            if (layout.event.type == EventType.ASSIGNMENT) {
+                // Pill spans [start - 1hr, start]; clamp top to grid top.
+                (startHour - 1f).coerceAtLeast(0f) to startHour
+            } else {
+                startHour to endHour
+            }
+        }
+        if (bounds.isEmpty()) {
+            null to null
+        } else {
+            bounds.minOf { it.first } to bounds.maxOf { it.second }
+        }
+    }
+
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val availableWidth = maxWidth - TimeLabelWidth
         val columnWidth = availableWidth / columnCount
+        val viewportHeightPx = with(density) { maxHeight.toPx() }
+        val hourHeightPx = with(density) { HourHeight.toPx() }
+
+        // Hours currently visible in the scrollport — drives the hint chips.
+        // derivedStateOf throttles recomputation to actual visibility flips.
+        // Keys are required so the lambda re-captures fresh values when events
+        // load asynchronously after first composition.
+        val showAboveHint by remember(earliestEventHour, hourHeightPx) {
+            derivedStateOf {
+                val earliest = earliestEventHour ?: return@derivedStateOf false
+                val viewportTopHour = scrollState.value / hourHeightPx
+                earliest < viewportTopHour
+            }
+        }
+        val showBelowHint by remember(latestEventHour, viewportHeightPx, hourHeightPx) {
+            derivedStateOf {
+                val latest = latestEventHour ?: return@derivedStateOf false
+                val viewportBottomHour = (scrollState.value + viewportHeightPx) / hourHeightPx
+                latest > viewportBottomHour
+            }
+        }
 
         Column(
             modifier = Modifier
@@ -221,7 +307,122 @@ fun TimelineGrid(
                         }
                     }
                 }
+
+                // "Now" indicator — horizontal line + leading dot on today's column.
+                // Renders only on the column whose date == today; week view scopes
+                // it to one column, day view either shows it (today) or doesn't.
+                val todayColIndex = columnDates.indexOf(today)
+                if (todayColIndex >= 0) {
+                    val nowXOffset = TimeLabelWidth + (columnWidth * todayColIndex)
+                    val nowYOffset = HourHeight * nowHourFraction
+                    val nowColor = MaterialTheme.colorScheme.primary
+                    Box(
+                        modifier = Modifier
+                            .offset(x = nowXOffset - 4.dp, y = nowYOffset - 4.dp)
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .drawBehind { drawCircle(nowColor) }
+                            .zIndex(3f),
+                    )
+                    HorizontalDivider(
+                        thickness = 1.5.dp,
+                        color = nowColor,
+                        modifier = Modifier
+                            .width(columnWidth)
+                            .offset(x = nowXOffset, y = nowYOffset - 0.75.dp)
+                            .zIndex(3f),
+                    )
+                }
             }
+            // Trailing scroll spacer so late-day pills clear the FAB stack.
+            Spacer(Modifier.height(ScrollBottomPadding))
+        }
+
+        // Off-screen-event hint chips. Sit fixed inside the BoxWithConstraints
+        // (above the scrolling column) and only appear when there's an event
+        // outside the current viewport in that direction.
+        AnimatedVisibility(
+            visible = showAboveHint,
+            enter = fadeIn() + slideInVertically { -it },
+            exit = fadeOut() + slideOutVertically { -it },
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 8.dp)
+                .zIndex(3f),
+        ) {
+            OffscreenHintChip(
+                label = "Earlier events",
+                arrowUp = true,
+                onClick = {
+                    val target = earliestEventHour ?: return@OffscreenHintChip
+                    coroutineScope.launch {
+                        // Land scroll so the event sits ~1 hour below the top edge
+                        // — gives breathing room above. Clamp to grid limits.
+                        val targetPx = ((target - 1f) * hourHeightPx).toInt()
+                        scrollState.animateScrollTo(
+                            targetPx.coerceIn(0, scrollState.maxValue),
+                        )
+                    }
+                },
+            )
+        }
+        AnimatedVisibility(
+            visible = showBelowHint,
+            enter = fadeIn() + slideInVertically { it },
+            exit = fadeOut() + slideOutVertically { it },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = ScrollBottomPadding + 8.dp)
+                .zIndex(3f),
+        ) {
+            OffscreenHintChip(
+                label = "Later events",
+                arrowUp = false,
+                onClick = {
+                    val target = latestEventHour ?: return@OffscreenHintChip
+                    coroutineScope.launch {
+                        // Land scroll so the event sits ~1 hour above the bottom edge
+                        // — keeps the next slot below visible for context. Clamp to
+                        // grid limits in case the event is already near 11 PM.
+                        val targetBottomPx = ((target + 1f) * hourHeightPx).toInt()
+                        val targetTopPx = targetBottomPx - viewportHeightPx.toInt()
+                        scrollState.animateScrollTo(
+                            targetTopPx.coerceIn(0, scrollState.maxValue),
+                        )
+                    }
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun OffscreenHintChip(
+    label: String,
+    arrowUp: Boolean,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        tonalElevation = 2.dp,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+        ) {
+            Icon(
+                imageVector = if (arrowUp) EkhoIcons.ExpandLess else EkhoIcons.ExpandMore,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+            )
         }
     }
 }
