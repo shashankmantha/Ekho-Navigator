@@ -274,6 +274,7 @@ class DefaultCustomEventRepository @Inject constructor(
             "createdAt" to com.google.firebase.Timestamp.now(),
             "placeId" to event.placeId,
             "customLocation" to event.customLocation?.toFirestoreMap(),
+            "type" to event.type.name,
         )
         firestore.collection("events").document(eventId).set(data).await()
     }
@@ -291,6 +292,7 @@ class DefaultCustomEventRepository @Inject constructor(
             "categories" to event.categories.map { it.name },
             "placeId" to event.placeId,
             "customLocation" to event.customLocation?.toFirestoreMap(),
+            "type" to event.type.name,
         )
         firestore.collection("events").document(eventId).update(data).await()
     }

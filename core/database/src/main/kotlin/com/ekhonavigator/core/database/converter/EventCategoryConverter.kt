@@ -8,7 +8,7 @@ import com.ekhonavigator.core.model.EventCategory
  * Uses a safe lookup so stale enum names (from a previous app version) don't crash —
  * they fall back to GENERAL instead.
  */
-internal class EventCategoryConverter {
+class EventCategoryConverter {
 
     @TypeConverter
     fun fromCategories(value: List<EventCategory>): String =

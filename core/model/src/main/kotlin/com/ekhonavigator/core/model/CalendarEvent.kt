@@ -30,6 +30,7 @@ data class CalendarEvent(
      *  the event is pinned to a custom marker. Lets recipients of a shared event resolve
      *  the location without owning the source marker — they can save it as their own. */
     val customLocation: SharedLocation? = null,
+    val type: EventType = EventType.EVENT,
 ) {
     val primaryCategory: EventCategory
         get() = categories.firstOrNull() ?: EventCategory.GENERAL

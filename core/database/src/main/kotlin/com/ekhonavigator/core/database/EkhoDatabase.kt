@@ -5,6 +5,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.ekhonavigator.core.database.converter.EventCategoryConverter
 import com.ekhonavigator.core.database.converter.EventSourceConverter
+import com.ekhonavigator.core.database.converter.EventTypeConverter
 import com.ekhonavigator.core.database.converter.InstantConverter
 import com.ekhonavigator.core.database.converter.RsvpStatusConverter
 import com.ekhonavigator.core.database.dao.CalendarEventDao
@@ -23,13 +24,14 @@ import com.ekhonavigator.core.database.model.EventAttendeeEntity
         CanvasCourseEntity::class,
         CanvasPlannerItemEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = false,
 )
 @TypeConverters(
     InstantConverter::class,
     EventCategoryConverter::class,
     EventSourceConverter::class,
+    EventTypeConverter::class,
     RsvpStatusConverter::class,
 )
 abstract class EkhoDatabase : RoomDatabase() {

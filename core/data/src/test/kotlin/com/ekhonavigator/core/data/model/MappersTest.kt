@@ -4,6 +4,7 @@ import com.ekhonavigator.core.database.model.toDomainModel
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSource
+import com.ekhonavigator.core.model.EventType
 import com.ekhonavigator.core.model.SharedLocation
 import com.ekhonavigator.core.network.model.NetworkCalendarEvent
 import org.junit.Assert.assertEquals
@@ -207,6 +208,44 @@ class MappersTest {
 
         assertEquals(EventSource.SHARED, asShared?.source)
         assertEquals(EventSource.USER_CREATED, asOwned?.source)
+    }
+
+    @Test
+    fun `firestoreDataToEntity reads type and round-trips it through toDomainModel`() {
+        // Silent-drop guard for the EventType field: a sender's type=ASSIGNMENT must
+        // survive the wire → entity → domain hops on every recipient device.
+        val entity = firestoreDataToEntity(
+            id = "evt-1",
+            data = baseFirestoreData() + ("type" to "ASSIGNMENT"),
+        )!!
+
+        assertEquals(EventType.ASSIGNMENT, entity.type)
+        assertEquals(EventType.ASSIGNMENT, entity.toDomainModel().type)
+    }
+
+    @Test
+    fun `firestoreDataToEntity defaults missing or unknown type to EVENT`() {
+        // Back-compat: pre-EventType Firestore docs have no "type" key. Forward-compat:
+        // a future enum value not yet known to this client must not crash the parser.
+        val noType = firestoreDataToEntity(id = "evt-1", data = baseFirestoreData())
+        val unknownType = firestoreDataToEntity(
+            id = "evt-1",
+            data = baseFirestoreData() + ("type" to "UNFAMILIAR_VALUE"),
+        )
+
+        assertEquals(EventType.EVENT, noType?.type)
+        assertEquals(EventType.EVENT, unknownType?.type)
+    }
+
+    @Test
+    fun `toCustomEventEntity carries type through to the entity`() {
+        // User-create paths must propagate type so a future user-typed assignment ships
+        // intact to Room (and from there to Firestore via the push paths).
+        val domain = sampleDomainEvent().copy(type = EventType.ASSIGNMENT)
+
+        val entity = domain.toCustomEventEntity()
+
+        assertEquals(EventType.ASSIGNMENT, entity.type)
     }
 
     @Test

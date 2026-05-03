@@ -4,6 +4,7 @@ import com.ekhonavigator.core.database.model.CalendarEventEntity
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSource
+import com.ekhonavigator.core.model.EventType
 import com.ekhonavigator.core.network.model.NetworkCalendarEvent
 import com.google.firebase.firestore.DocumentSnapshot
 import java.time.Instant
@@ -60,6 +61,7 @@ fun CalendarEvent.toCustomEventEntity(
     customLocationTitle = customLocation?.title,
     customLocationLatitude = customLocation?.latitude,
     customLocationLongitude = customLocation?.longitude,
+    type = type,
 )
 
 /** [source] defaults to SHARED but is overridden when an owner's second device receives their own event back through the listener. */
@@ -120,5 +122,12 @@ internal fun firestoreDataToEntity(
         customLocationTitle = customLocationTitle,
         customLocationLatitude = customLocationLat,
         customLocationLongitude = customLocationLng,
+        type = (data["type"] as? String)?.let { name ->
+            try {
+                EventType.valueOf(name)
+            } catch (_: IllegalArgumentException) {
+                EventType.EVENT
+            }
+        } ?: EventType.EVENT,
     )
 }

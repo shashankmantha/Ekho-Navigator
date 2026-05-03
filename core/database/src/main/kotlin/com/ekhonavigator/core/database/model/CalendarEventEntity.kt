@@ -5,6 +5,7 @@ import androidx.room.PrimaryKey
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSource
+import com.ekhonavigator.core.model.EventType
 import com.ekhonavigator.core.model.RsvpStatus
 import com.ekhonavigator.core.model.SharedLocation
 import java.time.Instant
@@ -39,6 +40,7 @@ data class CalendarEventEntity(
     val customLocationTitle: String? = null,
     val customLocationLatitude: Double? = null,
     val customLocationLongitude: Double? = null,
+    val type: EventType = EventType.EVENT,
 )
 
 fun CalendarEventEntity.isPast(now: Instant = Instant.now()): Boolean = endTime <= now
@@ -74,4 +76,5 @@ fun CalendarEventEntity.toDomainModel(
         val lng = customLocationLongitude
         if (lat != null && lng != null) SharedLocation(title, lat, lng) else null
     },
+    type = type,
 )

@@ -6,7 +6,7 @@ import java.time.Instant
 /**
  * Converts [Instant] to/from epoch milliseconds for Room storage.
  */
-internal class InstantConverter {
+class InstantConverter {
 
     @TypeConverter
     fun fromInstant(value: Instant?): Long? = value?.toEpochMilli()

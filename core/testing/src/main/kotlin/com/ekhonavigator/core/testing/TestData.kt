@@ -3,6 +3,7 @@ package com.ekhonavigator.core.testing
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSource
+import com.ekhonavigator.core.model.EventType
 import com.ekhonavigator.core.model.RsvpStatus
 import com.ekhonavigator.core.model.SharedLocation
 import java.time.Instant
@@ -56,6 +57,7 @@ fun testCalendarEvent(
     externalSourceType: String? = null,
     dueAt: Instant? = null,
     customLocation: SharedLocation? = null,
+    type: EventType = EventType.EVENT,
 ): CalendarEvent = CalendarEvent(
     id = id,
     title = title,
@@ -81,4 +83,5 @@ fun testCalendarEvent(
     externalSourceType = externalSourceType,
     dueAt = dueAt,
     customLocation = customLocation,
+    type = type,
 )
