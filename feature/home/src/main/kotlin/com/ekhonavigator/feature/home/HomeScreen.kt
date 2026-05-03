@@ -53,7 +53,7 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val allEvents by viewModel.events.collectAsStateWithLifecycle()
-    val showAll by viewModel.showAll.collectAsStateWithLifecycle()
+    val importantOnly by viewModel.importantOnly.collectAsStateWithLifecycle()
 
     val zone = remember { ZoneId.of("America/Los_Angeles") }
     val today = remember { LocalDate.now(zone) }
@@ -115,12 +115,12 @@ fun HomeScreen(
             )
 
             FilterChip(
-                selected = !showAll,
-                onClick = { viewModel.toggleShowAll() },
-                label = { Text("Bookmarked") },
+                selected = importantOnly,
+                onClick = { viewModel.toggleImportantOnly() },
+                label = { Text("Important") },
                 leadingIcon = {
                     Icon(
-                        imageVector = if (!showAll) EkhoIcons.Bookmark else EkhoIcons.BookmarkBorder,
+                        imageVector = if (importantOnly) EkhoIcons.Star else EkhoIcons.StarBorder,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
@@ -129,15 +129,15 @@ fun HomeScreen(
                     containerColor = Color.Transparent,
                     labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    selectedContainerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.1f),
-                    selectedLabelColor = MaterialTheme.colorScheme.tertiary,
-                    selectedLeadingIconColor = MaterialTheme.colorScheme.tertiary,
+                    selectedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    selectedLabelColor = MaterialTheme.colorScheme.onSurface,
+                    selectedLeadingIconColor = MaterialTheme.colorScheme.onSurface,
                 ),
                 border = FilterChipDefaults.filterChipBorder(
                     enabled = true,
-                    selected = !showAll,
+                    selected = importantOnly,
                     borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                    selectedBorderColor = MaterialTheme.colorScheme.tertiary,
+                    selectedBorderColor = MaterialTheme.colorScheme.outline,
                     borderWidth = 1.dp,
                     selectedBorderWidth = 1.dp
                 ),
@@ -153,7 +153,7 @@ fun HomeScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = if (!showAll) "No bookmarked events" else "No upcoming events",
+                    text = if (importantOnly) "Nothing important upcoming" else "No upcoming events",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -189,6 +189,7 @@ fun HomeScreen(
                         organization = event.organization.prettifyAllCaps(),
                         onClick = { onEventClick(event.id) },
                         onBookmarkClick = { viewModel.toggleBookmark(event.id) },
+                        eventId = event.id,
                     )
                     HorizontalDivider(
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),

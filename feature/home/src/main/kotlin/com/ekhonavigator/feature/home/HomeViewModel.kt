@@ -8,6 +8,7 @@ import com.ekhonavigator.core.data.auth.AuthRepository
 import com.ekhonavigator.core.data.repository.CalendarRepository
 import com.ekhonavigator.core.data.repository.CustomEventRepository
 import com.ekhonavigator.core.model.CalendarEvent
+import com.ekhonavigator.core.model.EventSource
 import com.google.android.gms.location.LocationServices
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -46,20 +47,30 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    /** When true (default), show every event. When false, only bookmarked. */
-    private val _showAll = MutableStateFlow(true)
-    val showAll: StateFlow<Boolean> = _showAll.asStateFlow()
+    /**
+     * When true, hides "noisy" non-bookmarked campus iCal events so Home shows
+     * only what the user has flagged worth attention. Canvas assignments,
+     * user-created events, and shared invites always show in both states —
+     * they're never campus noise. Default off (show everything).
+     */
+    private val _importantOnly = MutableStateFlow(false)
+    val importantOnly: StateFlow<Boolean> = _importantOnly.asStateFlow()
 
-    /** All events, optionally filtered to bookmarked-only. */
+    /**
+     * Events for Home, optionally filtered to "important" — drops non-bookmarked
+     * iCal events. Bookmarked iCal stays; Canvas / custom / shared always show.
+     */
     val events: StateFlow<List<CalendarEvent>> = combine(
         repository.observeEvents(),
-        _showAll,
-    ) { allEvents, showAll ->
-        if (showAll) allEvents else allEvents.filter { it.isBookmarked }
+        _importantOnly,
+    ) { allEvents, importantOnly ->
+        if (!importantOnly) allEvents else allEvents.filter { event ->
+            event.source != EventSource.ICAL_FEED || event.isBookmarked
+        }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    fun toggleShowAll() {
-        _showAll.value = !_showAll.value
+    fun toggleImportantOnly() {
+        _importantOnly.value = !_importantOnly.value
     }
 
     fun toggleBookmark(eventId: String) {
