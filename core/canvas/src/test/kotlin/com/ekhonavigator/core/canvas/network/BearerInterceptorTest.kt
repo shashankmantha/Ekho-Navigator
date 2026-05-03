@@ -51,6 +51,26 @@ class BearerInterceptorTest {
         assertEquals("Bearer secret-pat", server.takeRequest().getHeader("Authorization"))
     }
 
+    @Test
+    fun `manual Authorization header on the request is not overridden by stored token`() {
+        val tokens = FakeCanvasTokenStore().apply { put(account, "stored-pat") }
+
+        server.enqueue(MockResponse())
+        OkHttpClient.Builder()
+            .addInterceptor(BearerInterceptor(FakeCanvasAccountSource(account = account), tokens))
+            .build()
+            .newCall(
+                Request.Builder()
+                    .url(server.url("/"))
+                    .header("Authorization", "Bearer manual-pat")
+                    .build(),
+            )
+            .execute()
+            .close()
+
+        assertEquals("Bearer manual-pat", server.takeRequest().getHeader("Authorization"))
+    }
+
     private fun executeWith(accountSource: FakeCanvasAccountSource, tokens: FakeCanvasTokenStore) {
         server.enqueue(MockResponse())
         OkHttpClient.Builder()

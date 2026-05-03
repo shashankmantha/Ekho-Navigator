@@ -12,6 +12,11 @@ internal class BearerInterceptor @Inject constructor(
 ) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
+        // A request that already carries Authorization (e.g. token-validation
+        // calls during connect) wins over the stored account's token.
+        if (chain.request().header("Authorization") != null) {
+            return chain.proceed(chain.request())
+        }
         val token = accountSource.currentOrNull()?.let(tokenStore::get)
             ?: return chain.proceed(chain.request())
         val authed = chain.request().newBuilder()

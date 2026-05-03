@@ -1,9 +1,13 @@
 package com.ekhonavigator.core.canvas.di
 
 import com.ekhonavigator.core.canvas.auth.CanvasAccountSource
+import com.ekhonavigator.core.canvas.auth.CanvasAuthValidator
+import com.ekhonavigator.core.canvas.auth.CanvasInstitutionStore
 import com.ekhonavigator.core.canvas.auth.CanvasTokenStore
+import com.ekhonavigator.core.canvas.auth.DefaultCanvasAccountSource
+import com.ekhonavigator.core.canvas.auth.DefaultCanvasAuthValidator
+import com.ekhonavigator.core.canvas.auth.DefaultCanvasInstitutionStore
 import com.ekhonavigator.core.canvas.auth.DefaultCanvasTokenStore
-import com.ekhonavigator.core.canvas.auth.NoCanvasAccountSource
 import com.ekhonavigator.core.canvas.network.BearerInterceptor
 import com.ekhonavigator.core.canvas.network.CanvasHeadersInterceptor
 import com.ekhonavigator.core.canvas.network.CanvasOkHttp
@@ -21,24 +25,30 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-abstract class CanvasModule {
+internal abstract class CanvasModule {
 
     @Binds
-    abstract fun bindCanvasTokenStore(impl: DefaultCanvasTokenStore): CanvasTokenStore
+    internal abstract fun bindCanvasTokenStore(impl: DefaultCanvasTokenStore): CanvasTokenStore
 
     @Binds
-    abstract fun bindCanvasAccountSource(impl: NoCanvasAccountSource): CanvasAccountSource
+    internal abstract fun bindCanvasInstitutionStore(impl: DefaultCanvasInstitutionStore): CanvasInstitutionStore
+
+    @Binds
+    internal abstract fun bindCanvasAccountSource(impl: DefaultCanvasAccountSource): CanvasAccountSource
+
+    @Binds
+    internal abstract fun bindCanvasAuthValidator(impl: DefaultCanvasAuthValidator): CanvasAuthValidator
 
     companion object {
 
         @Provides
         @Singleton
-        fun provideCanvasJson(): Json = canvasJson
+        internal fun provideCanvasJson(): Json = canvasJson
 
         @Provides
         @Singleton
         @CanvasOkHttp
-        fun provideCanvasOkHttpClient(
+        internal fun provideCanvasOkHttpClient(
             headers: CanvasHeadersInterceptor,
             bearer: BearerInterceptor,
             rateLimit: RateLimitObserverInterceptor,

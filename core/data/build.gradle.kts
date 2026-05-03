@@ -50,6 +50,7 @@ dependencies {
     implementation(projects.core.model)
     implementation(projects.core.database)
     implementation(projects.core.network)
+    implementation(projects.core.canvas)
 
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.play.services.maps)
