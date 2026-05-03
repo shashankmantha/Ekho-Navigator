@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.ekhonavigator.core.designsystem.theme.LocalAssignmentDecorator
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventSource
 import com.ekhonavigator.core.model.EventType
@@ -222,11 +223,17 @@ private fun TimelineEventBlock(
 ) {
     val colors = MaterialTheme.colorScheme
     // ASSIGNMENT type wins first (matches EkhoEventRow's toRowState logic).
-    // Primary garnet is the default; per-course palette (C5.5) will override
-    // for course-tagged assignments. Slate blue stays available as one option
-    // in the per-course rotation rather than the source-wide default.
+    // LocalAssignmentDecorator overrides the bg per-course when known; primary
+    // garnet stays the fallback for course-less assignments and Canvas rows
+    // whose courseId hasn't been bridged yet.
+    val courseColor = if (event.type == EventType.ASSIGNMENT) {
+        LocalAssignmentDecorator.current.courseColorFor(event.id)
+    } else {
+        null
+    }
     val (bgColor, textColor) = when {
-        event.type == EventType.ASSIGNMENT -> colors.primary to colors.onPrimary
+        event.type == EventType.ASSIGNMENT ->
+            (courseColor ?: colors.primary) to colors.onPrimary
 
         event.source == EventSource.ICAL_FEED && event.isBookmarked ->
             colors.tertiary to colors.onTertiary

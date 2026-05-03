@@ -127,6 +127,7 @@ internal fun DiscoverEventsList(
                             organization = event.organization.prettifyAllCaps(),
                             onClick = { onEventClick(event.id) },
                             onBookmarkClick = { viewModel.toggleBookmark(event.id) },
+                            eventId = event.id,
                         )
                         HorizontalDivider(
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),

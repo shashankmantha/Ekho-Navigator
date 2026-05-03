@@ -26,8 +26,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ekhonavigator.core.designsystem.theme.LocalAssignmentDecorator
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventSource
+import com.ekhonavigator.core.model.EventType
 import com.ekhonavigator.core.model.RsvpStatus
 import com.kizitonwose.calendar.core.CalendarDay
 import com.kizitonwose.calendar.core.DayPosition
@@ -126,11 +128,17 @@ fun DayContent(
             val pillCount = if (hasOverflow) MaxVisibleSlots - 1 else events.size
             val visibleEvents = events.take(pillCount)
 
+            val decorator = LocalAssignmentDecorator.current
             Column(verticalArrangement = Arrangement.spacedBy(0.5.dp)) {
                 visibleEvents.forEach { event ->
+                    val courseColor = if (event.type == EventType.ASSIGNMENT) {
+                        decorator.courseColorFor(event.id)
+                    } else {
+                        null
+                    }
                     val (pillBg, pillText) = eventPillColors(
                         event = event,
-                        calendarPill = calendarPillColor,
+                        calendarPill = courseColor ?: calendarPillColor,
                         customPill = customPillColor,
                         campusMutedPill = campusMutedPillColor,
                         campusBookmarkedPill = campusBookmarkedPillColor,

@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import com.ekhonavigator.core.designsystem.theme.LocalAssignmentDecorator
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -60,16 +61,22 @@ fun EkhoEventRow(
     modifier: Modifier = Modifier,
     isPending: Boolean = false,
     organization: String = "",
+    eventId: String? = null,
 ) {
+    // ASSIGNMENT defaults to primary garnet; LocalAssignmentDecorator overrides
+    // per-course when the event is a Canvas-bridged row with a known courseId.
+    // Slate blue lives in the rotation palette, not as the default, so course-less
+    // assignments (e.g. personal study tasks) still read as brand garnet.
+    val courseAccent = if (state == EkhoEventRowState.ASSIGNMENT && eventId != null) {
+        LocalAssignmentDecorator.current.courseColorFor(eventId)
+    } else {
+        null
+    }
     val accent = when (state) {
         EkhoEventRowState.NONE -> MaterialTheme.colorScheme.outlineVariant
         EkhoEventRowState.BOOKMARKED -> MaterialTheme.colorScheme.tertiary
         EkhoEventRowState.PERSONAL -> MaterialTheme.colorScheme.secondary
-        // Primary garnet is the ASSIGNMENT default; per-course palette (C5.5)
-        // overrides per course-tag, with garnet remaining the fallback for
-        // assignments without a course (personal study tasks). Slate blue is
-        // reserved as one option in the per-course rotation rather than the default.
-        EkhoEventRowState.ASSIGNMENT -> MaterialTheme.colorScheme.primary
+        EkhoEventRowState.ASSIGNMENT -> courseAccent ?: MaterialTheme.colorScheme.primary
     }
 
     Row(

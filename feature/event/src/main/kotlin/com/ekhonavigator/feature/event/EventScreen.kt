@@ -696,7 +696,7 @@ private fun MetaTextRow(
         )
         .padding(vertical = 5.dp)
     val valueColor = if (onClick != null) {
-        MaterialTheme.colorScheme.primaryContainer
+        MaterialTheme.colorScheme.primary
     } else {
         MaterialTheme.colorScheme.onSurface
     }
