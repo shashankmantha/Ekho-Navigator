@@ -19,6 +19,14 @@ interface CanvasPlannerItemDao {
     )
     fun observeInRange(start: Instant, end: Instant): Flow<List<CanvasPlannerItemEntity>>
 
+    /**
+     * All cached planner items. Used by the app-root assignment decorator to build
+     * a global eventId→courseId / eventId→completion lookup without re-querying per
+     * date range. Pruned by the sync window already, so volume stays bounded.
+     */
+    @Query("SELECT * FROM canvas_planner_items")
+    fun observeAll(): Flow<List<CanvasPlannerItemEntity>>
+
     @Query("SELECT * FROM canvas_planner_items WHERE id = :id")
     suspend fun getById(id: String): CanvasPlannerItemEntity?
 

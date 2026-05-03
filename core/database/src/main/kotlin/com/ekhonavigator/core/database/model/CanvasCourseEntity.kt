@@ -10,6 +10,9 @@ data class CanvasCourseEntity(
     val code: String,
     val name: String,
     val termName: String?,
+    /** When this course's term ends. Null means Canvas didn't supply an end_at
+     *  (often training/advising courses); treated as "no end" by current-term filters. */
+    val termEndAt: Instant?,
     val imageUrl: String?,
     val currentScore: Double?,
     val currentGrade: String?,

@@ -12,6 +12,9 @@ internal fun CanvasCourseDto.toEntity(now: Instant = Instant.now()): CanvasCours
         code = courseCode,
         name = name,
         termName = term?.name,
+        // Canvas returns ISO-8601; runCatching tolerates malformed/empty strings
+        // by leaving termEndAt null, which the current-term filter treats as "ongoing."
+        termEndAt = term?.endAt?.let { runCatching { Instant.parse(it) }.getOrNull() },
         imageUrl = imageDownloadUrl,
         currentScore = student?.currentScore,
         currentGrade = student?.currentGrade,
@@ -25,6 +28,7 @@ internal fun CanvasCourseEntity.toDomainModel(): CanvasCourse = CanvasCourse(
     code = code,
     name = name,
     termName = termName,
+    termEndAt = termEndAt,
     imageUrl = imageUrl,
     currentScore = currentScore,
     currentGrade = currentGrade,

@@ -171,6 +171,8 @@ internal class FakeCanvasPlannerItemDao : CanvasPlannerItemDao {
                 .sortedBy { it.plannableDate }
         }
 
+    override fun observeAll(): Flow<List<CanvasPlannerItemEntity>> = state
+
     override suspend fun getById(id: String): CanvasPlannerItemEntity? =
         state.value.firstOrNull { it.id == id }
 

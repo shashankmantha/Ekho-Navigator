@@ -88,6 +88,7 @@ class DefaultCanvasCourseRepositoryTest {
         code = code,
         name = "name-$id",
         termName = null,
+        termEndAt = null,
         imageUrl = null,
         currentScore = null,
         currentGrade = grade,

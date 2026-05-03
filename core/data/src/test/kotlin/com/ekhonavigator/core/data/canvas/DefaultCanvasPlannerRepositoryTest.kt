@@ -238,6 +238,7 @@ class DefaultCanvasPlannerRepositoryTest {
         code = "code-$id",
         name = "name-$id",
         termName = null,
+        termEndAt = null,
         imageUrl = null,
         currentScore = null,
         currentGrade = null,

@@ -10,6 +10,13 @@ interface CanvasPlannerRepository {
     fun observeItems(start: Instant, end: Instant): Flow<List<PlannerItem>>
 
     /**
+     * All cached planner items, regardless of date. Used by render-side filters
+     * that need a global eventId → courseId lookup without re-keying per range.
+     * Bounded in volume by the sync window's pruning policy.
+     */
+    fun observeAllItems(): Flow<List<PlannerItem>>
+
+    /**
      * Fetches planner items for `[start, end)` from Canvas and reconciles the cache:
      * upserts what came back, prunes anything in that window the response no longer contains.
      * Items outside the window are left alone.

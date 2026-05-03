@@ -17,6 +17,7 @@ data class CanvasCourseDto(
 @Serializable
 data class CanvasTermDto(
     val name: String? = null,
+    @SerialName("end_at") val endAt: String? = null,
 )
 
 @Serializable
