@@ -72,8 +72,10 @@ fun DiscoverScreen(
     var selectedTab by rememberSaveable { mutableStateOf(initialTab) }
 
     var showFilterSheet by remember { mutableStateOf(false) }
-    val filterSheetState = rememberModalBottomSheetState()
-
+    // skipPartiallyExpanded so the sheet uses content's intrinsic height and re-measures
+    // when collapsible sections grow — otherwise the partial-expand peek height is locked
+    // to the initial composition and later expansions get clipped.
+    val filterSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val activeSourceTypes by viewModel.activeSourceTypes.collectAsStateWithLifecycle()
     val selectedCategories by viewModel.selectedCategories.collectAsStateWithLifecycle()
     val availableCourses by viewModel.availableCourses.collectAsStateWithLifecycle()

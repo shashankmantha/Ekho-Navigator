@@ -150,63 +150,15 @@ fun FilterSheetContent(
 
         HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.3f))
 
-        CollapsibleMultiSelectSection(
-            title = "Categories",
-            selectedCount = selectedCategories.size,
-            headerTrailingContent = {
-                if (selectedCategories.isNotEmpty()) {
-                    ClearLink(onClick = onClearCategories)
-                }
-            },
-        ) {
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                EventCategory.entries.forEach { category ->
-                    val isSelected = category in selectedCategories
-                    FilterChip(
-                        selected = isSelected,
-                        onClick = { onToggleCategory(category) },
-                        label = {
-                            Text(
-                                text = category.displayName,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            )
-                        },
-                        leadingIcon = {
-                            EkhoMonogramBadge(
-                                monogram = category.monogram,
-                                containerColor = colors.surfaceContainerHighest,
-                                contentColor = if (isSelected) {
-                                    colors.onPrimaryContainer
-                                } else {
-                                    colors.onSurfaceVariant
-                                },
-                            )
-                        },
-                        modifier = Modifier.height(32.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = colors.primaryContainer,
-                            selectedLabelColor = colors.onPrimaryContainer,
-                            selectedLeadingIconColor = colors.onPrimaryContainer,
-                            containerColor = colors.surfaceContainerHigh,
-                            labelColor = colors.onSurfaceVariant,
-                        ),
-                    )
-                }
-            }
-        }
-
+        // Courses sit above Categories and start expanded — they're the most-used
+        // filter once Canvas is connected, so opening the sheet should land the
+        // user inside the chip list, not on a collapsed header.
         if (courses.isNotEmpty()) {
-            HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.3f))
             val palette = coursePalette()
             CollapsibleMultiSelectSection(
                 title = "Courses",
                 selectedCount = selectedCourseIds.size,
+                initiallyExpanded = true,
                 headerTrailingContent = {
                     if (selectedCourseIds.isNotEmpty()) {
                         ClearLink(onClick = onClearCourses)
@@ -257,6 +209,58 @@ fun FilterSheetContent(
                             ),
                         )
                     }
+                }
+            }
+            HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.3f))
+        }
+
+        CollapsibleMultiSelectSection(
+            title = "Categories",
+            selectedCount = selectedCategories.size,
+            headerTrailingContent = {
+                if (selectedCategories.isNotEmpty()) {
+                    ClearLink(onClick = onClearCategories)
+                }
+            },
+        ) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                EventCategory.entries.forEach { category ->
+                    val isSelected = category in selectedCategories
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { onToggleCategory(category) },
+                        label = {
+                            Text(
+                                text = category.displayName,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            )
+                        },
+                        leadingIcon = {
+                            EkhoMonogramBadge(
+                                monogram = category.monogram,
+                                containerColor = colors.surfaceContainerHighest,
+                                contentColor = if (isSelected) {
+                                    colors.onPrimaryContainer
+                                } else {
+                                    colors.onSurfaceVariant
+                                },
+                            )
+                        },
+                        modifier = Modifier.height(32.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = colors.primaryContainer,
+                            selectedLabelColor = colors.onPrimaryContainer,
+                            selectedLeadingIconColor = colors.onPrimaryContainer,
+                            containerColor = colors.surfaceContainerHigh,
+                            labelColor = colors.onSurfaceVariant,
+                        ),
+                    )
                 }
             }
         }
