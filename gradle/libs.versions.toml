@@ -34,6 +34,9 @@ workManager = "2.11.1"
 # Networking
 okhttp = "5.3.2"
 
+# Encrypted Storage
+androidxSecurityCrypto = "1.1.0-alpha06"
+
 # iCalendar Parsing
 ical4j = "4.2.3"
 
@@ -104,6 +107,11 @@ work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version
 
 # OkHttp
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+okhttp-logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
+okhttp-mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver", version.ref = "okhttp" }
+
+# Encrypted Storage
+androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "androidxSecurityCrypto" }
 
 # iCal4j
 ical4j = { group = "org.mnode.ical4j", name = "ical4j", version.ref = "ical4j" }
