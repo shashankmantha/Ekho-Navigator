@@ -15,6 +15,7 @@ import com.google.android.gms.maps.model.LatLng
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -36,11 +37,11 @@ class MapViewModel @Inject constructor(
 
     val friends = androidx.compose.runtime.mutableStateListOf<FriendInfo>()
 
-
     var searchTextForFriendPicker by mutableStateOf("")
         private set
 
     private var activeFriendsListener: kotlinx.coroutines.Job? = null
+    private var activeMarkersListener: kotlinx.coroutines.Job? = null
 
     fun updateSearchTextForFriendPicker(newText: String) {
         searchTextForFriendPicker = newText
@@ -62,36 +63,55 @@ class MapViewModel @Inject constructor(
         viewModelScope.launch {
             authRepository.userFlow().collect { userId ->
                 if (userId != null) {
-                    loadUserMarkers()
-                    loadFriends(userId) // Fetch friends when user is logged in
+                    loadUserMarkers(userId)
+                    loadFriends(userId)
                 } else {
+                    stopFirebaseListeners()
                     droppedMarkers.clear()
                     friends.clear()
+                    searchTextForFriendPicker = ""
                 }
             }
         }
+    }
+
+    private fun stopFirebaseListeners() {
+        activeFriendsListener?.cancel()
+        activeFriendsListener = null
+
+        activeMarkersListener?.cancel()
+        activeMarkersListener = null
     }
 
     private fun loadFriends(userId: String) {
         activeFriendsListener?.cancel()
 
         activeFriendsListener = viewModelScope.launch {
-            socialRepository.observeFriends(userId).collect { latestFriendsFromFirebase ->
-                friends.clear()
-                friends.addAll(latestFriendsFromFirebase.map { friend ->
-                    FriendInfo(friend.uid, friend.displayName)
-                })
-            }
+            socialRepository.observeFriends(userId)
+                .catch {
+                    friends.clear()
+                }
+                .collect { latestFriendsFromFirebase ->
+                    friends.clear()
+                    friends.addAll(latestFriendsFromFirebase.map { friend ->
+                        FriendInfo(friend.uid, friend.displayName)
+                    })
+                }
         }
     }
 
-    private fun loadUserMarkers() {
-        val userId = currentUserId ?: return
-        viewModelScope.launch {
-            markerRepository.observeUserMarkers(userId).collect { remoteMarkers ->
-                droppedMarkers.clear()
-                droppedMarkers.addAll(remoteMarkers.map { it.toUserMarker() })
-            }
+    private fun loadUserMarkers(userId: String) {
+        activeMarkersListener?.cancel()
+
+        activeMarkersListener = viewModelScope.launch {
+            markerRepository.observeUserMarkers(userId)
+                .catch {
+                    droppedMarkers.clear()
+                }
+                .collect { remoteMarkers ->
+                    droppedMarkers.clear()
+                    droppedMarkers.addAll(remoteMarkers.map { it.toUserMarker() })
+                }
         }
     }
 
@@ -181,5 +201,10 @@ class MapViewModel @Inject constructor(
 
     fun clearActiveRoute() {
         _activeRoutePoints.value = emptyList()
+    }
+
+    override fun onCleared() {
+        stopFirebaseListeners()
+        super.onCleared()
     }
 }
