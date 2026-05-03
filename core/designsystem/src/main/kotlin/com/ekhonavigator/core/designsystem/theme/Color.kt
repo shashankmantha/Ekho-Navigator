@@ -10,10 +10,6 @@ import androidx.compose.ui.graphics.Color
  * garnet ~#8B2D3A) and lets Material 3's tonal-palette pattern do the heavy lifting:
  * primary for brand chrome and key CTAs, surface tonal layers for depth without
  * shadow, secondary/tertiary as muted harmonics rather than competing accents.
- *
- * Names prefixed `SchoolRed` / `DolphinCyan` / `CampusAmber` are preserved as legacy
- * symbol aliases for migration; commit 5 of the visual cohesion phase will sweep the
- * usages to MaterialTheme.colorScheme.* references and these aliases will be dropped.
  */
 
 // ── Brand: CSUCI Garnet (primary tonal palette) ────────────
@@ -94,43 +90,7 @@ internal val ErrorLight = Color(0xFFBA1A1A)
 internal val ErrorDark = Color(0xFFFFB4AB)
 internal val ErrorContainerLight = Color(0xFFFFDAD6)
 internal val ErrorContainerDark = Color(0xFF93000A)
+internal val OnErrorDark = Color(0xFF690005)
 internal val OnErrorContainerLight = Color(0xFF410002)
 internal val OnErrorContainerDark = Color(0xFFFFDAD6)
 
-// ── Legacy symbol aliases (preserved for migration; will be removed in commit 5) ──
-@Deprecated("Use MaterialTheme.colorScheme.primary; alias kept until cohesion-phase commit 5.")
-internal val SchoolRed = GarnetTone40
-@Deprecated("Use MaterialTheme.colorScheme.primary; alias kept until cohesion-phase commit 5.")
-internal val SchoolRedBright = GarnetTone80
-@Deprecated("Use MaterialTheme.colorScheme.primary tone 30 equivalent; alias kept for migration.")
-internal val SchoolRedDark = GarnetTone20
-@Deprecated("Use MaterialTheme.colorScheme.primaryContainer.")
-internal val SchoolRedContainer = GarnetTone90
-@Deprecated("Use SlateBlueTone40 directly or wire through a source-distinction helper.")
-internal val DolphinCyan = SlateBlueTone40
-@Deprecated("Use SlateBlueTone20 equivalent.")
-internal val DolphinCyanDark = SlateBlueTone20
-@Deprecated("Use SlateBlueTone90.")
-internal val DolphinCyanContainer = SlateBlueTone90
-@Deprecated("Use MaterialTheme.colorScheme.tertiary.")
-internal val CampusAmber = AmberTone40
-@Deprecated("Use a tone 20 tertiary equivalent.")
-internal val CampusAmberDark = AmberTone20
-@Deprecated("Use MaterialTheme.colorScheme.tertiaryContainer.")
-internal val CampusAmberContainer = AmberTone90
-@Deprecated("Use MaterialTheme.colorScheme.error.")
-internal val ErrorRed = ErrorLight
-@Deprecated("Use MaterialTheme.colorScheme.onError.")
-internal val OnErrorRed = NeutralTone100
-@Deprecated("Use MaterialTheme.colorScheme.errorContainer.")
-internal val ErrorContainerRed = ErrorContainerLight
-@Deprecated("Use MaterialTheme.colorScheme.outline.")
-internal val GhostOutline = NeutralVariantTone50
-@Deprecated("Use MaterialTheme.colorScheme.onSurface.")
-internal val LightOnSurface = NeutralTone20
-@Deprecated("Use MaterialTheme.colorScheme.onSurfaceVariant.")
-internal val LightOnSurfaceVariant = NeutralVariantTone30
-@Deprecated("Use MaterialTheme.colorScheme.onSurface.")
-internal val DarkOnSurface = NeutralTone90
-@Deprecated("Use MaterialTheme.colorScheme.onSurfaceVariant.")
-internal val DarkOnSurfaceVariant = NeutralVariantTone80
