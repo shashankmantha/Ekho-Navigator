@@ -3,111 +3,134 @@ package com.ekhonavigator.core.designsystem.theme
 import androidx.compose.ui.graphics.Color
 
 /**
- * Ekho Navigator "Kinetic Monolith" Color Palette
- * Refined for High Engagement & Youthful Energy (Red/Cyan/Cyber Lime)
+ * Ekho Navigator color palette — softened CSUCI garnet, single accent family.
+ *
+ * Replaces the prior "Kinetic Monolith" three-color setup (red + neon cyan + amber)
+ * which over-saturated and clashed. The new palette derives from one seed (CSUCI
+ * garnet ~#8B2D3A) and lets Material 3's tonal-palette pattern do the heavy lifting:
+ * primary for brand chrome and key CTAs, surface tonal layers for depth without
+ * shadow, secondary/tertiary as muted harmonics rather than competing accents.
+ *
+ * Names prefixed `SchoolRed` / `DolphinCyan` / `CampusAmber` are preserved as legacy
+ * symbol aliases for migration; commit 5 of the visual cohesion phase will sweep the
+ * usages to MaterialTheme.colorScheme.* references and these aliases will be dropped.
  */
 
-// ── Dark Theme Foundation (Vibrant Noir) ───────────────────
-internal val DarkSurface = Color(0xFF0E0E0E)
-internal val DarkSurfaceContainerLow = Color(0xFF161616)
-internal val DarkSurfaceContainerHigh = Color(0xFF202020)
-internal val DarkSurfaceContainerHighest = Color(0xFF2A2A2A)
-internal val DarkSurfaceBright = Color(0xFF333333)
-internal val DarkOnSurface = Color(0xFFF0F0F0)
-internal val DarkOnSurfaceVariant = Color(0xFF9DA3A3)
+// ── Brand: CSUCI Garnet (primary tonal palette) ────────────
+internal val GarnetTone10 = Color(0xFF3F0010)
+internal val GarnetTone20 = Color(0xFF5F1124)
+internal val GarnetTone30 = Color(0xFF7A1F30)
+internal val GarnetTone40 = Color(0xFF8B2D3A) // brand seed
+internal val GarnetTone80 = Color(0xFFFFB3B9)
+internal val GarnetTone90 = Color(0xFFFFD9DC)
+internal val GarnetTone95 = Color(0xFFFFEDED)
 
-// ── Light Theme Foundation ─────────────────────────────────
-internal val LightSurface = Color(0xFFF9FBFB)
-internal val LightSurfaceContainerLow = Color(0xFFF0F4F4)
-internal val LightSurfaceContainerHigh = Color(0xFFE5EBEB)
-internal val LightSurfaceContainerHighest = Color(0xFFD9E1E1)
-internal val LightOnSurface = Color(0xFF0E0E0E)
-internal val LightOnSurfaceVariant = Color(0xFF5D6666)
+// ── Secondary: Sage Green — calendar-side palette saturation (GCal-leaning).
+// Distinct hue presence so CUSTOM chips read as "green" at a glance, not
+// "muted warm." Tone40 sits between gray-green and Christmas-green. ──
+internal val SageGreenTone10 = Color(0xFF002111)
+internal val SageGreenTone20 = Color(0xFF003820)
+internal val SageGreenTone30 = Color(0xFF1E5236)
+internal val SageGreenTone40 = Color(0xFF3F8C5F)
+internal val SageGreenTone80 = Color(0xFFA5D5B6)
+internal val SageGreenTone90 = Color(0xFFC1ECCF)
 
-// ── Accent: School Red (The Core Pulse) ────────────────────
-internal val SchoolRed = Color(0xFFCB132A)
-internal val SchoolRedBright = Color(0xFFFF2B44)
-internal val SchoolRedDark = Color(0xFF68000E)
-internal val SchoolRedContainer = Color(0xFFCB132A)
+// ── Source-distinction: Slate Blue — boosted chroma so CANVAS chips read
+// as a real blue (GCal Peacock-leaning) rather than warm-leaning gray.
+// Public so feature modules can reference until EkhoSourceColors wrapper. ──
+val SlateBlueTone10 = Color(0xFF001B3C)
+val SlateBlueTone20 = Color(0xFF003063)
+val SlateBlueTone30 = Color(0xFF0A4A8E)
+val SlateBlueTone40 = Color(0xFF3B7FBF)
+val SlateBlueTone80 = Color(0xFFA8C8EE)
+val SlateBlueTone90 = Color(0xFFCFE0F8)
 
-// ── Accent: Dolphin Cyan (The Intelligence) ────────────────
-internal val DolphinCyan = Color(0xFF00E3FD)
-internal val DolphinCyanDark = Color(0xFF00363D)
-internal val DolphinCyanContainer = Color(0xFF00E3FD)
+// ── Tertiary: Amber — warmer/saturated golden, away from the prior muddy
+// brown. Reads as "starred / important" the way GCal Banana does. ──
+internal val AmberTone10 = Color(0xFF2A1B00)
+internal val AmberTone20 = Color(0xFF4A3300)
+internal val AmberTone30 = Color(0xFF7A5810)
+internal val AmberTone40 = Color(0xFFC68729)
+internal val AmberTone80 = Color(0xFFF0CB85)
+internal val AmberTone90 = Color(0xFFF8E2B5)
 
-// ── Accent: Campus Amber (The Campus Pulse) ────────────────
-internal val CampusAmber = Color(0xFFE8813D)
-internal val CampusAmberDark = Color(0xFF4A2200)
-internal val CampusAmberContainer = Color(0xFFE8813D)
+// ── Neutral (faintly warm-tinted greys for surfaces / text) ────────
+// Warmth dialed way back from the original "salmon" levels — R bias is now
+// 1-3 points over G/B (was 8-10), reading as off-white rather than pink.
+internal val NeutralTone0 = Color(0xFF000000)
+internal val NeutralTone10 = Color(0xFF1A1112)
+internal val NeutralTone20 = Color(0xFF221919)
+internal val NeutralTone30 = Color(0xFF382E2E)
+internal val NeutralTone90 = Color(0xFFE5E1E0)
+internal val NeutralTone95 = Color(0xFFF2EFEE)
+internal val NeutralTone98 = Color(0xFFFBFAF9)
+internal val NeutralTone100 = Color(0xFFFFFFFF)
 
-// ── Error & Validation ──────────────────────────────────────
-internal val ErrorRed = Color(0xFFFF4D4D)
-internal val OnErrorRed = Color(0xFF000000)
-internal val ErrorContainerRed = Color(0xFF4D0000)
+// ── Neutral Variant (subtly warm greys for surface variants / outlines) ──
+internal val NeutralVariantTone30 = Color(0xFF524345)
+internal val NeutralVariantTone50 = Color(0xFF847374)
+internal val NeutralVariantTone60 = Color(0xFF9F8C8D)
+internal val NeutralVariantTone80 = Color(0xFFC9C5C4)
+internal val NeutralVariantTone90 = Color(0xFFE5E2E1)
 
-// ── Outline & Ghost Border ──────────────────────────────────
-internal val GhostOutline = Color(0xFFFFFFFF)
+// ── Light surface ladder (M3 surfaceContainer* tonal stacking) ──
+internal val LightSurface = NeutralTone98
+internal val LightSurfaceContainerLowest = NeutralTone100
+internal val LightSurfaceContainerLow = Color(0xFFF7F6F5)
+internal val LightSurfaceContainer = Color(0xFFF2F1F0)
+internal val LightSurfaceContainerHigh = Color(0xFFEDECEB)
+internal val LightSurfaceContainerHighest = Color(0xFFE8E7E6)
 
-// ── Original M3 Default Colors (Internal fallback) ──────────
-internal val Purple10 = Color(0xFF410010)
-internal val Purple20 = Color(0xFF7A0020)
-internal val Purple30 = Color(0xFF9B0A24)
-internal val Purple40 = Color(0xFFC8102E)
-internal val Purple80 = Color(0xFFE8384F)
-internal val Purple90 = Color(0xFFFFDAD8)
-internal val Orange10 = Color(0xFF1C1B1E)
-internal val Orange20 = Color(0xFF313033)
-internal val Orange30 = Color(0xFF484649)
-internal val Orange40 = Color(0xFF605D62)
-internal val Orange80 = Color(0xFFCAC4CF)
-internal val Orange90 = Color(0xFFE6E0EB)
-internal val Blue10 = Color(0xFF001D36)
-internal val Blue20 = Color(0xFF003258)
-internal val Blue30 = Color(0xFF00497D)
-internal val Blue40 = Color(0xFF1565C0)
-internal val Blue80 = Color(0xFF9ECAFF)
-internal val Blue90 = Color(0xFFD1E4FF)
-internal val DarkPurpleGray10 = Color(0xFF1C1B1F)
-internal val DarkPurpleGray20 = Color(0xFF313033)
-internal val DarkPurpleGray90 = Color(0xFFE6E1E5)
-internal val DarkPurpleGray95 = Color(0xFFF4EFF4)
-internal val DarkPurpleGray99 = Color(0xFFFFFBFE)
-internal val PurpleGray30 = Color(0xFF49454F)
-internal val PurpleGray50 = Color(0xFF79747E)
-internal val PurpleGray60 = Color(0xFF938F99)
-internal val PurpleGray80 = Color(0xFFCAC4D0)
-internal val PurpleGray90 = Color(0xFFE7E0EC)
-internal val Green10 = Color(0xFF410010)
-internal val Green20 = Color(0xFF7A0020)
-internal val Green30 = Color(0xFF9B0A24)
-internal val Green40 = Color(0xFFC8102E)
-internal val Green80 = Color(0xFFE8384F)
-internal val Green90 = Color(0xFFFFDAD8)
-internal val DarkGreen10 = Color(0xFF1C1B1E)
-internal val DarkGreen20 = Color(0xFF313033)
-internal val DarkGreen30 = Color(0xFF484649)
-internal val DarkGreen40 = Color(0xFF605D62)
-internal val DarkGreen80 = Color(0xFFCAC4CF)
-internal val DarkGreen90 = Color(0xFFE6E0EB)
-internal val Teal10 = Color(0xFF001D36)
-internal val Teal20 = Color(0xFF003258)
-internal val Teal30 = Color(0xFF00497D)
-internal val Teal40 = Color(0xFF1565C0)
-internal val Teal80 = Color(0xFF9ECAFF)
-internal val Teal90 = Color(0xFFD1E4FF)
-internal val DarkGreenGray10 = Color(0xFF1C1B1F)
-internal val DarkGreenGray20 = Color(0xFF313033)
-internal val DarkGreenGray90 = Color(0xFFE6E1E5)
-internal val DarkGreenGray95 = Color(0xFFF4EFF4)
-internal val DarkGreenGray99 = Color(0xFFFFFBFE)
-internal val GreenGray30 = Color(0xFF49454F)
-internal val GreenGray50 = Color(0xFF79747E)
-internal val GreenGray60 = Color(0xFF938F99)
-internal val GreenGray80 = Color(0xFFCAC4D0)
-internal val GreenGray90 = Color(0xFFE7E0EC)
-internal val Red10 = Color(0xFF410002)
-internal val Red20 = Color(0xFF690005)
-internal val Red30 = Color(0xFF93000A)
-internal val Red40 = Color(0xFFBA1A1A)
-internal val Red80 = Color(0xFFFFB4AB)
-internal val Red90 = Color(0xFFFFDAD6)
+// ── Dark surface ladder ────────────────────────────────────
+internal val DarkSurface = NeutralTone10
+internal val DarkSurfaceContainerLowest = Color(0xFF140C0D)
+internal val DarkSurfaceContainerLow = NeutralTone20
+internal val DarkSurfaceContainer = Color(0xFF261D1D)
+internal val DarkSurfaceContainerHigh = Color(0xFF312727)
+internal val DarkSurfaceContainerHighest = Color(0xFF3C3232)
+
+// ── Error (standard M3 — stops looking like brand red) ─────
+internal val ErrorLight = Color(0xFFBA1A1A)
+internal val ErrorDark = Color(0xFFFFB4AB)
+internal val ErrorContainerLight = Color(0xFFFFDAD6)
+internal val ErrorContainerDark = Color(0xFF93000A)
+internal val OnErrorContainerLight = Color(0xFF410002)
+internal val OnErrorContainerDark = Color(0xFFFFDAD6)
+
+// ── Legacy symbol aliases (preserved for migration; will be removed in commit 5) ──
+@Deprecated("Use MaterialTheme.colorScheme.primary; alias kept until cohesion-phase commit 5.")
+internal val SchoolRed = GarnetTone40
+@Deprecated("Use MaterialTheme.colorScheme.primary; alias kept until cohesion-phase commit 5.")
+internal val SchoolRedBright = GarnetTone80
+@Deprecated("Use MaterialTheme.colorScheme.primary tone 30 equivalent; alias kept for migration.")
+internal val SchoolRedDark = GarnetTone20
+@Deprecated("Use MaterialTheme.colorScheme.primaryContainer.")
+internal val SchoolRedContainer = GarnetTone90
+@Deprecated("Use SlateBlueTone40 directly or wire through a source-distinction helper.")
+internal val DolphinCyan = SlateBlueTone40
+@Deprecated("Use SlateBlueTone20 equivalent.")
+internal val DolphinCyanDark = SlateBlueTone20
+@Deprecated("Use SlateBlueTone90.")
+internal val DolphinCyanContainer = SlateBlueTone90
+@Deprecated("Use MaterialTheme.colorScheme.tertiary.")
+internal val CampusAmber = AmberTone40
+@Deprecated("Use a tone 20 tertiary equivalent.")
+internal val CampusAmberDark = AmberTone20
+@Deprecated("Use MaterialTheme.colorScheme.tertiaryContainer.")
+internal val CampusAmberContainer = AmberTone90
+@Deprecated("Use MaterialTheme.colorScheme.error.")
+internal val ErrorRed = ErrorLight
+@Deprecated("Use MaterialTheme.colorScheme.onError.")
+internal val OnErrorRed = NeutralTone100
+@Deprecated("Use MaterialTheme.colorScheme.errorContainer.")
+internal val ErrorContainerRed = ErrorContainerLight
+@Deprecated("Use MaterialTheme.colorScheme.outline.")
+internal val GhostOutline = NeutralVariantTone50
+@Deprecated("Use MaterialTheme.colorScheme.onSurface.")
+internal val LightOnSurface = NeutralTone20
+@Deprecated("Use MaterialTheme.colorScheme.onSurfaceVariant.")
+internal val LightOnSurfaceVariant = NeutralVariantTone30
+@Deprecated("Use MaterialTheme.colorScheme.onSurface.")
+internal val DarkOnSurface = NeutralTone90
+@Deprecated("Use MaterialTheme.colorScheme.onSurfaceVariant.")
+internal val DarkOnSurfaceVariant = NeutralVariantTone80

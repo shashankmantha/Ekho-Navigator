@@ -65,6 +65,10 @@ fun EkhoEventRow(
         EkhoEventRowState.NONE -> MaterialTheme.colorScheme.outlineVariant
         EkhoEventRowState.BOOKMARKED -> MaterialTheme.colorScheme.tertiary
         EkhoEventRowState.PERSONAL -> MaterialTheme.colorScheme.secondary
+        // Primary garnet is the ASSIGNMENT default; per-course palette (C5.5)
+        // overrides per course-tag, with garnet remaining the fallback for
+        // assignments without a course (personal study tasks). Slate blue is
+        // reserved as one option in the per-course rotation rather than the default.
         EkhoEventRowState.ASSIGNMENT -> MaterialTheme.colorScheme.primary
     }
 

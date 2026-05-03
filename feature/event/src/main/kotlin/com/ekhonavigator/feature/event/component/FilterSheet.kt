@@ -40,7 +40,7 @@ internal fun sourceTypeThemeColors(
 ): Pair<Color, Color> = when (type) {
     EventSourceType.SCHEDULE -> colors.primary to colors.onPrimary
     EventSourceType.CUSTOM -> colors.secondary to colors.onSecondary
-    EventSourceType.CAMPUS -> colors.onSurfaceVariant to colors.onSurface
+    EventSourceType.CAMPUS -> colors.onSurfaceVariant to colors.surface
     EventSourceType.BOOKMARKED -> colors.tertiary to colors.onTertiary
     EventSourceType.CANVAS -> colors.primary to colors.onPrimary
 }

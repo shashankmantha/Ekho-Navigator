@@ -17,206 +17,137 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 
 /**
- * Light default theme color scheme
+ * Ekho Navigator light color scheme — derived from CSUCI garnet seed via Material 3
+ * tonal palette mapping. Every slot fills explicitly so we control the surface
+ * container ladder rather than letting M3 derive defaults that don't match our seed.
  */
 @VisibleForTesting
-val LightDefaultColorScheme = lightColorScheme(
-    primary = SchoolRed,
-    onPrimary = Color.White,
-    primaryContainer = SchoolRedContainer,
-    onPrimaryContainer = Color.White,
-    secondary = DolphinCyan,
-    onSecondary = DolphinCyanDark,
-    secondaryContainer = DolphinCyanContainer,
-    onSecondaryContainer = DolphinCyanDark,
-    tertiary = CampusAmber,
-    onTertiary = Color.White,
-    tertiaryContainer = CampusAmberContainer,
-    onTertiaryContainer = CampusAmberDark,
-    error = ErrorRed,
-    onError = OnErrorRed,
-    errorContainer = ErrorContainerRed,
-    onErrorContainer = ErrorRed,
+val LightEkhoColorScheme = lightColorScheme(
+    primary = GarnetTone40,
+    onPrimary = NeutralTone100,
+    primaryContainer = GarnetTone90,
+    onPrimaryContainer = GarnetTone10,
+    secondary = SageGreenTone40,
+    onSecondary = NeutralTone100,
+    secondaryContainer = SageGreenTone90,
+    onSecondaryContainer = SageGreenTone10,
+    tertiary = AmberTone40,
+    onTertiary = NeutralTone100,
+    tertiaryContainer = AmberTone90,
+    onTertiaryContainer = AmberTone10,
+    error = ErrorLight,
+    onError = NeutralTone100,
+    errorContainer = ErrorContainerLight,
+    onErrorContainer = OnErrorContainerLight,
     background = LightSurface,
-    onBackground = LightOnSurface,
+    onBackground = NeutralTone20,
     surface = LightSurface,
-    onSurface = LightOnSurface,
-    surfaceVariant = LightSurfaceContainerHigh,
-    onSurfaceVariant = LightOnSurfaceVariant,
+    onSurface = NeutralTone20,
+    surfaceVariant = NeutralVariantTone90,
+    onSurfaceVariant = NeutralVariantTone30,
+    surfaceTint = GarnetTone40,
     inverseSurface = DarkSurface,
-    inverseOnSurface = LightSurfaceContainerLow,
-    outline = GhostOutline.copy(alpha = 0.15f),
+    inverseOnSurface = NeutralTone90,
+    inversePrimary = GarnetTone80,
+    outline = NeutralVariantTone50,
+    outlineVariant = NeutralVariantTone80,
+    surfaceContainerLowest = LightSurfaceContainerLowest,
+    surfaceContainerLow = LightSurfaceContainerLow,
+    surfaceContainer = LightSurfaceContainer,
+    surfaceContainerHigh = LightSurfaceContainerHigh,
+    surfaceContainerHighest = LightSurfaceContainerHighest,
 )
 
 /**
- * Dark default theme color scheme
+ * Ekho Navigator dark color scheme — paired with light via M3 tonal inversion.
+ * Primary uses tone 80 (light pink) for legibility on dark surface; container uses
+ * tone 30 (dim brick) so the brand still reads as garnet-warm rather than pastel.
  */
 @VisibleForTesting
-val DarkDefaultColorScheme = darkColorScheme(
-    primary = SchoolRedBright,
-    onPrimary = Color.Black,
-    primaryContainer = SchoolRedContainer,
-    onPrimaryContainer = Color.White,
-    secondary = DolphinCyan,
-    onSecondary = DolphinCyanDark,
-    secondaryContainer = DolphinCyanContainer,
-    onSecondaryContainer = DolphinCyanDark,
-    tertiary = CampusAmber,
-    onTertiary = Color.White,
-    tertiaryContainer = CampusAmberContainer,
-    onTertiaryContainer = CampusAmberDark,
-    error = ErrorRed,
-    onError = OnErrorRed,
-    errorContainer = ErrorContainerRed,
-    onErrorContainer = ErrorRed,
+val DarkEkhoColorScheme = darkColorScheme(
+    primary = GarnetTone80,
+    onPrimary = GarnetTone20,
+    primaryContainer = GarnetTone30,
+    onPrimaryContainer = GarnetTone90,
+    secondary = SageGreenTone80,
+    onSecondary = SageGreenTone20,
+    secondaryContainer = SageGreenTone30,
+    onSecondaryContainer = SageGreenTone90,
+    tertiary = AmberTone80,
+    onTertiary = AmberTone20,
+    tertiaryContainer = AmberTone30,
+    onTertiaryContainer = AmberTone90,
+    error = ErrorDark,
+    onError = Color(0xFF690005),
+    errorContainer = ErrorContainerDark,
+    onErrorContainer = OnErrorContainerDark,
     background = DarkSurface,
-    onBackground = DarkOnSurface,
+    onBackground = NeutralTone90,
     surface = DarkSurface,
-    onSurface = DarkOnSurface,
-    surfaceVariant = DarkSurfaceContainerHigh,
-    onSurfaceVariant = DarkOnSurfaceVariant,
-    inverseSurface = LightSurface,
-    inverseOnSurface = DarkSurfaceContainerLow,
-    outline = GhostOutline.copy(alpha = 0.15f),
+    onSurface = NeutralTone90,
+    surfaceVariant = NeutralVariantTone30,
+    onSurfaceVariant = NeutralVariantTone80,
+    surfaceTint = GarnetTone80,
+    inverseSurface = NeutralTone90,
+    inverseOnSurface = NeutralTone20,
+    inversePrimary = GarnetTone40,
+    outline = NeutralVariantTone60,
+    outlineVariant = NeutralVariantTone30,
+    surfaceContainerLowest = DarkSurfaceContainerLowest,
+    surfaceContainerLow = DarkSurfaceContainerLow,
+    surfaceContainer = DarkSurfaceContainer,
+    surfaceContainerHigh = DarkSurfaceContainerHigh,
+    surfaceContainerHighest = DarkSurfaceContainerHighest,
 )
 
-/**
- * Light Ekho Navigator theme color scheme
- */
-@VisibleForTesting
-val LightEkhoNavigatorColorScheme = lightColorScheme(
-    primary = SchoolRed,
-    onPrimary = Color.White,
-    primaryContainer = SchoolRedContainer,
-    onPrimaryContainer = Color.White,
-    secondary = DolphinCyan,
-    onSecondary = DolphinCyanDark,
-    secondaryContainer = DolphinCyanContainer,
-    onSecondaryContainer = DolphinCyanDark,
-    tertiary = CampusAmber,
-    onTertiary = Color.White,
-    tertiaryContainer = CampusAmberContainer,
-    onTertiaryContainer = CampusAmberDark,
-    error = ErrorRed,
-    onError = OnErrorRed,
-    errorContainer = ErrorContainerRed,
-    onErrorContainer = ErrorRed,
-    background = LightSurface,
-    onBackground = LightOnSurface,
-    surface = LightSurface,
-    onSurface = LightOnSurface,
-    surfaceVariant = LightSurfaceContainerHigh,
-    onSurfaceVariant = LightOnSurfaceVariant,
-    inverseSurface = DarkSurface,
-    inverseOnSurface = LightSurfaceContainerLow,
-    outline = GhostOutline.copy(alpha = 0.15f),
-)
+/** Light gradient companion — uses surfaceContainerLow so it reads as a tonal lift. */
+val LightEkhoGradientColors = GradientColors(container = LightSurfaceContainerLow)
 
-/**
- * Dark Ekho Navigator theme color scheme
- */
-@VisibleForTesting
-val DarkEkhoNavigatorColorScheme = darkColorScheme(
-    primary = SchoolRedBright,
-    onPrimary = Color.Black,
-    primaryContainer = SchoolRedContainer,
-    onPrimaryContainer = Color.White,
-    secondary = DolphinCyan,
-    onSecondary = DolphinCyanDark,
-    secondaryContainer = DolphinCyanContainer,
-    onSecondaryContainer = DolphinCyanDark,
-    tertiary = CampusAmber,
-    onTertiary = Color.White,
-    tertiaryContainer = CampusAmberContainer,
-    onTertiaryContainer = CampusAmberDark,
-    error = ErrorRed,
-    onError = OnErrorRed,
-    errorContainer = ErrorContainerRed,
-    onErrorContainer = ErrorRed,
-    background = DarkSurface,
-    onBackground = DarkOnSurface,
-    surface = DarkSurface,
-    onSurface = DarkOnSurface,
-    surfaceVariant = DarkSurfaceContainerHigh,
-    onSurfaceVariant = DarkOnSurfaceVariant,
-    inverseSurface = LightSurface,
-    inverseOnSurface = DarkSurfaceContainerLow,
-    outline = GhostOutline.copy(alpha = 0.15f),
-)
+/** Dark gradient companion. */
+val DarkEkhoGradientColors = GradientColors(container = DarkSurface)
 
-/**
- * Light Ekho Navigator gradient colors
- */
-val LightEkhoNavigatorGradientColors = GradientColors(container = LightSurfaceContainerLow)
-
-/**
- * Dark Ekho Navigator gradient colors
- */
-val DarkEkhoNavigatorGradientColors = GradientColors(container = DarkSurface)
-
-/**
- * Light Ekho Navigator background theme
- */
-val LightEkhoNavigatorBackgroundTheme = BackgroundTheme(color = LightSurface)
-
-/**
- * Dark Ekho Navigator background theme
- */
-val DarkEkhoNavigatorBackgroundTheme = BackgroundTheme(color = DarkSurface)
+val LightEkhoBackgroundTheme = BackgroundTheme(color = LightSurface)
+val DarkEkhoBackgroundTheme = BackgroundTheme(color = DarkSurface)
 
 /**
  * Ekho Navigator theme.
  *
- * @param darkTheme Whether the theme should use a dark color scheme (follows system by default).
- * @param androidTheme Whether the theme should use the Android theme color scheme instead of the
- *        default theme.
- * @param disableDynamicTheming If `true`, disables the use of dynamic theming, even when it is
- *        supported. This parameter has no effect if [androidTheme] is `true`.
+ * @param darkTheme follow system by default
+ * @param dynamicTheming enable Material You on Android 12+. Defaults to false until
+ *        the cohesion-phase opt-in toggle (commit 6) ships in Settings.
  */
 @Composable
 fun EkhoTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    androidTheme: Boolean = false,
-    disableDynamicTheming: Boolean = true,
+    dynamicTheming: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    // Color scheme
     val colorScheme = when {
-        androidTheme -> if (darkTheme) DarkEkhoNavigatorColorScheme else LightEkhoNavigatorColorScheme
-        !disableDynamicTheming && supportsDynamicTheming() -> {
+        dynamicTheming && supportsDynamicTheming() -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
+        darkTheme -> DarkEkhoColorScheme
+        else -> LightEkhoColorScheme
+    }
 
-        else -> if (darkTheme) DarkDefaultColorScheme else LightDefaultColorScheme
-    }
-    // Gradient colors
-    val emptyGradientColors = GradientColors(container = colorScheme.surfaceColorAtElevation(2.dp))
-    val defaultGradientColors = GradientColors(
-        top = colorScheme.inverseOnSurface,
-        bottom = colorScheme.primaryContainer,
-        container = colorScheme.surface,
-    )
     val gradientColors = when {
-        androidTheme -> if (darkTheme) DarkEkhoNavigatorGradientColors else LightEkhoNavigatorGradientColors
-        !disableDynamicTheming && supportsDynamicTheming() -> emptyGradientColors
-        else -> defaultGradientColors
+        dynamicTheming && supportsDynamicTheming() ->
+            GradientColors(container = colorScheme.surfaceColorAtElevation(2.dp))
+        darkTheme -> DarkEkhoGradientColors
+        else -> LightEkhoGradientColors
     }
-    // Background theme
-    val defaultBackgroundTheme = BackgroundTheme(
+
+    val backgroundTheme = BackgroundTheme(
         color = colorScheme.surface,
         tonalElevation = 0.dp,
     )
-    val backgroundTheme = when {
-        androidTheme -> if (darkTheme) DarkEkhoNavigatorBackgroundTheme else LightEkhoNavigatorBackgroundTheme
-        else -> defaultBackgroundTheme
-    }
+
     val tintTheme = when {
-        androidTheme -> TintTheme()
-        !disableDynamicTheming && supportsDynamicTheming() -> TintTheme(colorScheme.primary)
+        dynamicTheming && supportsDynamicTheming() -> TintTheme(colorScheme.primary)
         else -> TintTheme()
     }
-    // Composition locals
+
     CompositionLocalProvider(
         LocalGradientColors provides gradientColors,
         LocalBackgroundTheme provides backgroundTheme,
