@@ -12,4 +12,7 @@ enum class EventSourceType(val displayName: String) {
 
     /** Campus events the user has explicitly bookmarked. */
     BOOKMARKED("Bookmarked"),
+
+    /** Assignments and events surfaced from the user's connected Canvas account. */
+    CANVAS("Canvas"),
 }

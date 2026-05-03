@@ -54,6 +54,13 @@ private val TimeLabelWidth: Dp = 48.dp
 private const val HourCount = 24
 
 /**
+ * Floor for an event pill's rendered height. Canvas assignments are due-time-driven
+ * (start == end), so without a floor they collapse to a 1-px sliver with no readable
+ * text. 28dp leaves room for one line of labelSmall + the 2dp vertical padding.
+ */
+private val MinBlockHeight: Dp = 28.dp
+
+/**
  * Reusable timeline grid for day and week views.
  *
  * @param columnCount 1 for day view, 7 for week view
@@ -147,10 +154,15 @@ fun TimelineGrid(
 
                         val startFraction = startZoned.hour + startZoned.minute / 60f
                         val endFraction = endZoned.hour + endZoned.minute / 60f
-                        val durationFraction = (endFraction - startFraction).coerceAtLeast(0.25f)
+                        val durationFraction = (endFraction - startFraction).coerceAtLeast(0f)
 
-                        val yOffset = HourHeight * startFraction
-                        val blockHeight = HourHeight * durationFraction
+                        val blockHeight = (HourHeight * durationFraction).coerceAtLeast(MinBlockHeight)
+                        // Anchor late-day pills (11:59 PM "due" assignments) so their bottom
+                        // edge sits flush with the grid bottom rather than spilling off-screen
+                        // and getting clipped to a sliver.
+                        val rawY = HourHeight * startFraction
+                        val maxY = (totalHeight - blockHeight).coerceAtLeast(0.dp)
+                        val yOffset = rawY.coerceAtMost(maxY)
 
                         // Overflow cap
                         if (maxVisibleOverlaps > 0 && layout.indexInGroup >= maxVisibleOverlaps) {

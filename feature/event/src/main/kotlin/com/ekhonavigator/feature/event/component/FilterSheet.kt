@@ -42,6 +42,7 @@ internal fun sourceTypeThemeColors(
     EventSourceType.CUSTOM -> colors.secondary to colors.onSecondary
     EventSourceType.CAMPUS -> colors.onSurfaceVariant to colors.onSurface
     EventSourceType.BOOKMARKED -> colors.tertiary to colors.onTertiary
+    EventSourceType.CANVAS -> colors.primary to colors.onPrimary
 }
 
 @OptIn(ExperimentalLayoutApi::class)

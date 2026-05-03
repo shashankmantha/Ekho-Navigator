@@ -36,6 +36,7 @@ import com.ekhonavigator.core.designsystem.component.EkhoSectionHeader
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventSource
+import com.ekhonavigator.core.model.EventType
 import com.ekhonavigator.core.model.RsvpStatus
 import com.ekhonavigator.core.model.isPast
 import com.ekhonavigator.core.model.prettifyAllCaps
@@ -201,6 +202,7 @@ fun HomeScreen(
 }
 
 private fun CalendarEvent.toRowState(): EkhoEventRowState = when {
+    type == EventType.ASSIGNMENT -> EkhoEventRowState.ASSIGNMENT
     source != EventSource.ICAL_FEED -> EkhoEventRowState.PERSONAL
     isBookmarked -> EkhoEventRowState.BOOKMARKED
     else -> EkhoEventRowState.NONE

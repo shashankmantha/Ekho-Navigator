@@ -24,7 +24,10 @@ dependencies {
     implementation(libs.androidx.security.crypto)
 
     implementation(libs.okhttp)
-    implementation(libs.retrofit)
+    // api() rather than implementation() — CanvasApi's method signatures include
+    // retrofit2.Response<> as a public return type, so downstream modules (core:data,
+    // its tests) need retrofit on their compile classpath.
+    api(libs.retrofit)
     implementation(libs.retrofit.converter.kotlinx.serialization)
 
     implementation(libs.kotlinx.serialization.json)

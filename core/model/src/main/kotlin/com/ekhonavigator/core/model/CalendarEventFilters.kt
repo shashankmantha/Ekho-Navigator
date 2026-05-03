@@ -17,6 +17,9 @@ fun CalendarEvent.matchesSourceTypes(activeTypes: Set<EventSourceType>): Boolean
             EventSourceType.BOOKMARKED -> {
                 if (source == EventSource.ICAL_FEED && isBookmarked) return true
             }
+            EventSourceType.CANVAS -> {
+                if (source == EventSource.CANVAS) return true
+            }
         }
     }
     return false

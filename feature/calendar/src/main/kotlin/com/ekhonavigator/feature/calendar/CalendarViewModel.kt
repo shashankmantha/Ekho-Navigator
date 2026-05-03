@@ -3,6 +3,7 @@ package com.ekhonavigator.feature.calendar
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ekhonavigator.core.data.auth.AuthRepository
+import com.ekhonavigator.core.data.canvas.CanvasPlannerRepository
 import com.ekhonavigator.core.data.repository.CalendarRepository
 import com.ekhonavigator.core.data.repository.CustomEventRepository
 import com.ekhonavigator.core.model.CalendarEvent
@@ -37,6 +38,7 @@ class CalendarViewModel @Inject constructor(
     private val repository: CalendarRepository,
     private val authRepository: AuthRepository,
     private val customEventRepository: CustomEventRepository,
+    private val canvasPlannerRepository: CanvasPlannerRepository,
 ) : ViewModel() {
 
     val isSignedIn: Boolean
@@ -73,6 +75,26 @@ class CalendarViewModel @Inject constructor(
     private val _visibleMonthRange = MutableStateFlow(
         YearMonth.now() to YearMonth.now()
     )
+
+    init {
+        // Fire-and-forget Canvas sync per visible window. Pulls a generous half-semester
+        // window (2 months back, 3 months forward) so past-due assignments and far-future
+        // items both surface — the visible month is just the centerpoint, not the boundary.
+        // X-Request-Cost was ~0.12 per call in the spike, so even four months stays well
+        // under the per-token quota. NoCanvasAccountException is expected when no PAT is
+        // connected; surfacing sync state is C7 polish.
+        // Block lives here (after _visibleMonthRange's declaration) because Kotlin
+        // initializes properties in declaration order — referencing it from the
+        // top-of-class init block would NPE at construction time.
+        viewModelScope.launch {
+            _visibleMonthRange.collect { (first, last) ->
+                val zone = ZoneId.systemDefault()
+                val start = first.minusMonths(2).atDay(1).atStartOfDay(zone).toInstant()
+                val end = last.plusMonths(3).atDay(1).atStartOfDay(zone).toInstant()
+                canvasPlannerRepository.sync(start, end)
+            }
+        }
+    }
 
     /**
      * All events visible on the calendar grid (unfiltered).
@@ -261,6 +283,7 @@ private fun CalendarEvent.toSourceType(): EventSourceType = when {
     source == EventSource.ICAL_FEED && isBookmarked -> EventSourceType.BOOKMARKED
     source == EventSource.ICAL_FEED -> EventSourceType.CAMPUS
     source == EventSource.USER_CREATED || source == EventSource.SHARED -> EventSourceType.CUSTOM
+    source == EventSource.CANVAS -> EventSourceType.CANVAS
     else -> EventSourceType.SCHEDULE
 }
 

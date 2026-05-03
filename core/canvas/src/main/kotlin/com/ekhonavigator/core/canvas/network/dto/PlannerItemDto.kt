@@ -1,7 +1,14 @@
 package com.ekhonavigator.core.canvas.network.dto
 
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.nullable
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonObject
 
 @Serializable
 data class PlannerItemDto(
@@ -14,6 +21,7 @@ data class PlannerItemDto(
     @SerialName("context_name") val contextName: String? = null,
     @SerialName("context_image") val contextImage: String? = null,
     val plannable: PlannableDto = PlannableDto(),
+    @Serializable(with = SubmissionsOrFalseSerializer::class)
     val submissions: SubmissionsDto? = null,
 )
 
@@ -34,3 +42,25 @@ data class SubmissionsDto(
     @SerialName("has_feedback") val hasFeedback: Boolean = false,
     val excused: Boolean = false,
 )
+
+/**
+ * Canvas sends `"submissions": false` for plannable types without submission semantics
+ * (announcements, calendar_events, planner_notes) instead of an object or null. Without
+ * this serializer the whole response fails to parse on the first non-submittable item.
+ * Treat any non-object value (false, true, null, primitive) as "no submission status."
+ */
+internal object SubmissionsOrFalseSerializer : KSerializer<SubmissionsDto?> {
+    private val backing = SubmissionsDto.serializer().nullable
+    override val descriptor: SerialDescriptor = backing.descriptor
+
+    override fun serialize(encoder: Encoder, value: SubmissionsDto?) {
+        backing.serialize(encoder, value)
+    }
+
+    override fun deserialize(decoder: Decoder): SubmissionsDto? {
+        if (decoder !is JsonDecoder) return backing.deserialize(decoder)
+        val element = decoder.decodeJsonElement()
+        return (element as? JsonObject)
+            ?.let { decoder.json.decodeFromJsonElement(SubmissionsDto.serializer(), it) }
+    }
+}

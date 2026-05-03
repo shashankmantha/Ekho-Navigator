@@ -43,7 +43,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-enum class EkhoEventRowState { NONE, BOOKMARKED, PERSONAL }
+enum class EkhoEventRowState { NONE, BOOKMARKED, PERSONAL, ASSIGNMENT }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -65,6 +65,7 @@ fun EkhoEventRow(
         EkhoEventRowState.NONE -> MaterialTheme.colorScheme.outlineVariant
         EkhoEventRowState.BOOKMARKED -> MaterialTheme.colorScheme.tertiary
         EkhoEventRowState.PERSONAL -> MaterialTheme.colorScheme.secondary
+        EkhoEventRowState.ASSIGNMENT -> MaterialTheme.colorScheme.primary
     }
 
     Row(
@@ -155,6 +156,7 @@ private fun TimeColumn(
     val amPmFormatter = remember { DateTimeFormatter.ofPattern("a") }
     val start = startTime.atZone(zone)
     val end = endTime.atZone(zone)
+    val isPointInTime = startTime == endTime
 
     Row(modifier = Modifier.width(72.dp)) {
         Column(
@@ -183,34 +185,38 @@ private fun TimeColumn(
                 maxLines = 1,
                 softWrap = false,
             )
-            Spacer(Modifier.height(3.dp))
-            HorizontalDivider(
-                modifier = Modifier.width(10.dp),
-                color = accent,
-            )
-            Spacer(Modifier.height(3.dp))
-            Text(
-                text = end.format(hourFormatter),
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 12.sp,
-                ),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                softWrap = false,
-            )
-            Text(
-                text = end.format(amPmFormatter),
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 8.sp,
-                ),
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                maxLines = 1,
-                softWrap = false,
-            )
+            // Hide the end-time row for zero-duration items (Canvas assignments are
+            // due-time-emphasized — rendering "5:00 PM ─ 5:00 PM" reads as a bug).
+            if (!isPointInTime) {
+                Spacer(Modifier.height(3.dp))
+                HorizontalDivider(
+                    modifier = Modifier.width(10.dp),
+                    color = accent,
+                )
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    text = end.format(hourFormatter),
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.sp,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    softWrap = false,
+                )
+                Text(
+                    text = end.format(amPmFormatter),
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 8.sp,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    maxLines = 1,
+                    softWrap = false,
+                )
+            }
         }
         Spacer(Modifier.width(6.dp))
         Box(
@@ -317,6 +323,14 @@ private fun BookmarkIndicator(
                     modifier = Modifier.size(20.dp),
                 )
             }
+        }
+
+        // Canvas-sourced rows aren't bookmarkable from the app, and we don't yet know
+        // submission status from this surface (submitted/graded flags live on
+        // canvas_planner_items, not bridged into calendar_events). Empty trailing slot
+        // keeps row alignment consistent without falsely implying "completed" with a check.
+        EkhoEventRowState.ASSIGNMENT -> {
+            Box(modifier = Modifier.size(32.dp))
         }
     }
 }

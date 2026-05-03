@@ -45,19 +45,27 @@ class PlannerToCalendarMapperTest {
     }
 
     @Test
-    fun `canvas calendar_event projects as EVENT type at plannable_date`() {
-        val plannable = Instant.parse("2026-04-20T15:00:00Z")
-        val entity = entity(plannableType = "calendar_event", plannableDate = plannable, dueAt = null)
+    fun `calendar_event skips the calendar — instructor-authored office-hours items are noise here`() {
+        // Canvas surfaces calendar_events through /planner/items but they're typically
+        // nice-to-know items (office hours, study sessions) the user wouldn't expect to
+        // crowd the assignments view. Stay out of calendar_events; data still lives in
+        // canvas_planner_items so a future "show Canvas calendar entries too" toggle
+        // can opt back in without re-syncing.
+        val entity = entity(plannableType = "calendar_event")
 
-        val calendarEvent = entity.toCalendarEventOrNull()!!
-
-        assertEquals(EventType.EVENT, calendarEvent.type)
-        assertEquals(plannable, calendarEvent.startTime)
+        assertNull(entity.toCalendarEventOrNull())
     }
 
     @Test
-    fun `announcement, discussion, planner_note, wiki_page, and unknown all skip the calendar`() {
-        val skipped = listOf("announcement", "discussion_topic", "planner_note", "wiki_page", "frobulator")
+    fun `announcement, discussion, planner_note, wiki_page, calendar_event, and unknown all skip the calendar`() {
+        val skipped = listOf(
+            "announcement",
+            "discussion_topic",
+            "planner_note",
+            "wiki_page",
+            "calendar_event",
+            "frobulator",
+        )
 
         for (kind in skipped) {
             val entity = entity(plannableType = kind)

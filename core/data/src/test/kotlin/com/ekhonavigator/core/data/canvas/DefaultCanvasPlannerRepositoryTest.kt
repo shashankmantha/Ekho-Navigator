@@ -1,5 +1,6 @@
 package com.ekhonavigator.core.data.canvas
 
+import com.ekhonavigator.core.canvas.model.CanvasCourse
 import com.ekhonavigator.core.canvas.model.PlannerKind
 import com.ekhonavigator.core.canvas.network.dto.PlannableDto
 import com.ekhonavigator.core.canvas.network.dto.PlannerItemDto
@@ -22,7 +23,8 @@ class DefaultCanvasPlannerRepositoryTest {
     private val provider = FakeCanvasApiProvider(api = api)
     private val dao = FakeCanvasPlannerItemDao()
     private val calendarDao = FakeCalendarEventDao()
-    private val repo = DefaultCanvasPlannerRepository(provider, dao, calendarDao)
+    private val courseRepository = FakeCanvasCourseRepository()
+    private val repo = DefaultCanvasPlannerRepository(provider, dao, calendarDao, courseRepository)
 
     private val windowStart = Instant.parse("2026-04-01T00:00:00Z")
     private val windowEnd = Instant.parse("2026-05-01T00:00:00Z")
@@ -118,7 +120,7 @@ class DefaultCanvasPlannerRepositoryTest {
     }
 
     @Test
-    fun `sync mirrors surfaced plannable kinds into calendar_events with the right EventType`() = runTest {
+    fun `sync mirrors only assignments and quizzes onto the calendar — calendar_events and announcements stay off`() = runTest {
         api.plannerItemsToReturn = listOf(
             // Assignment → ASSIGNMENT row at due-time
             PlannerItemDto(
@@ -128,7 +130,15 @@ class DefaultCanvasPlannerRepositoryTest {
                 htmlUrl = "/courses/1/assignments/100",
                 plannable = PlannableDto(title = "Lab 8", dueAt = "2026-04-15T18:59:00Z"),
             ),
-            // Canvas calendar_event → EVENT row at plannable_date
+            // Quiz → ASSIGNMENT row
+            PlannerItemDto(
+                plannableId = "150",
+                plannableType = "quiz",
+                plannableDate = "2026-04-22T18:59:00Z",
+                htmlUrl = "/courses/1/quizzes/150",
+                plannable = PlannableDto(title = "Quiz 3", dueAt = "2026-04-22T18:59:00Z"),
+            ),
+            // Canvas calendar_event → does NOT surface (typically office-hours noise)
             PlannerItemDto(
                 plannableId = "300",
                 plannableType = "calendar_event",
@@ -136,7 +146,7 @@ class DefaultCanvasPlannerRepositoryTest {
                 htmlUrl = "/calendar?event_id=300",
                 plannable = PlannableDto(title = "Office hours"),
             ),
-            // Announcement → does NOT surface on calendar
+            // Announcement → does NOT surface on calendar (notifications bell territory)
             PlannerItemDto(
                 plannableId = "200",
                 plannableType = "announcement",
@@ -149,16 +159,48 @@ class DefaultCanvasPlannerRepositoryTest {
         repo.sync(windowStart, windowEnd)
 
         val mirrored = calendarDao.upserted.associateBy { it.uid }
-        assertEquals(setOf("assignment_100", "calendar_event_300"), mirrored.keys)
+        assertEquals(setOf("assignment_100", "quiz_150"), mirrored.keys)
         assertEquals(EventType.ASSIGNMENT, mirrored.getValue("assignment_100").type)
-        assertEquals(EventType.EVENT, mirrored.getValue("calendar_event_300").type)
+        assertEquals(EventType.ASSIGNMENT, mirrored.getValue("quiz_150").type)
         assertTrue(mirrored.values.all { it.source == EventSource.CANVAS })
 
         val prune = calendarDao.pruneCalls.single()
         assertEquals(CANVAS_PLANNER_ITEM_SOURCE, prune.sourceType)
-        assertEquals(setOf("assignment_100", "calendar_event_300"), prune.keepUids.toSet())
+        assertEquals(setOf("assignment_100", "quiz_150"), prune.keepUids.toSet())
         assertEquals(windowStart, prune.rangeStart)
         assertEquals(windowEnd, prune.rangeEnd)
+    }
+
+    @Test
+    fun `sync passes context_codes for every cached course so non-favorited items also surface`() = runTest {
+        // Regression guard: Canvas's planner endpoint returns only favorited-course items
+        // unless each course is named in context_codes[]. Was missing assignments from
+        // courses the user hadn't favorited until we started passing per-course codes.
+        courseRepository.coursesAfterSync = listOf(
+            course("33983"),
+            course("32746"),
+            course("33952"),
+        )
+
+        repo.sync(windowStart, windowEnd)
+
+        assertEquals(
+            listOf("course_33983", "course_32746", "course_33952"),
+            api.lastPlannerContextCodes,
+        )
+    }
+
+    @Test
+    fun `sync triggers a course sync on first call when the course cache is empty`() = runTest {
+        // First-launch case: planner sync runs before MyCoursesScreen has been opened,
+        // so the course cache is empty. Planner repo must hydrate it itself or it'd
+        // pass an empty context_codes list and get the favorites-only response again.
+        courseRepository.coursesAfterSync = listOf(course("33983"))
+
+        repo.sync(windowStart, windowEnd)
+
+        assertEquals(1, courseRepository.syncCalls)
+        assertEquals(listOf("course_33983"), api.lastPlannerContextCodes)
     }
 
     @Test
@@ -189,6 +231,17 @@ class DefaultCanvasPlannerRepositoryTest {
         plannableDate = date,
         htmlUrl = "/$plannableType/$plannableId",
         plannable = PlannableDto(title = "title-$plannableId"),
+    )
+
+    private fun course(id: String) = CanvasCourse(
+        id = id,
+        code = "code-$id",
+        name = "name-$id",
+        termName = null,
+        imageUrl = null,
+        currentScore = null,
+        currentGrade = null,
+        isFavorite = false,
     )
 
     private fun entity(

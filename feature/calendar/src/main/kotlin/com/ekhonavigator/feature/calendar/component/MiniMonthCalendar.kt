@@ -136,6 +136,7 @@ private fun dotColorForSourceType(type: EventSourceType): Color = when (type) {
     EventSourceType.CUSTOM -> MaterialTheme.colorScheme.secondary
     EventSourceType.CAMPUS -> MaterialTheme.colorScheme.onSurfaceVariant
     EventSourceType.BOOKMARKED -> MaterialTheme.colorScheme.tertiary
+    EventSourceType.CANVAS -> MaterialTheme.colorScheme.primary
 }
 
 @Composable

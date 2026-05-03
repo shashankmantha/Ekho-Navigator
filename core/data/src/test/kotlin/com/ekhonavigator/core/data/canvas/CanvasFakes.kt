@@ -1,5 +1,6 @@
 package com.ekhonavigator.core.data.canvas
 
+import com.ekhonavigator.core.canvas.model.CanvasCourse
 import com.ekhonavigator.core.canvas.network.CanvasApi
 import com.ekhonavigator.core.canvas.network.CanvasApiProvider
 import com.ekhonavigator.core.canvas.network.dto.CanvasCourseDto
@@ -13,6 +14,7 @@ import com.ekhonavigator.core.database.model.CanvasPlannerItemEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
+import retrofit2.Response
 import java.time.Instant
 
 internal class FakeCanvasApi : CanvasApi {
@@ -21,6 +23,7 @@ internal class FakeCanvasApi : CanvasApi {
     var error: Throwable? = null
     var calls = 0
     val plannerCalls = mutableListOf<Pair<String, String>>()
+    var lastPlannerContextCodes: List<String>? = null
 
     override suspend fun getCourses(
         enrollmentState: String,
@@ -35,16 +38,42 @@ internal class FakeCanvasApi : CanvasApi {
     override suspend fun getPlannerItems(
         startDate: String,
         endDate: String,
+        contextCodes: List<String>?,
         perPage: Int,
-    ): List<PlannerItemDto> {
+    ): Response<List<PlannerItemDto>> {
         plannerCalls += startDate to endDate
+        lastPlannerContextCodes = contextCodes
         error?.let { throw it }
-        return plannerItemsToReturn
+        return Response.success(plannerItemsToReturn)
+    }
+
+    // Single-page fake: returns empty for any pagination follow-up. Pagination loop in
+    // DefaultCanvasPlannerRepository runs end-to-end against real Canvas in production;
+    // the parsing logic itself is unit-tested separately in LinkHeaderTest.
+    override suspend fun getPlannerItemsByUrl(url: String): Response<List<PlannerItemDto>> {
+        return Response.success(emptyList())
     }
 }
 
 internal class FakeCanvasApiProvider(var api: CanvasApi? = null) : CanvasApiProvider {
     override fun current(): CanvasApi? = api
+}
+
+internal class FakeCanvasCourseRepository(
+    initialCourses: List<CanvasCourse> = emptyList(),
+) : CanvasCourseRepository {
+    private val coursesFlow = MutableStateFlow(initialCourses)
+    var syncCalls = 0
+    var nextSyncResult: Result<Unit> = Result.success(Unit)
+    var coursesAfterSync: List<CanvasCourse> = initialCourses
+
+    override fun observeCourses(): Flow<List<CanvasCourse>> = coursesFlow
+
+    override suspend fun sync(): Result<Unit> {
+        syncCalls++
+        coursesFlow.value = coursesAfterSync
+        return nextSyncResult
+    }
 }
 
 internal class FakeCanvasCourseDao : CanvasCourseDao {
