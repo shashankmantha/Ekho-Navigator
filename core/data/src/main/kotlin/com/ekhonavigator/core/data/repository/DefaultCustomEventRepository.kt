@@ -1,6 +1,7 @@
 package com.ekhonavigator.core.data.repository
 
 import com.ekhonavigator.core.data.auth.AuthRepository
+import com.ekhonavigator.core.data.auth.NotSignedInException
 import com.ekhonavigator.core.data.model.toCustomEventEntity
 import com.ekhonavigator.core.data.sync.SharedEventSyncService
 import com.ekhonavigator.core.database.dao.CalendarEventDao
@@ -49,6 +50,11 @@ class DefaultCustomEventRepository @Inject constructor(
         event: CalendarEvent,
         sharedWith: Map<String, String>
     ): String {
+        // Refuse early when signed out: events are inherently user-owned, and a
+        // Room-only write here would create a zombie local event with no ownerUid
+        // that could never sync. UI gating (FAB grey when signed out) keeps this
+        // from firing in practice — this is the race-window safety net.
+        authRepository.getCurrentUserUid() ?: throw NotSignedInException()
         val eventId = "custom_${UUID.randomUUID()}"
         val entity = event.toCustomEventEntity(eventId)
         calendarEventDao.upsertEvent(entity)
@@ -90,6 +96,7 @@ class DefaultCustomEventRepository @Inject constructor(
     }
 
     override suspend fun updateEvent(event: CalendarEvent) {
+        authRepository.getCurrentUserUid() ?: throw NotSignedInException()
         val entity = event.toCustomEventEntity(event.id).copy(pendingSync = true)
         calendarEventDao.upsertEvent(entity)
 
@@ -102,6 +109,7 @@ class DefaultCustomEventRepository @Inject constructor(
     }
 
     override suspend fun addAttendees(eventId: String, sharedWith: Map<String, String>) {
+        authRepository.getCurrentUserUid() ?: throw NotSignedInException()
         if (sharedWith.isEmpty()) return
 
         for ((uid, displayName) in sharedWith) {
@@ -142,6 +150,7 @@ class DefaultCustomEventRepository @Inject constructor(
     }
 
     override suspend fun removeAttendee(eventId: String, userId: String) {
+        authRepository.getCurrentUserUid() ?: throw NotSignedInException()
         eventAttendeeDao.removeAttendee(eventId, userId)
 
         try {
@@ -164,6 +173,7 @@ class DefaultCustomEventRepository @Inject constructor(
     }
 
     override suspend fun deleteEvent(eventId: String) {
+        authRepository.getCurrentUserUid() ?: throw NotSignedInException()
         // Track deletion so the listener doesn't re-add it during the race window
         sharedEventSyncService.pendingDeletes.add(eventId)
         try {
@@ -189,6 +199,7 @@ class DefaultCustomEventRepository @Inject constructor(
         displayName: String,
         status: RsvpStatus,
     ) {
+        authRepository.getCurrentUserUid() ?: throw NotSignedInException()
         eventAttendeeDao.upsertAttendee(
             EventAttendeeEntity(
                 eventId = eventId,

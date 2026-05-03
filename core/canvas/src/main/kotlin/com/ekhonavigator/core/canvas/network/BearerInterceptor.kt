@@ -19,8 +19,12 @@ internal class BearerInterceptor @Inject constructor(
         }
         val token = accountSource.currentOrNull()?.let(tokenStore::get)
             ?: return chain.proceed(chain.request())
+        // Defensive sanitization in case a legacy entry in the encrypted store
+        // contains whitespace from a copy-paste artifact. OkHttp's Authorization
+        // header validator throws on any \n / \r — would crash every API call.
+        val sanitized = token.filterNot { it.isWhitespace() }
         val authed = chain.request().newBuilder()
-            .header("Authorization", "Bearer $token")
+            .header("Authorization", "Bearer $sanitized")
             .build()
         return chain.proceed(authed)
     }

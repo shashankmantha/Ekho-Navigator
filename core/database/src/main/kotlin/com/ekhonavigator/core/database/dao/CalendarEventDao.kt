@@ -84,4 +84,7 @@ interface CalendarEventDao {
         rangeEnd: Instant,
         keepUids: List<String>,
     )
+
+    @Query("DELETE FROM calendar_events WHERE externalSourceType = :sourceType")
+    suspend fun deleteByExternalSource(sourceType: String)
 }

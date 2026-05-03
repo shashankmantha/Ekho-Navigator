@@ -57,6 +57,10 @@ internal class DefaultCanvasCourseRepository @Inject constructor(
         courseDao.upsertAll(entities)
         courseDao.deleteOthers(entities.map { it.id })
     }
+
+    override suspend fun clearAll() {
+        courseDao.deleteAll()
+    }
 }
 
 object NoCanvasAccountException : Exception("No Canvas account is connected.")

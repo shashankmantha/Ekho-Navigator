@@ -89,9 +89,17 @@ class TestCustomEventRepository : CustomEventRepository {
 
     override suspend fun pushPendingEvents() {}
 
-    override fun startSync(scope: CoroutineScope) {}
+    var startSyncCalls = 0
+
+    override fun startSync(scope: CoroutineScope) {
+        startSyncCalls++
+    }
 
     override fun stopSync() {}
 
-    override suspend fun onSignOut() {}
+    var onSignOutCalls = 0
+
+    override suspend fun onSignOut() {
+        onSignOutCalls++
+    }
 }

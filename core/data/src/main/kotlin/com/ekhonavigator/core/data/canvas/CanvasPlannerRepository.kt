@@ -22,4 +22,12 @@ interface CanvasPlannerRepository {
      * Items outside the window are left alone.
      */
     suspend fun sync(start: Instant, end: Instant): Result<Unit>
+
+    /**
+     * Wipes the planner-items cache AND the calendar_events rows that were bridged
+     * from those planner items. Call this on PAT disconnect / sign-out — without
+     * the second wipe, "Canvas events" linger on the calendar even after the user
+     * appears to have disconnected.
+     */
+    suspend fun clearAll()
 }

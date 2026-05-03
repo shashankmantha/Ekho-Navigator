@@ -106,6 +106,14 @@ internal class DefaultCanvasPlannerRepository @Inject constructor(
         return all
     }
 
+    override suspend fun clearAll() {
+        plannerDao.deleteAll()
+        // The bridged rows in calendar_events are what surface as "Canvas events"
+        // on the calendar grid — wiping only the planner cache leaves zombie pills
+        // until the next sync, which never happens after disconnect.
+        calendarEventDao.deleteByExternalSource(CANVAS_PLANNER_ITEM_SOURCE)
+    }
+
     companion object {
         private const val TAG = "CanvasSync"
         private const val MAX_PAGES = 10

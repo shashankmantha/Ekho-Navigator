@@ -91,8 +91,6 @@ import com.ekhonavigator.navigation.TOP_LEVEL_NAV_ITEMS
 
 @Composable
 fun EkhoNavigatorApp(
-    onSignIn: () -> Unit = {},
-    onSignOut: () -> Unit = {},
     notificationChatRequest: NotificationChatRequest? = null,
     onNotificationChatRequestHandled: () -> Unit = {},
     socialActionViewModel: SocialActionViewModel = hiltViewModel(),
@@ -522,8 +520,6 @@ fun EkhoNavigatorApp(
                         is AccountNavKey -> {
                             NavEntry(key) {
                                 AccountScreen(
-                                    onSignIn = onSignIn,
-                                    onSignOut = onSignOut,
                                     onSettingsClick = navigator::navigateToSettings,
                                 )
                             }

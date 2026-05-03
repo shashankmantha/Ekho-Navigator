@@ -28,7 +28,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -47,8 +46,6 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun AccountScreen(
-    onSignIn: () -> Unit = {},
-    onSignOut: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: AccountViewModel = hiltViewModel(),
@@ -60,12 +57,6 @@ fun AccountScreen(
         AccountUiState.SignedOut
     } else {
         uiState
-    }
-
-    LaunchedEffect(uiState, forceSignedOutUi) {
-        if (!forceSignedOutUi && uiState is AccountUiState.SignedIn) {
-            onSignIn()
-        }
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -293,7 +284,6 @@ fun AccountScreen(
                         },
                         onSignOutClick = {
                             viewModel.onSignOutClick()
-                            onSignOut()
                         },
                         modifier = Modifier.fillMaxSize(),
                     )

@@ -101,12 +101,16 @@ class TestCalendarRepository : CalendarRepository {
         toggledBookmarkIds += eventId
     }
 
+    var restoreBookmarksCalls = 0
+
     override suspend fun restoreBookmarks() {
-        // No-op in tests
+        restoreBookmarksCalls++
     }
 
+    var onSignOutCalls = 0
+
     override suspend fun onSignOut() {
-        // No-op in tests
+        onSignOutCalls++
     }
 
     override suspend fun sync(feedUrl: String): SyncResult =

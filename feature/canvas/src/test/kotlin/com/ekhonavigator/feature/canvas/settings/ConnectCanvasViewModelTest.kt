@@ -19,6 +19,8 @@ class ConnectCanvasViewModelTest {
     private val institutions = FakeCanvasInstitutionStore()
     private val tokens = FakeCanvasTokenStore()
     private val validator = FakeCanvasAuthValidator()
+    private val courseRepo = FakeCanvasCourseRepository()
+    private val plannerRepo = FakeCanvasPlannerRepository()
 
     @Test
     fun `signed-out user starts in NotConnected with default domain`() {
@@ -30,13 +32,26 @@ class ConnectCanvasViewModelTest {
     }
 
     @Test
-    fun `signed-in user with stored institution starts in Connected`() {
+    fun `signed-in user with stored institution and PAT starts in Connected`() {
         identity.uid = "uid-1"
         institutions.setDomain("uid-1", "csuci.instructure.com")
+        tokens.put(CanvasAccount("uid-1", "csuci.instructure.com"), "stored-pat")
 
         val state = newViewModel().uiState.value as ConnectCanvasUiState.Connected
 
         assertEquals("csuci.instructure.com", state.domain)
+    }
+
+    @Test
+    fun `signed-in user with stored institution but no PAT falls back to NotConnected`() {
+        identity.uid = "uid-1"
+        institutions.setDomain("uid-1", "csuci.instructure.com")
+
+        val state = newViewModel().uiState.value
+
+        assertTrue(state is ConnectCanvasUiState.NotConnected)
+        // Stale institution gets cleared by the guard so the next reconnect starts fresh.
+        assertNull(institutions.getDomain("uid-1"))
     }
 
     @Test
@@ -61,6 +76,8 @@ class ConnectCanvasViewModelTest {
         assertEquals("csuci.instructure.com" to "good-pat", validator.calls.single())
         assertEquals("good-pat", tokens.get(CanvasAccount("uid-1", DEFAULT_CANVAS_DOMAIN)))
         assertEquals(DEFAULT_CANVAS_DOMAIN, institutions.getDomain("uid-1"))
+        assertEquals(1, courseRepo.syncCalls)
+        assertEquals(1, plannerRepo.syncCalls.size)
     }
 
     @Test
@@ -92,17 +109,21 @@ class ConnectCanvasViewModelTest {
     }
 
     @Test
-    fun `disconnect clears token and institution then transitions to NotConnected`() {
+    fun `disconnect clears token, institution, and Canvas caches then transitions to NotConnected`() = runTest {
         identity.uid = "uid-1"
         institutions.setDomain("uid-1", "csuci.instructure.com")
         tokens.put(CanvasAccount("uid-1", "csuci.instructure.com"), "old-pat")
 
         val viewModel = newViewModel()
         viewModel.disconnect()
+        // disconnect() launches the cache wipe in viewModelScope — drain it.
+        kotlinx.coroutines.test.advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value is ConnectCanvasUiState.NotConnected)
         assertNull(tokens.get(CanvasAccount("uid-1", "csuci.instructure.com")))
         assertNull(institutions.getDomain("uid-1"))
+        assertEquals(1, courseRepo.clearAllCalls)
+        assertEquals(1, plannerRepo.clearAllCalls)
     }
 
     private fun newViewModel(): ConnectCanvasViewModel = ConnectCanvasViewModel(
@@ -110,5 +131,7 @@ class ConnectCanvasViewModelTest {
         institutionStore = institutions,
         tokenStore = tokens,
         validator = validator,
+        canvasCourseRepository = courseRepo,
+        canvasPlannerRepository = plannerRepo,
     )
 }

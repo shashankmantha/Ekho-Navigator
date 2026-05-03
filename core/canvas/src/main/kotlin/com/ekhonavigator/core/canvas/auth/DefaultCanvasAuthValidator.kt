@@ -21,13 +21,17 @@ internal class DefaultCanvasAuthValidator @Inject constructor(
 
     override suspend fun validate(domain: String, token: String): Result<CanvasProfile> =
         withContext(Dispatchers.IO) {
+            // Strip whitespace anywhere in the token. OkHttp's Authorization header
+            // validator throws IllegalArgumentException on any \n / \r mid-value;
+            // PATs are alphanumeric so removing whitespace can't corrupt them.
+            val sanitizedToken = token.filterNot { it.isWhitespace() }
             val baseUrl = if (domain.contains("://")) domain else "https://$domain"
             val url = "$baseUrl/api/v1/users/self/profile".toHttpUrlOrNull()
                 ?: return@withContext Result.failure(CanvasAuthError.InvalidDomain)
 
             val request = Request.Builder()
                 .url(url)
-                .header("Authorization", "Bearer $token")
+                .header("Authorization", "Bearer $sanitizedToken")
                 .build()
 
             try {

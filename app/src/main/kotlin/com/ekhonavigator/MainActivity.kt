@@ -21,8 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import com.ekhonavigator.core.data.auth.AuthRepository
 import com.ekhonavigator.core.data.profile.ProfileRepository
-import com.ekhonavigator.core.data.repository.CalendarRepository
-import com.ekhonavigator.core.data.repository.CustomEventRepository
 import com.ekhonavigator.core.data.repository.PresenceRepository
 import com.ekhonavigator.core.designsystem.theme.EkhoTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -51,12 +49,6 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var presenceRepository: PresenceRepository
-
-    @Inject
-    lateinit var customEventRepository: CustomEventRepository
-
-    @Inject
-    lateinit var calendarRepository: CalendarRepository
 
     private var notificationChatRequest by mutableStateOf<NotificationChatRequest?>(null)
 
@@ -104,18 +96,6 @@ class MainActivity : ComponentActivity() {
                         color = MaterialTheme.colorScheme.background,
                     ) {
                         EkhoNavigatorApp(
-                            onSignIn = {
-                                customEventRepository.startSync(MainScope())
-                                MainScope().launch {
-                                    calendarRepository.restoreBookmarks()
-                                }
-                            },
-                            onSignOut = {
-                                MainScope().launch {
-                                    customEventRepository.onSignOut()
-                                    calendarRepository.onSignOut()
-                                }
-                            },
                             notificationChatRequest = notificationChatRequest,
                             onNotificationChatRequestHandled = {
                                 notificationChatRequest = null

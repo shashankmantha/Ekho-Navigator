@@ -145,6 +145,10 @@ class DefaultCalendarRepository @Inject constructor(
 
     override suspend fun restoreBookmarks() {
         val uid = authRepository.getCurrentUserUid() ?: return
+        // Wipe Room bookmarks first so anything toggled while signed-out (or
+        // belonging to a previous account on this device) doesn't survive into
+        // the freshly-signed-in session. Firestore is the source of truth.
+        calendarEventDao.clearAllBookmarks()
         try {
             val docs = firestore.collection("users").document(uid)
                 .collection("bookmarkedEvents")
