@@ -5,9 +5,13 @@ import androidx.navigation3.runtime.NavKey
 import com.ekhonavigator.core.model.SharedLocation
 import com.ekhonavigator.core.navigation.Navigator
 import com.ekhonavigator.feature.social.ChatScreen
+import com.ekhonavigator.feature.social.NewGroupChatScreen
 import com.ekhonavigator.feature.social.SocialScreen
 import com.ekhonavigator.feature.social.UserProfileScreen
 import kotlinx.serialization.Serializable
+
+@Serializable
+object NewGroupChatNavKey : NavKey
 
 @Serializable
 object SocialNavKey : NavKey
@@ -25,6 +29,7 @@ data class ChatNavKey(
     val friendAvatarId: String = "",
     val chatTitle: String = "",
     val isGroup: Boolean = false,
+    val groupParticipantNames: Map<String, String> = emptyMap(),
     val sharedLocation: SharedLocation? = null,
 ) : NavKey
 
@@ -60,6 +65,9 @@ fun EntryProviderScope<NavKey>.socialEntry(
                     ),
                 )
             },
+            onNewChatClick = {
+                navigator.navigate(NewGroupChatNavKey)
+            },
         )
     }
 
@@ -80,8 +88,28 @@ fun EntryProviderScope<NavKey>.socialEntry(
             friendAvatarId = key.friendAvatarId,
             chatTitle = key.chatTitle,
             isGroup = key.isGroup,
+            groupParticipantNames = key.groupParticipantNames,
             sharedLocation = key.sharedLocation,
             onNavigateToMap = onNavigateToMap,
+        )
+    }
+
+    entry<NewGroupChatNavKey> {
+        NewGroupChatScreen(
+            onGroupDraftCreated = { groupTitle, selectedFriends ->
+                navigator.goBack()
+
+                navigator.navigate(
+                    ChatNavKey(
+                        conversationId = null,
+                        chatTitle = groupTitle.trim(),
+                        isGroup = true,
+                        groupParticipantNames = selectedFriends.associate { friend ->
+                            friend.uid to friend.displayName
+                        },
+                    ),
+                )
+            },
         )
     }
 }

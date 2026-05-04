@@ -58,6 +58,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.ekhonavigator.core.designsystem.R as DesignR
 import com.ekhonavigator.core.model.OnlineStatus
 import com.ekhonavigator.feature.account.AccountScreen
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material3.FloatingActionButton
 
 private enum class SocialTab(
     val label: String,
@@ -71,6 +73,7 @@ fun SocialScreen(
     onProfileClick: (String) -> Unit,
     onMessageClick: (String, String, String) -> Unit,
     onConversationClick: (ConversationUiModel) -> Unit,
+    onNewChatClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: SocialViewModel = hiltViewModel(),
 ) {
@@ -98,9 +101,12 @@ fun SocialScreen(
         return
     }
 
-    Column(
+    Box(
         modifier = modifier.fillMaxSize(),
     ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+        ) {
         SocialTabStrip(
             selected = selectedTab,
             onSelect = { tab ->
@@ -123,35 +129,52 @@ fun SocialScreen(
             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
         )
 
-        if (isSearching) {
-            SearchPeopleTab(
-                uiState = uiState,
-                onProfileClick = onProfileClick,
-                onSendFriendRequest = viewModel::sendFriendRequest,
-                modifier = Modifier.fillMaxSize(),
-            )
-        } else {
-            when (selectedTab) {
-                SocialTab.Chats -> {
-                    ChatsTab(
-                        uiState = uiState,
-                        onConversationClick = onConversationClick,
-                        onProfileClick = onProfileClick,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
+            if (isSearching) {
+                SearchPeopleTab(
+                    uiState = uiState,
+                    onProfileClick = onProfileClick,
+                    onSendFriendRequest = viewModel::sendFriendRequest,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                when (selectedTab) {
+                    SocialTab.Chats -> {
+                        ChatsTab(
+                            uiState = uiState,
+                            onConversationClick = onConversationClick,
+                            onProfileClick = onProfileClick,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
 
-                SocialTab.Friends -> {
-                    FriendsTab(
-                        uiState = uiState,
-                        onProfileClick = onProfileClick,
-                        onMessageClick = onMessageClick,
-                        onAcceptFriendRequest = viewModel::acceptFriendRequest,
-                        onDenyFriendRequest = viewModel::denyFriendRequest,
-                        onRemoveFriend = viewModel::removeFriend,
-                        modifier = Modifier.fillMaxSize(),
-                    )
+                    SocialTab.Friends -> {
+                        FriendsTab(
+                            uiState = uiState,
+                            onProfileClick = onProfileClick,
+                            onMessageClick = onMessageClick,
+                            onAcceptFriendRequest = viewModel::acceptFriendRequest,
+                            onDenyFriendRequest = viewModel::denyFriendRequest,
+                            onRemoveFriend = viewModel::removeFriend,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
                 }
+            }
+        }
+
+        if (selectedTab == SocialTab.Chats && !isSearching) {
+            FloatingActionButton(
+                onClick = onNewChatClick,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(24.dp),
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Add,
+                    contentDescription = "New chat",
+                )
             }
         }
     }

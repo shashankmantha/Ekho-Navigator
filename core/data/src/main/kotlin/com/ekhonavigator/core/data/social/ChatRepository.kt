@@ -25,6 +25,10 @@ class ChatRepository @Inject constructor() {
             .joinToString("_")
     }
 
+    /**
+     * Keeps the old function name working for the rest of the app.
+     * This is a direct 1-on-1 conversation.
+     */
     suspend fun getOrCreateConversation(
         currentUserId: String,
         currentUserName: String,
@@ -60,7 +64,7 @@ class ChatRepository @Inject constructor() {
             val now = System.currentTimeMillis()
 
             val conversationData = mapOf(
-                "type" to CONVERSATION_TYPE_DIRECT,
+                "type" to ChatConversation.TYPE_DIRECT,
                 "isGroup" to false,
                 "title" to "",
                 "participantIds" to listOf(currentUserId, friendUserId),
@@ -70,21 +74,24 @@ class ChatRepository @Inject constructor() {
                 ),
                 "createdBy" to currentUserId,
                 "createdAt" to now,
+                "lastMessage" to "",
+                "lastSenderId" to "",
+                "lastTimestamp" to 0L,
                 "readBy" to listOf(currentUserId),
                 "unreadCount" to 0,
             )
 
             conversationRef.set(conversationData).await()
         } else {
-            val updatedParticipantNames = mapOf(
+            val updatedConversationData = mapOf(
                 "participantNames.$currentUserId" to currentUserName,
                 "participantNames.$friendUserId" to friendDisplayName,
-                "type" to CONVERSATION_TYPE_DIRECT,
+                "type" to ChatConversation.TYPE_DIRECT,
                 "isGroup" to false,
             )
 
             conversationRef.set(
-                updatedParticipantNames,
+                updatedConversationData,
                 SetOptions.merge(),
             ).await()
         }
@@ -92,15 +99,27 @@ class ChatRepository @Inject constructor() {
         return conversationRef.get().await().toChatConversation()
             ?: ChatConversation(
                 id = conversationId,
+                type = ChatConversation.TYPE_DIRECT,
+                title = "",
+                isGroup = false,
                 participantIds = listOf(currentUserId, friendUserId),
                 participantNames = mapOf(
                     currentUserId to currentUserName,
                     friendUserId to friendDisplayName,
                 ),
+                createdBy = currentUserId,
                 createdAt = System.currentTimeMillis(),
             )
     }
 
+    /**
+     * Creates a group conversation.
+     *
+     * Important:
+     * - If the user did not type a group name, groupTitle should be blank.
+     * - Do NOT store generated display names like "Sam, Kobe" as title.
+     * - Each user should compute the fallback title locally by excluding their own UID.
+     */
     suspend fun createGroupConversation(
         currentUserId: String,
         currentUserName: String,
@@ -123,7 +142,7 @@ class ChatRepository @Inject constructor() {
         val participantIds = allParticipantNames.keys.toList()
 
         val conversationData = mapOf(
-            "type" to CONVERSATION_TYPE_GROUP,
+            "type" to ChatConversation.TYPE_GROUP,
             "isGroup" to true,
             "title" to groupTitle.trim(),
             "participantIds" to participantIds,
@@ -142,8 +161,12 @@ class ChatRepository @Inject constructor() {
         return conversationRef.get().await().toChatConversation()
             ?: ChatConversation(
                 id = conversationId,
+                type = ChatConversation.TYPE_GROUP,
+                title = groupTitle.trim(),
+                isGroup = true,
                 participantIds = participantIds,
                 participantNames = allParticipantNames,
+                createdBy = currentUserId,
                 createdAt = now,
             )
     }
@@ -394,7 +417,11 @@ class ChatRepository @Inject constructor() {
             .collection(MESSAGES_COLLECTION)
 
         val messageSnapshot = messagesRef.get().await()
+
+        if (messageSnapshot.isEmpty) return
+
         val batch = firestore.batch()
+        var hasUpdates = false
 
         messageSnapshot.documents.forEach { document ->
             val senderId = document.getString("senderId") ?: return@forEach
@@ -406,10 +433,13 @@ class ChatRepository @Inject constructor() {
                     "readBy",
                     FieldValue.arrayUnion(currentUserId),
                 )
+                hasUpdates = true
             }
         }
 
-        batch.commit().await()
+        if (hasUpdates) {
+            batch.commit().await()
+        }
     }
 
     private fun DocumentSnapshot.toChatMessage(): ChatMessage {
@@ -507,8 +537,5 @@ class ChatRepository @Inject constructor() {
     companion object {
         private const val CONVERSATIONS_COLLECTION = "conversations"
         private const val MESSAGES_COLLECTION = "messages"
-
-        private const val CONVERSATION_TYPE_DIRECT = "direct"
-        private const val CONVERSATION_TYPE_GROUP = "group"
     }
 }

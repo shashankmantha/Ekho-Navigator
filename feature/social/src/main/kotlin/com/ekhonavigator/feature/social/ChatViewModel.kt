@@ -50,6 +50,8 @@ class ChatViewModel @Inject constructor(
     private var activeConversationId: String? = null
     private var activeFriendUserId: String = ""
     private var activeFriendDisplayName: String = ""
+    private var pendingGroupTitle: String = ""
+    private var pendingGroupParticipantNames: Map<String, String> = emptyMap()
 
     init {
         observeSignedInUser()
@@ -322,7 +324,28 @@ class ChatViewModel @Inject constructor(
         }
 
         if (friendUserId.isBlank()) {
-            error("No active conversation selected")
+            if (pendingGroupParticipantNames.isEmpty()) {
+                error("No active conversation selected")
+            }
+
+            val conversation = chatRepository.createGroupConversation(
+                currentUserId = currentUserId,
+                currentUserName = currentUserName,
+                groupTitle = pendingGroupTitle,
+                participantNames = pendingGroupParticipantNames,
+            )
+
+            activeConversationId = conversation.id
+
+            pendingGroupTitle = ""
+            pendingGroupParticipantNames = emptyMap()
+
+            startObservingMessages(
+                conversationId = conversation.id,
+                currentUserId = currentUserId,
+            )
+
+            return conversation.id
         }
 
         val conversation = chatRepository.getOrCreateConversation(
@@ -378,5 +401,29 @@ class ChatViewModel @Inject constructor(
 
     companion object {
         private const val INFO_MESSAGE_DURATION_MS = 5_000L
+    }
+
+    fun startPendingGroupConversation(
+        groupTitle: String,
+        participantNames: Map<String, String>,
+    ) {
+        activeConversationId = null
+        activeFriendUserId = ""
+        activeFriendDisplayName = ""
+
+        pendingGroupTitle = groupTitle.trim()
+        pendingGroupParticipantNames = participantNames
+
+        observeMessagesJob?.cancel()
+        observePresenceJob?.cancel()
+
+        _uiState.update {
+            it.copy(
+                isLoading = false,
+                messages = emptyList(),
+                errorMessage = null,
+                friendPresence = null,
+            )
+        }
     }
 }

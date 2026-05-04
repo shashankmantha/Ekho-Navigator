@@ -63,6 +63,7 @@ fun ChatScreen(
     conversationId: String? = null,
     chatTitle: String = friendDisplayName,
     isGroup: Boolean = false,
+    groupParticipantNames: Map<String, String> = emptyMap(),
     sharedLocation: SharedLocation? = null,
     onNavigateToMap: () -> Unit = {},
     viewModel: ChatViewModel = hiltViewModel(),
@@ -74,10 +75,20 @@ fun ChatScreen(
     val density = LocalDensity.current
     val imeBottom = WindowInsets.ime.getBottom(density)
 
-    val displayTitle = chatTitle.ifBlank {
-        friendDisplayName.ifBlank {
-            "Chat"
-        }
+    val displayTitle = when {
+        chatTitle.isNotBlank() -> chatTitle
+
+        isGroup -> groupParticipantNames
+            .filterKeys { participantId ->
+                participantId != currentUserId
+            }
+            .values
+            .joinToString(", ")
+            .ifBlank { "Group Chat" }
+
+        friendDisplayName.isNotBlank() -> friendDisplayName
+
+        else -> "Chat"
     }
 
     val displayAvatarId = if (isGroup) {
@@ -86,16 +97,27 @@ fun ChatScreen(
         friendAvatarId
     }
 
-    LaunchedEffect(conversationId, friendUserId) {
-        if (conversationId != null) {
-            viewModel.startExistingConversation(
-                conversationId = conversationId,
-            )
-        } else if (friendUserId.isNotBlank()) {
-            viewModel.startConversation(
-                friendUserId = friendUserId,
-                friendDisplayName = friendDisplayName,
-            )
+    LaunchedEffect(conversationId, friendUserId, isGroup, groupParticipantNames) {
+        when {
+            conversationId != null -> {
+                viewModel.startExistingConversation(
+                    conversationId = conversationId,
+                )
+            }
+
+            isGroup -> {
+                viewModel.startPendingGroupConversation(
+                    groupTitle = chatTitle,
+                    participantNames = groupParticipantNames,
+                )
+            }
+
+            friendUserId.isNotBlank() -> {
+                viewModel.startConversation(
+                    friendUserId = friendUserId,
+                    friendDisplayName = friendDisplayName,
+                )
+            }
         }
 
         if (sharedLocation != null) {
@@ -162,12 +184,7 @@ fun ChatScreen(
             draftMessage = uiState.draftMessage,
             onDraftMessageChange = viewModel::onDraftMessageChange,
             onSendClick = {
-                // Current behavior: direct chat sending.
-                // Next refactor: ChatViewModel.sendMessage() will send by conversationId.
-                viewModel.sendMessage(
-                    friendUserId = friendUserId,
-                    friendDisplayName = friendDisplayName,
-                )
+                viewModel.sendMessage()
             },
         )
     }

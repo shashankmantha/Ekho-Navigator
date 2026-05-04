@@ -488,6 +488,7 @@ class SocialViewModel @Inject constructor(
 
         val conversationTitle = when {
             isGroup && title.isNotBlank() -> title
+
             isGroup -> participantNames
                 .filterKeys { participantId ->
                     participantId != currentUserId
@@ -560,4 +561,73 @@ class SocialViewModel @Inject constructor(
         val friends: List<FriendUser>,
         val conversations: List<ConversationUiModel>,
     )
+
+    fun createGroupChat(
+        groupTitle: String,
+        selectedFriends: List<com.ekhonavigator.core.data.social.FriendUser>,
+        onCreated: (ConversationUiModel) -> Unit,
+    ) {
+        val currentUserId = authRepository.getCurrentUserUid()
+
+        if (currentUserId == null) {
+            stopObservingSocialData()
+            return
+        }
+
+        if (selectedFriends.size < 2) {
+            _uiState.update {
+                it.copy(errorMessage = "Select at least 2 friends to make a group chat.")
+            }
+            return
+        }
+
+        val currentUserName = authRepository.getCurrentUserDisplayName() ?: "Unknown"
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    errorMessage = null,
+                )
+            }
+
+            runCatching {
+                val participantNames = selectedFriends.associate { friend ->
+                    friend.uid to friend.displayName
+                }
+
+                val conversation = chatRepository.createGroupConversation(
+                    currentUserId = currentUserId,
+                    currentUserName = currentUserName,
+                    groupTitle = groupTitle,
+                    participantNames = participantNames,
+                )
+
+                val friendsById = selectedFriends.associateBy { friend ->
+                    friend.uid
+                }
+
+                conversation.toConversationUiModel(
+                    currentUserId = currentUserId,
+                    friendsById = friendsById,
+                )
+            }.onSuccess { conversation ->
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = null,
+                    )
+                }
+
+                onCreated(conversation)
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = error.message ?: "Failed to create group chat",
+                    )
+                }
+            }
+        }
+    }
 }
