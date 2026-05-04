@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -44,14 +46,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import com.ekhonavigator.core.designsystem.theme.LocalCanvasConnected
 import com.ekhonavigator.core.designsystem.theme.LocalSignedIn
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSourceType
 import com.ekhonavigator.core.model.Place
+import com.ekhonavigator.feature.canvas.courses.MyCoursesGrid
 import com.ekhonavigator.feature.event.component.FilterSheetContent
 import com.ekhonavigator.feature.study.StudyScreen
 import kotlinx.coroutines.launch
@@ -62,8 +67,9 @@ fun DiscoverScreen(
     onDayClick: (Long, Set<EventSourceType>, Set<EventCategory>) -> Unit,
     onCreateEventClick: (Long?) -> Unit = {},
     onViewLibraryOnMap: () -> Unit = {},
+    onCourseClick: (courseId: String) -> Unit = {},
     focusPlaceId: String? = null,
-    initialTab: DiscoverTab = DiscoverTab.STUDY,
+    initialTab: DiscoverTab = DiscoverTab.COURSES,
     modifier: Modifier = Modifier,
     viewModel: DiscoverViewModel = hiltViewModel(),
 ) {
@@ -150,8 +156,28 @@ fun DiscoverScreen(
                 .fillMaxSize()
                 .padding(paddingValues),
         ) {
+            // Courses tab is gated on Canvas connection — when not connected
+            // it disappears entirely (the ConnectCanvas screen is still
+            // reachable from Account/Settings as the entry point). Per A3 the
+            // tab bar will collapse into a single scrolling Campus layout;
+            // for A1 we keep the tab pattern intact and add Courses alongside.
+            val canvasConnected = LocalCanvasConnected.current
+            val visibleTabs = remember(canvasConnected) {
+                if (canvasConnected) DiscoverTab.entries else DiscoverTab.entries - DiscoverTab.COURSES
+            }
+            // If Canvas disconnects while the user is sitting on the Courses
+            // tab, snap them back to Study — otherwise the tab strip drops
+            // the Courses pill while the content area still renders the
+            // Courses branch (now empty), which reads as "the tab broke."
+            LaunchedEffect(canvasConnected) {
+                if (!canvasConnected && selectedTab == DiscoverTab.COURSES) {
+                    selectedTab = DiscoverTab.STUDY
+                }
+            }
+
             DiscoverTabStrip(
                 selected = selectedTab,
+                tabs = visibleTabs,
                 onSelect = { selectedTab = it },
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
@@ -161,6 +187,8 @@ fun DiscoverScreen(
             )
 
             when (selectedTab) {
+                DiscoverTab.COURSES -> CoursesTabContent(onCourseClick = onCourseClick)
+
                 DiscoverTab.EVENTS -> EventsTabContent(
                     viewModel = viewModel,
                     searchQuery = searchQuery,
@@ -203,6 +231,7 @@ fun DiscoverScreen(
 }
 
 enum class DiscoverTab(val title: String) {
+    COURSES("Courses"),
     STUDY("Study"),
     EVENTS("Events"),
 }
@@ -210,6 +239,7 @@ enum class DiscoverTab(val title: String) {
 @Composable
 private fun DiscoverTabStrip(
     selected: DiscoverTab,
+    tabs: List<DiscoverTab>,
     onSelect: (DiscoverTab) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -218,13 +248,13 @@ private fun DiscoverTabStrip(
             .fillMaxWidth()
             .height(48.dp),
     ) {
-        DiscoverTab.entries.forEachIndexed { index, tab ->
+        tabs.forEachIndexed { index, tab ->
             SegmentedButton(
                 selected = selected == tab,
                 onClick = { onSelect(tab) },
                 shape = SegmentedButtonDefaults.itemShape(
                     index = index,
-                    count = DiscoverTab.entries.size,
+                    count = tabs.size,
                 ),
                 icon = {},
                 colors = SegmentedButtonDefaults.colors(
@@ -241,6 +271,26 @@ private fun DiscoverTabStrip(
                 },
             )
         }
+    }
+}
+
+@Composable
+private fun CoursesTabContent(
+    onCourseClick: (courseId: String) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text(
+            text = "My Courses",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+        )
+        MyCoursesGrid(onCourseClick = onCourseClick)
     }
 }
 

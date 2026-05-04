@@ -302,6 +302,11 @@ fun EkhoNavigatorApp(
                                             ),
                                         )
                                     },
+                                    // Per-class detail screen lands in Phase 7.A2; until then,
+                                    // tap routes to the existing My Courses list view so the
+                                    // grid card click is at least useful (shows that course in
+                                    // a fuller-context list rather than nothing).
+                                    onCourseClick = { _ -> navigator.navigateToMyCourses() },
                                     focusPlaceId = key.focusPlaceId,
                                     initialTab = key.initialTab,
                                 )
