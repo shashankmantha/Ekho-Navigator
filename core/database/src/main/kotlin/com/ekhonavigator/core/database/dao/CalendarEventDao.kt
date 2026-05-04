@@ -40,6 +40,12 @@ interface CalendarEventDao {
     @Query("UPDATE calendar_events SET isBookmarked = :bookmarked WHERE uid = :id")
     suspend fun updateBookmark(id: String, bookmarked: Boolean)
 
+    /** Targeted description update used by the Canvas assignment-sync description
+     *  backfill — writes assignment.description onto the bridged calendar_events
+     *  row without disturbing other fields (including the user's bookmark state). */
+    @Query("UPDATE calendar_events SET description = :description WHERE uid = :id")
+    suspend fun updateDescription(id: String, description: String)
+
     @Upsert
     suspend fun upsertEvent(event: CalendarEventEntity)
 

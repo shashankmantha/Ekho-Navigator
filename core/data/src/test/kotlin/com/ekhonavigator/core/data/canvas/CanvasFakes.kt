@@ -20,10 +20,12 @@ import java.time.Instant
 internal class FakeCanvasApi : CanvasApi {
     var coursesToReturn: List<CanvasCourseDto> = emptyList()
     var plannerItemsToReturn: List<PlannerItemDto> = emptyList()
+    var assignmentsToReturn: List<com.ekhonavigator.core.canvas.network.dto.CanvasAssignmentDto> = emptyList()
     var error: Throwable? = null
     var calls = 0
     val plannerCalls = mutableListOf<Pair<String, String>>()
     var lastPlannerContextCodes: List<String>? = null
+    val assignmentCalls = mutableListOf<String>()
 
     override suspend fun getCourses(
         enrollmentState: String,
@@ -51,6 +53,22 @@ internal class FakeCanvasApi : CanvasApi {
     // DefaultCanvasPlannerRepository runs end-to-end against real Canvas in production;
     // the parsing logic itself is unit-tested separately in LinkHeaderTest.
     override suspend fun getPlannerItemsByUrl(url: String): Response<List<PlannerItemDto>> {
+        return Response.success(emptyList())
+    }
+
+    override suspend fun getAssignments(
+        courseId: String,
+        include: List<String>,
+        perPage: Int,
+    ): Response<List<com.ekhonavigator.core.canvas.network.dto.CanvasAssignmentDto>> {
+        assignmentCalls += courseId
+        error?.let { throw it }
+        return Response.success(assignmentsToReturn)
+    }
+
+    // Same single-page convention as getPlannerItemsByUrl — pagination loop runs
+    // against real Canvas in production; LinkHeaderTest covers the header parsing.
+    override suspend fun getAssignmentsByUrl(url: String): Response<List<com.ekhonavigator.core.canvas.network.dto.CanvasAssignmentDto>> {
         return Response.success(emptyList())
     }
 }
@@ -147,6 +165,7 @@ internal class FakeCalendarEventDao : CalendarEventDao {
     override fun observeEventById(id: String): Flow<CalendarEventEntity?> = unsupported()
     override suspend fun getEventById(id: String): CalendarEventEntity? = unsupported()
     override suspend fun updateBookmark(id: String, bookmarked: Boolean) = unsupported()
+    override suspend fun updateDescription(id: String, description: String) = unsupported()
     override suspend fun upsertEvent(event: CalendarEventEntity) = unsupported()
     override suspend fun deleteICalEventsNotIn(activeUids: List<String>) = unsupported()
     override suspend fun deleteOldEvents(cutoff: Instant) = unsupported()

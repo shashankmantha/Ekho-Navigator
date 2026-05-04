@@ -1,5 +1,6 @@
 package com.ekhonavigator.core.data.auth
 
+import com.ekhonavigator.core.data.canvas.CanvasAssignmentRepository
 import com.ekhonavigator.core.data.canvas.CanvasCourseRepository
 import com.ekhonavigator.core.data.canvas.CanvasPlannerRepository
 import com.ekhonavigator.core.data.di.ApplicationScope
@@ -30,6 +31,7 @@ class AuthLifecycleObserver @Inject constructor(
     private val calendarRepository: CalendarRepository,
     private val canvasCourseRepository: CanvasCourseRepository,
     private val canvasPlannerRepository: CanvasPlannerRepository,
+    private val canvasAssignmentRepository: CanvasAssignmentRepository,
     @ApplicationScope private val scope: CoroutineScope,
 ) {
     private var started = false
@@ -94,6 +96,8 @@ class AuthLifecycleObserver @Inject constructor(
         // bridged from it. Wiping just the planner table leaves Canvas event
         // pills lingering on the calendar.
         runCatching { canvasPlannerRepository.clearAll() }
+        // Per-course assignment cache (A2.3) — same strict-isolation rule.
+        runCatching { canvasAssignmentRepository.clearAll() }
     }
 
     private fun plannerWindowStart() =

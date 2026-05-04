@@ -32,6 +32,7 @@ class AuthLifecycleObserverTest {
     private val calendarRepo = FakeCalendarRepository()
     private val courseRepo = FakeCanvasCourseRepository()
     private val plannerRepo = FakeCanvasPlannerRepository()
+    private val assignmentRepo = FakeCanvasAssignmentRepository()
 
     @Test
     fun `start with already signed-in uid fires onSignIn fan-out including Canvas sync`() = runTest {
@@ -62,6 +63,7 @@ class AuthLifecycleObserverTest {
         assertEquals(1, calendarRepo.onSignOutCalls)
         assertEquals(1, courseRepo.clearAllCalls)
         assertEquals(1, plannerRepo.clearAllCalls)
+        assertEquals(1, assignmentRepo.clearAllCalls)
         // PAT and institution must NOT be wiped on signout — they're encrypted,
         // uid-keyed, and should let the same user re-sign-in without re-entering
         // credentials. Multi-account safety comes from the uid key, not from wipe.
@@ -129,6 +131,7 @@ class AuthLifecycleObserverTest {
             calendarRepository = calendarRepo,
             canvasCourseRepository = courseRepo,
             canvasPlannerRepository = plannerRepo,
+            canvasAssignmentRepository = assignmentRepo,
             scope = scope,
         )
 
@@ -205,6 +208,17 @@ private class FakeCanvasPlannerRepository : CanvasPlannerRepository {
     override fun observeById(id: String): kotlinx.coroutines.flow.Flow<PlannerItem?> = flowOf<PlannerItem?>(null)
     override suspend fun sync(start: Instant, end: Instant): Result<Unit> {
         syncCalls += start to end
+        return Result.success(Unit)
+    }
+    override suspend fun clearAll() { clearAllCalls++ }
+}
+
+private class FakeCanvasAssignmentRepository : com.ekhonavigator.core.data.canvas.CanvasAssignmentRepository {
+    val syncCalls = mutableListOf<String>()
+    var clearAllCalls = 0
+    override fun observeForCourse(courseId: String): kotlinx.coroutines.flow.Flow<List<com.ekhonavigator.core.canvas.model.CanvasAssignment>> = flowOf(emptyList())
+    override suspend fun sync(courseId: String): Result<Unit> {
+        syncCalls += courseId
         return Result.success(Unit)
     }
     override suspend fun clearAll() { clearAllCalls++ }
