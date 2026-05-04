@@ -322,18 +322,13 @@ private fun BookmarkIndicator(
             }
         }
 
+        // Personal events the user created themselves don't get a bookmark icon —
+        // they OWN the event, so "saved" is implicit; rendering a bookmark glyph
+        // (even non-interactive) implies it's a campus iCal event the user
+        // chose to keep, which is misleading. Empty trailing slot maintains the
+        // same row alignment as iCal rows that DO have the tappable bookmark.
         EkhoEventRowState.PERSONAL -> {
-            Box(
-                modifier = Modifier.size(32.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = EkhoIcons.Bookmark,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
+            Box(modifier = Modifier.size(32.dp))
         }
 
         // Canvas-sourced rows aren't bookmarkable from the app, and we don't yet know
