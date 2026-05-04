@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import com.ekhonavigator.core.designsystem.theme.LocalSignedIn
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSourceType
 import com.ekhonavigator.feature.event.component.FilterSheetContent
@@ -118,8 +119,24 @@ fun CalendarScreen(
                 }
 
                 val selectedDate by viewModel.selectedDate.collectAsStateWithLifecycle()
+                val signedIn = LocalSignedIn.current
+                // Greyed when signed-out: event creation requires an ownerUid for
+                // sharing/sync. The DefaultCustomEventRepository would throw
+                // NotSignedInException if reached anyway — disable here so the
+                // user gets a visual hint instead of a silent no-op.
+                val fabContainer = if (signedIn) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerHighest
+                }
+                val fabContent = if (signedIn) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                }
                 FloatingActionButton(
                     onClick = {
+                        if (!signedIn) return@FloatingActionButton
                         val epochDay = if (pagerState.currentPage == CalendarTab.DAY.ordinal) {
                             selectedDate.toEpochDay()
                         } else {
@@ -127,12 +144,12 @@ fun CalendarScreen(
                         }
                         onCreateEventClick(epochDay)
                     },
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    containerColor = fabContainer,
+                    contentColor = fabContent,
                 ) {
                     Icon(
                         imageVector = EkhoIcons.Add,
-                        contentDescription = "Create event",
+                        contentDescription = if (signedIn) "Create event" else "Sign in to create events",
                     )
                 }
 

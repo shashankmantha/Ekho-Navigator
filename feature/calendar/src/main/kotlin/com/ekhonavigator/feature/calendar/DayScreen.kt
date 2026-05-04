@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import com.ekhonavigator.core.designsystem.theme.LocalSignedIn
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSourceType
 import com.ekhonavigator.feature.calendar.component.MiniMonthCalendar
@@ -91,17 +92,30 @@ fun DayScreen(
                     )
                 }
 
-                if (viewModel.isSignedIn) {
-                    FloatingActionButton(
-                        onClick = { onCreateEventClick(selectedDate.toEpochDay()) },
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    ) {
-                        Icon(
-                            imageVector = EkhoIcons.Add,
-                            contentDescription = "Create event",
-                        )
-                    }
+                val signedIn = LocalSignedIn.current
+                // Greyed when signed-out (matches CalendarScreen's pattern). The
+                // create-event flow needs an ownerUid; the FAB stays visible as a
+                // discovery hint but the click is suppressed.
+                FloatingActionButton(
+                    onClick = {
+                        if (!signedIn) return@FloatingActionButton
+                        onCreateEventClick(selectedDate.toEpochDay())
+                    },
+                    containerColor = if (signedIn) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainerHighest
+                    },
+                    contentColor = if (signedIn) {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    },
+                ) {
+                    Icon(
+                        imageVector = EkhoIcons.Add,
+                        contentDescription = if (signedIn) "Create event" else "Sign in to create events",
+                    )
                 }
             }
         },

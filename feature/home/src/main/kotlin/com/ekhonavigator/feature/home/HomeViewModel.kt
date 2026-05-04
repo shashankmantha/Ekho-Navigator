@@ -4,9 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ekhonavigator.core.data.auth.AuthRepository
 import com.ekhonavigator.core.data.repository.CalendarRepository
-import com.ekhonavigator.core.data.repository.CustomEventRepository
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventSource
 import com.google.android.gms.location.LocationServices
@@ -35,17 +33,13 @@ import kotlin.math.roundToInt
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val repository: CalendarRepository,
-    private val authRepository: AuthRepository,
-    private val customEventRepository: CustomEventRepository,
 ) : ViewModel() {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    init {
-        if (authRepository.getCurrentUserUid() != null) {
-            customEventRepository.startSync(viewModelScope)
-        }
-    }
+    // customEventRepository.startSync() removed when AuthLifecycleObserver took
+    // over the boot lifecycle — observer fires startSync on every uid != null
+    // transition, so VMs no longer need to.
 
     /**
      * When true, hides "noisy" non-bookmarked campus iCal events so Home shows

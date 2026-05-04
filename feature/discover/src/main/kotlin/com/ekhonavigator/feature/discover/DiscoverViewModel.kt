@@ -7,7 +7,6 @@ import com.ekhonavigator.core.data.canvas.CanvasCourseRepository
 import com.ekhonavigator.core.data.canvas.CanvasPlannerRepository
 import com.ekhonavigator.core.data.place.PlaceRepository
 import com.ekhonavigator.core.data.repository.CalendarRepository
-import com.ekhonavigator.core.data.repository.CustomEventRepository
 import com.ekhonavigator.core.designsystem.theme.CourseColorAssigner
 import com.ekhonavigator.core.designsystem.theme.CourseColorInput
 import com.ekhonavigator.core.model.CalendarEvent
@@ -19,7 +18,6 @@ import com.ekhonavigator.core.model.matchesCategories
 import com.ekhonavigator.core.model.matchesSourceTypes
 import com.ekhonavigator.feature.event.component.CourseFilterOption
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -37,16 +35,14 @@ import javax.inject.Inject
 class DiscoverViewModel @Inject constructor(
     private val repository: CalendarRepository,
     private val authRepository: AuthRepository,
-    private val customEventRepository: CustomEventRepository,
     private val placeRepository: PlaceRepository,
     canvasCourseRepository: CanvasCourseRepository,
     canvasPlannerRepository: CanvasPlannerRepository,
 ) : ViewModel() {
 
-    private var customEventSyncJob: Job? = null
-
-    private val _isSignedIn = MutableStateFlow(authRepository.getCurrentUserUid() != null)
-    val isSignedIn: StateFlow<Boolean> = _isSignedIn.asStateFlow()
+    // customEventRepository.startSync() and the signed-in check were removed when
+    // AuthLifecycleObserver took over the boot/teardown lifecycle.
+    // FAB-side gating now reads LocalSignedIn from composition.
 
     private val _activeSourceTypes = MutableStateFlow(EventSourceType.entries.toSet())
     val activeSourceTypes: StateFlow<Set<EventSourceType>> = _activeSourceTypes.asStateFlow()
@@ -88,22 +84,6 @@ class DiscoverViewModel @Inject constructor(
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
     private val _focusedPlaceId = MutableStateFlow<String?>(null)
-
-    init {
-        viewModelScope.launch {
-            authRepository.userFlow().collect { userId ->
-                val signedIn = userId != null
-                _isSignedIn.value = signedIn
-
-                if (signedIn) {
-                    startCustomEventSync()
-                } else {
-                    stopCustomEventSync()
-                    clearUserState()
-                }
-            }
-        }
-    }
 
     val focusedPlace: StateFlow<Place?> = combine(
         _focusedPlaceId,
@@ -232,30 +212,4 @@ class DiscoverViewModel @Inject constructor(
         }
     }
 
-    private fun startCustomEventSync() {
-        if (customEventSyncJob?.isActive == true) return
-
-        customEventSyncJob = viewModelScope.launch {
-            runCatching {
-                customEventRepository.startSync(this)
-            }
-        }
-    }
-
-    private fun stopCustomEventSync() {
-        customEventSyncJob?.cancel()
-        customEventSyncJob = null
-    }
-
-    private fun clearUserState() {
-        _searchQuery.value = ""
-        _selectedCategories.value = emptySet()
-        _focusedPlaceId.value = null
-        _activeSourceTypes.value = EventSourceType.entries.toSet() - EventSourceType.SCHEDULE
-    }
-
-    override fun onCleared() {
-        stopCustomEventSync()
-        super.onCleared()
-    }
 }

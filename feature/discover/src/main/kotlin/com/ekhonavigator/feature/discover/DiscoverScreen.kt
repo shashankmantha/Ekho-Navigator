@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import com.ekhonavigator.core.designsystem.theme.LocalSignedIn
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSourceType
 import com.ekhonavigator.core.model.Place
@@ -82,7 +83,6 @@ fun DiscoverScreen(
     val selectedCourseIds by viewModel.selectedCourseIds.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val focusedPlace by viewModel.focusedPlace.collectAsStateWithLifecycle()
-    val isSignedIn by viewModel.isSignedIn.collectAsStateWithLifecycle()
 
     val onDayHeaderClick: (Long) -> Unit = { epochDay ->
         onDayClick(epochDay, activeSourceTypes, selectedCategories)
@@ -116,17 +116,30 @@ fun DiscoverScreen(
                         )
                     }
 
-                    if (isSignedIn) {
-                        FloatingActionButton(
-                            onClick = { onCreateEventClick(null) },
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        ) {
-                            Icon(
-                                imageVector = EkhoIcons.Add,
-                                contentDescription = "Create event",
-                            )
-                        }
+                    val signedIn = LocalSignedIn.current
+                    // Greyed when signed-out (matches Calendar/Day pattern). Discover
+                    // is reachable signed-out so the FAB stays visible as a discovery
+                    // hint; the click is suppressed without an ownerUid.
+                    FloatingActionButton(
+                        onClick = {
+                            if (!signedIn) return@FloatingActionButton
+                            onCreateEventClick(null)
+                        },
+                        containerColor = if (signedIn) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainerHighest
+                        },
+                        contentColor = if (signedIn) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        },
+                    ) {
+                        Icon(
+                            imageVector = EkhoIcons.Add,
+                            contentDescription = if (signedIn) "Create event" else "Sign in to create events",
+                        )
                     }
                 }
             }

@@ -6,7 +6,6 @@ import com.ekhonavigator.core.data.auth.AuthRepository
 import com.ekhonavigator.core.data.canvas.CanvasCourseRepository
 import com.ekhonavigator.core.data.canvas.CanvasPlannerRepository
 import com.ekhonavigator.core.data.repository.CalendarRepository
-import com.ekhonavigator.core.data.repository.CustomEventRepository
 import com.ekhonavigator.core.designsystem.theme.CourseColorAssigner
 import com.ekhonavigator.core.designsystem.theme.CourseColorInput
 import com.ekhonavigator.core.model.CalendarEvent
@@ -44,19 +43,14 @@ import javax.inject.Inject
 class CalendarViewModel @Inject constructor(
     private val repository: CalendarRepository,
     private val authRepository: AuthRepository,
-    private val customEventRepository: CustomEventRepository,
     private val canvasPlannerRepository: CanvasPlannerRepository,
     canvasCourseRepository: CanvasCourseRepository,
 ) : ViewModel() {
 
-    val isSignedIn: Boolean
-        get() = authRepository.getCurrentUserUid() != null
-
-    init {
-        if (isSignedIn) {
-            customEventRepository.startSync(viewModelScope)
-        }
-    }
+    // customEventRepository.startSync() and the signed-in check were removed when
+    // AuthLifecycleObserver took over the boot/teardown lifecycle. Observer fires
+    // startSync on every uid != null transition (including app launch with a
+    // restored session) so VMs no longer need to.
 
     // ══════════════════════════════════════════════════
     // Shared state (used across Month + Day screens)

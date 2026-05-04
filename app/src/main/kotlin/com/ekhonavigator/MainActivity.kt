@@ -90,18 +90,20 @@ class MainActivity : ComponentActivity() {
             }
 
             EkhoTheme {
-                CanvasConnectionProvider {
-                    AssignmentDecoratorProvider {
-                        Surface(
-                            modifier = Modifier.fillMaxSize(),
-                            color = MaterialTheme.colorScheme.background,
-                        ) {
-                            EkhoNavigatorApp(
-                                notificationChatRequest = notificationChatRequest,
-                                onNotificationChatRequestHandled = {
-                                    notificationChatRequest = null
-                                },
-                            )
+                SignedInProvider {
+                    CanvasConnectionProvider {
+                        AssignmentDecoratorProvider {
+                            Surface(
+                                modifier = Modifier.fillMaxSize(),
+                                color = MaterialTheme.colorScheme.background,
+                            ) {
+                                EkhoNavigatorApp(
+                                    notificationChatRequest = notificationChatRequest,
+                                    onNotificationChatRequestHandled = {
+                                        notificationChatRequest = null
+                                    },
+                                )
+                            }
                         }
                     }
                 }
