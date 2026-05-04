@@ -28,17 +28,20 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil3.compose.AsyncImage
 import com.ekhonavigator.core.canvas.model.CanvasCourse
+import com.ekhonavigator.core.designsystem.theme.CourseColorAssigner
+import com.ekhonavigator.core.designsystem.theme.CourseColorInput
+import com.ekhonavigator.core.designsystem.theme.coursePalette
 
 @Composable
 fun MyCoursesScreen(
@@ -125,9 +128,19 @@ private fun LoadedContent(
         if (state.courses.isEmpty() && !state.syncing) {
             EmptyCourses(onRetry)
         } else {
+            // Compute palette slot per course once at this level so every row
+            // shares the same family-key assignment as the calendar / filter
+            // sheet do — no Canvas knowledge leaks into the row composable.
+            val palette = coursePalette()
+            val courseSlots = remember(state.courses) {
+                CourseColorAssigner.assign(
+                    state.courses.map { CourseColorInput(id = it.id, code = it.code) },
+                )
+            }
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(state.courses, key = CanvasCourse::id) { course ->
-                    CourseCard(course)
+                    val slot = courseSlots[course.id] ?: 0
+                    CourseCard(course, palette[slot % palette.size])
                 }
             }
         }
@@ -152,7 +165,7 @@ private fun EmptyCourses(onRetry: () -> Unit) {
 }
 
 @Composable
-private fun CourseCard(course: CanvasCourse) {
+private fun CourseCard(course: CanvasCourse, courseColor: Color) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -165,13 +178,13 @@ private fun CourseCard(course: CanvasCourse) {
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            CourseImage(imageUrl = course.imageUrl)
+            CourseColorBlock(color = courseColor)
             Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = course.code,
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = courseColor,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -201,23 +214,17 @@ private fun CourseCard(course: CanvasCourse) {
 }
 
 @Composable
-private fun CourseImage(imageUrl: String?) {
+private fun CourseColorBlock(color: Color) {
+    // Solid color "tile" — same family-key→palette mapping the calendar pills,
+    // assignment dots, and FilterSheet course chips use, so a course's identity
+    // stays consistent across every surface. Sized down from the old 64dp image
+    // box to give the title + grade pill more horizontal room.
     Box(
         modifier = Modifier
-            .size(64.dp)
+            .size(48.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (imageUrl != null) {
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
-    }
+            .background(color),
+    )
 }
 
 @Composable
