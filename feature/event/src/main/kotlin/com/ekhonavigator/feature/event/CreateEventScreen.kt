@@ -26,6 +26,9 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -52,6 +55,7 @@ import com.ekhonavigator.core.designsystem.component.FriendPickerSheet
 import com.ekhonavigator.core.designsystem.component.LocationAutocompleteField
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.EventCategory
+import com.ekhonavigator.core.model.EventType
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -117,6 +121,11 @@ fun CreateEventScreen(
             shape = RoundedCornerShape(12.dp),
         )
 
+        TypeSelector(
+            selected = uiState.type,
+            onSelected = viewModel::setType,
+        )
+
         PickerField(
             value = uiState.date?.format(dateFormatter) ?: "",
             label = "Date",
@@ -127,34 +136,49 @@ fun CreateEventScreen(
             errorText = "Required",
         )
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
+        if (uiState.type == EventType.ASSIGNMENT) {
+            // Single "Due" picker — assignments are a moment, not a span. Internally
+            // the save path collapses endTime = startTime so the entity stays valid
+            // and the existing bottom-anchored ASSIGNMENT pill renderer still works.
             PickerField(
                 value = uiState.startTime?.format(timeFormatter) ?: "",
-                label = "Start",
-                placeholder = "Start time",
+                label = "Due",
+                placeholder = "Due time",
                 onClick = { showStartTimePicker = true },
-                modifier = Modifier.weight(1f),
                 isRequired = true,
                 isError = uiState.startTimeError,
                 errorText = "Required",
             )
-            PickerField(
-                value = uiState.endTime?.format(timeFormatter) ?: "",
-                label = "End",
-                placeholder = "End time",
-                onClick = { showEndTimePicker = true },
-                modifier = Modifier.weight(1f),
-                isRequired = true,
-                isError = uiState.endTimeError || uiState.endBeforeStart,
-                errorText = when {
-                    uiState.endTimeError -> "Required"
-                    uiState.endBeforeStart -> "End must be after start"
-                    else -> null
-                },
-            )
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                PickerField(
+                    value = uiState.startTime?.format(timeFormatter) ?: "",
+                    label = "Start",
+                    placeholder = "Start time",
+                    onClick = { showStartTimePicker = true },
+                    modifier = Modifier.weight(1f),
+                    isRequired = true,
+                    isError = uiState.startTimeError,
+                    errorText = "Required",
+                )
+                PickerField(
+                    value = uiState.endTime?.format(timeFormatter) ?: "",
+                    label = "End",
+                    placeholder = "End time",
+                    onClick = { showEndTimePicker = true },
+                    modifier = Modifier.weight(1f),
+                    isRequired = true,
+                    isError = uiState.endTimeError || uiState.endBeforeStart,
+                    errorText = when {
+                        uiState.endTimeError -> "Required"
+                        uiState.endBeforeStart -> "End must be after start"
+                        else -> null
+                    },
+                )
+            }
         }
 
         if (uiState.startsInPast) {
@@ -187,10 +211,15 @@ fun CreateEventScreen(
             )
         }
 
-        CategoryDropdown(
-            selected = uiState.category,
-            onSelected = viewModel::setCategory,
-        )
+        // Categories don't make sense for assignments — General has no contextual
+        // meaning on a homework or test. Skipped entirely; contextual category
+        // sets per type (test/quiz/etc) is parked for next sprint.
+        if (uiState.type != EventType.ASSIGNMENT) {
+            CategoryDropdown(
+                selected = uiState.category,
+                onSelected = viewModel::setCategory,
+            )
+        }
 
         CourseField(
             value = uiState.courseLabel,
@@ -386,6 +415,31 @@ private fun CategoryDropdown(
                         expanded = false
                     },
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TypeSelector(
+    selected: EventType,
+    onSelected: (EventType) -> Unit,
+) {
+    // Limited to the two types the create form supports — EVENT and ASSIGNMENT.
+    // Other EventType values (CANVAS imports, etc.) come from sync, never from
+    // user creation, so they're intentionally not surfaced as selectable options.
+    val options = listOf(
+        EventType.EVENT to "Event",
+        EventType.ASSIGNMENT to "Assignment",
+    )
+    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        options.forEachIndexed { index, (type, label) ->
+            SegmentedButton(
+                selected = type == selected,
+                onClick = { onSelected(type) },
+                shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+            ) {
+                Text(label)
             }
         }
     }

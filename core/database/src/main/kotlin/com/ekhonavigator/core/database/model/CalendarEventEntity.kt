@@ -47,6 +47,11 @@ data class CalendarEventEntity(
      *  same family-key the Canvas course list uses, so personal events tagged
      *  to a course visually match that course's identity. Null = no tag. */
     val courseLabel: String? = null,
+    /** User-toggled completion state for personal ASSIGNMENT events. Canvas
+     *  assignments derive completion from `submitted/graded/excused` fields on
+     *  `canvas_planner_items` instead — this column is meaningful only for
+     *  USER_CREATED rows with `type = ASSIGNMENT`. Drives strikethrough render. */
+    val isCompleted: Boolean = false,
 )
 
 fun CalendarEventEntity.isPast(now: Instant = Instant.now()): Boolean = endTime <= now
@@ -84,4 +89,5 @@ fun CalendarEventEntity.toDomainModel(
     },
     type = type,
     courseLabel = courseLabel,
+    isCompleted = isCompleted,
 )

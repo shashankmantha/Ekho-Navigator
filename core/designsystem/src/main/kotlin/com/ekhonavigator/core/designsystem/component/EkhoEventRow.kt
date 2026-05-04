@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -103,14 +104,23 @@ fun EkhoEventRow(
                 Spacer(Modifier.height(2.dp))
             }
 
+            // Strikethrough on completed assignments — sourced from the
+            // decorator (Canvas: submitted/graded/excused; personal: isCompleted
+            // toggle). Title text also dims so completed items recede visually.
+            val isCompleted = eventId != null && LocalAssignmentDecorator.current.isCompleted(eventId)
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleSmall.copy(
                     fontWeight = FontWeight.SemiBold,
                     letterSpacing = (-0.01).em,
                     lineHeight = 18.sp,
+                    textDecoration = if (isCompleted) TextDecoration.LineThrough else null,
                 ),
-                color = MaterialTheme.colorScheme.onSurface,
+                color = if (isCompleted) {
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -135,7 +145,12 @@ fun EkhoEventRow(
                 }
             }
 
-            val hasChips = monograms.isNotEmpty() || isPending
+            // Categories don't carry meaning on ASSIGNMENT rows (a homework's
+            // "General" tag is just visual noise); suppress the monogram strip
+            // entirely. Contextual category sets per type — test/quiz for
+            // assignments, meeting/social for personal — is parked for later.
+            val effectiveMonograms = if (state == EkhoEventRowState.ASSIGNMENT) emptyList() else monograms
+            val hasChips = effectiveMonograms.isNotEmpty() || isPending
             if (hasChips) {
                 Spacer(Modifier.height(6.dp))
                 FlowRow(
@@ -143,7 +158,7 @@ fun EkhoEventRow(
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                     itemVerticalAlignment = Alignment.CenterVertically,
                 ) {
-                    monograms.take(5).forEach { EkhoMonogramBadge(monogram = it) }
+                    effectiveMonograms.take(5).forEach { EkhoMonogramBadge(monogram = it) }
                     if (isPending) PendingChip()
                 }
             }

@@ -461,8 +461,21 @@ private fun TimelineEventBlock(
 
     val isPendingInvite = event.myRsvpStatus == RsvpStatus.PENDING
     val pendingBorder = colors.error
-    val effectiveBg = if (isPendingInvite) bgColor.copy(alpha = 0.35f) else bgColor
-    val effectiveText = if (isPendingInvite) textColor.copy(alpha = 0.75f) else textColor
+    // Completed assignments dim the WHOLE pill (not just text) so the
+    // strikethrough lands on a recessive base instead of competing with the
+    // saturated bg. Pending overrides take priority since it's a stronger
+    // "needs attention" signal.
+    val isCompletedPill = LocalAssignmentDecorator.current.isCompleted(event.id)
+    val effectiveBg = when {
+        isPendingInvite -> bgColor.copy(alpha = 0.35f)
+        isCompletedPill -> bgColor.copy(alpha = 0.4f)
+        else -> bgColor
+    }
+    val effectiveText = when {
+        isPendingInvite -> textColor.copy(alpha = 0.75f)
+        isCompletedPill -> textColor.copy(alpha = 0.75f)
+        else -> textColor
+    }
 
     Box(
         modifier = modifier
@@ -486,10 +499,15 @@ private fun TimelineEventBlock(
             .clickable { onClick() }
             .padding(horizontal = 4.dp, vertical = 2.dp),
     ) {
+        // Strikethrough completed assignments — same source of truth as the
+        // detail screen and event rows. effectiveText is already alpha-dimmed
+        // when isCompletedPill so we don't double-dim here.
         Column {
             Text(
                 text = event.eventName.ifEmpty { event.title },
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    textDecoration = if (isCompletedPill) androidx.compose.ui.text.style.TextDecoration.LineThrough else null,
+                ),
                 color = effectiveText,
                 maxLines = 4,
                 overflow = TextOverflow.Ellipsis,

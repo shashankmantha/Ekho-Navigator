@@ -149,14 +149,21 @@ fun DayContent(
                     )
                     val isPendingInvite = event.myRsvpStatus == RsvpStatus.PENDING
                     val pendingBorder = MaterialTheme.colorScheme.error
+                    val isCompleted = decorator.isCompleted(event.id)
+                    // Completed assignments dim their full pill (not just text) so
+                    // the strikethrough lands on a recessive base instead of fighting
+                    // a saturated bg. Pending overrides take priority.
+                    val effectivePillBg = when {
+                        isPendingInvite -> pillBg.copy(alpha = 0.35f)
+                        isCompleted -> pillBg.copy(alpha = 0.4f)
+                        else -> pillBg
+                    }
 
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(2.dp))
-                            .background(
-                                if (isPendingInvite) pillBg.copy(alpha = 0.35f) else pillBg,
-                            )
+                            .background(effectivePillBg)
                             .drawBehind {
                                 if (isPendingInvite) {
                                     drawRoundRect(
@@ -180,8 +187,13 @@ fun DayContent(
                                 fontSize = 8.sp,
                                 lineHeight = 11.sp,
                                 fontWeight = FontWeight.Medium,
+                                textDecoration = if (isCompleted) androidx.compose.ui.text.style.TextDecoration.LineThrough else null,
                             ),
-                            color = if (isPendingInvite) pillText.copy(alpha = 0.75f) else pillText,
+                            color = when {
+                                isPendingInvite -> pillText.copy(alpha = 0.75f)
+                                isCompleted -> pillText.copy(alpha = 0.7f)
+                                else -> pillText
+                            },
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )

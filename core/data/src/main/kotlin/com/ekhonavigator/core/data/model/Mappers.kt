@@ -63,6 +63,7 @@ fun CalendarEvent.toCustomEventEntity(
     customLocationLongitude = customLocation?.longitude,
     type = type,
     courseLabel = courseLabel,
+    isCompleted = isCompleted,
 )
 
 /** [source] defaults to SHARED but is overridden when an owner's second device receives their own event back through the listener. */
@@ -131,5 +132,6 @@ internal fun firestoreDataToEntity(
             }
         } ?: EventType.EVENT,
         courseLabel = data["courseLabel"] as? String,
+        isCompleted = data["isCompleted"] as? Boolean ?: false,
     )
 }

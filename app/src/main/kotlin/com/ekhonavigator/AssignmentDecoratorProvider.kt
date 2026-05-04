@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.ekhonavigator.core.data.canvas.CanvasCourseRepository
+import com.ekhonavigator.core.data.repository.CalendarRepository
 import com.ekhonavigator.core.database.dao.CanvasPlannerItemDao
 import com.ekhonavigator.core.designsystem.theme.AssignmentDecorator
 import com.ekhonavigator.core.designsystem.theme.CourseColorAssigner
@@ -45,13 +46,18 @@ class AssignmentDecoratorViewModel @Inject constructor(
     @Suppress("unused") savedStateHandle: SavedStateHandle,
     courseRepository: CanvasCourseRepository,
     plannerItemDao: CanvasPlannerItemDao,
+    calendarRepository: CalendarRepository,
 ) : ViewModel() {
 
     val decorator: StateFlow<AssignmentDecorator> = combine(
         courseRepository.observeCourses(),
         plannerItemDao.observeAll(),
-    ) { courses, plannerItems ->
-        if (courses.isEmpty() && plannerItems.isEmpty()) {
+        // Personal events whose user toggled isCompleted — folded into the same
+        // completedEventIds set as Canvas's submitted/graded/excused so the
+        // strikethrough render sites stay source-agnostic.
+        calendarRepository.observeEvents(),
+    ) { courses, plannerItems, allEvents ->
+        if (courses.isEmpty() && plannerItems.isEmpty() && allEvents.none { it.isCompleted }) {
             return@combine AssignmentDecorator.Empty
         }
 
@@ -73,10 +79,13 @@ class AssignmentDecoratorViewModel @Inject constructor(
 
         val courseIdByEventId = itemsWithCourse.associate { (item, courseId) -> item.id to courseId }
 
-        val completedEventIds = plannerItems
+        val canvasCompletedIds = plannerItems
             .filter { it.submitted || it.graded || it.excused }
             .map { it.id }
-            .toSet()
+        val personalCompletedIds = allEvents
+            .filter { it.isCompleted }
+            .map { it.id }
+        val completedEventIds = (canvasCompletedIds + personalCompletedIds).toSet()
 
         AssignmentDecorator(
             courseColorSlotByEventId = courseColorSlotByEventId,

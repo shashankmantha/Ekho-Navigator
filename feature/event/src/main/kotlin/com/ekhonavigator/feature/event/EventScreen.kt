@@ -65,6 +65,7 @@ import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventAttendee
 import com.ekhonavigator.core.designsystem.theme.LocalAssignmentDecorator
 import com.ekhonavigator.core.model.EventCategory
+import com.ekhonavigator.core.model.EventType
 import com.ekhonavigator.core.model.EventSource
 import com.ekhonavigator.core.model.RsvpStatus
 import com.ekhonavigator.core.model.prettifyAllCaps
@@ -145,6 +146,8 @@ fun EventScreen(
             onEditClick = { onEditClick(eventId) },
             canShare = viewModel.canShare,
             onShareClick = viewModel::openShareSheet,
+            canMarkComplete = viewModel.canMarkComplete,
+            onToggleCompleteClick = viewModel::toggleCompleted,
             hasAttendees = viewModel.hasAttendees,
             canRsvp = viewModel.canRsvp,
             isOwner = viewModel.isOwner,
@@ -221,6 +224,8 @@ private fun EventDetailContent(
     onEditClick: () -> Unit = {},
     canShare: Boolean = false,
     onShareClick: () -> Unit = {},
+    canMarkComplete: Boolean = false,
+    onToggleCompleteClick: () -> Unit = {},
     hasAttendees: Boolean = false,
     canRsvp: Boolean = false,
     isOwner: Boolean = false,
@@ -255,6 +260,9 @@ private fun EventDetailContent(
             onEditClick = onEditClick,
             canDelete = canDelete,
             onDeleteClick = { showDeleteConfirmation = true },
+            canMarkComplete = canMarkComplete,
+            isCompleted = event.isCompleted,
+            onToggleCompleteClick = onToggleCompleteClick,
         )
 
         // ── State ribbon (only when event has a state) ─
@@ -273,14 +281,23 @@ private fun EventDetailContent(
         Spacer(Modifier.height(14.dp))
 
         // ── Title ──────────────────────────────────────
+        // Strikethrough completed assignments (Canvas: submitted/graded/excused;
+        // personal: isCompleted toggle). Single source of truth lives on the
+        // decorator so the visual stays consistent with row + pill render sites.
+        val isCompleted = LocalAssignmentDecorator.current.isCompleted(event.id)
         Text(
             text = event.title,
             style = MaterialTheme.typography.headlineMedium.copy(
                 letterSpacing = (-0.02).em,
                 lineHeight = 34.sp,
+                textDecoration = if (isCompleted) androidx.compose.ui.text.style.TextDecoration.LineThrough else null,
             ),
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = if (isCompleted) {
+                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
         )
 
         if (event.eventType.isNotBlank()) {
@@ -472,7 +489,9 @@ private fun EventDetailContent(
         ThinDivider()
         Spacer(Modifier.height(10.dp))
 
-        if (event.categories.isNotEmpty()) {
+        // Skip the TAGGED row on assignments — General has no contextual meaning
+        // on a homework. Per-type contextual categories deferred to next sprint.
+        if (event.categories.isNotEmpty() && event.type != EventType.ASSIGNMENT) {
             MetaChipsRow(label = "TAGGED", categories = event.categories)
         }
 
@@ -521,11 +540,30 @@ private fun ActionRow(
     onEditClick: () -> Unit,
     canDelete: Boolean,
     onDeleteClick: () -> Unit,
+    canMarkComplete: Boolean = false,
+    isCompleted: Boolean = false,
+    onToggleCompleteClick: () -> Unit = {},
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.End,
     ) {
+        if (canMarkComplete) {
+            IconButton(onClick = onToggleCompleteClick) {
+                Icon(
+                    imageVector = EkhoIcons.Check,
+                    contentDescription = if (isCompleted) "Mark incomplete" else "Mark complete",
+                    // Sage secondary when complete (matches the YOUR EVENT ribbon),
+                    // muted onSurfaceVariant when not — same dim/active treatment as
+                    // the bookmark toggle for visual consistency.
+                    tint = if (isCompleted) {
+                        MaterialTheme.colorScheme.secondary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+            }
+        }
         if (showBookmark) {
             IconButton(onClick = onBookmarkClick) {
                 Icon(

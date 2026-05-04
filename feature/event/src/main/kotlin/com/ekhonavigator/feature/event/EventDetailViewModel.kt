@@ -129,6 +129,23 @@ class EventDetailViewModel @Inject constructor(
     val canShare: Boolean
         get() = isOwner && event.value?.source == EventSource.USER_CREATED
 
+    /** Personal ASSIGNMENT events get a manual completion toggle. Canvas-derived
+     *  ASSIGNMENT events get their completion from `submitted/graded/excused`
+     *  on the planner item, so we don't expose a manual toggle for those. */
+    val canMarkComplete: Boolean
+        get() {
+            val e = event.value ?: return false
+            return canEdit && e.type == com.ekhonavigator.core.model.EventType.ASSIGNMENT
+        }
+
+    fun toggleCompleted() {
+        val e = event.value ?: return
+        if (!canMarkComplete) return
+        viewModelScope.launch {
+            customEventRepository.updateEvent(e.copy(isCompleted = !e.isCompleted))
+        }
+    }
+
     fun setEventId(id: String) {
         _eventId.value = id
         if (id.isNotEmpty()) {

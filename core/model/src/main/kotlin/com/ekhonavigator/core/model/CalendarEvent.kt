@@ -37,6 +37,10 @@ data class CalendarEvent(
      *  the Canvas COMP-262 course's palette slot — no Canvas link required.
      *  Null = no course tag. */
     val courseLabel: String? = null,
+    /** User-toggled completion state for personal ASSIGNMENT events. Meaningful
+     *  only for USER_CREATED + type=ASSIGNMENT — Canvas assignments use
+     *  submitted/graded/excused on the planner item table for the same purpose. */
+    val isCompleted: Boolean = false,
 ) {
     val primaryCategory: EventCategory
         get() = categories.firstOrNull() ?: EventCategory.GENERAL

@@ -15,6 +15,7 @@ import com.ekhonavigator.core.designsystem.theme.normalizeCourseLabel
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSource
+import com.ekhonavigator.core.model.EventType
 import com.ekhonavigator.core.model.Place
 import com.ekhonavigator.core.model.SharedLocation
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -36,6 +37,8 @@ import javax.inject.Inject
 private val EventZone: ZoneId = ZoneId.of("America/Los_Angeles")
 
 data class CreateEventUiState(
+    /** EVENT = start+end span. ASSIGNMENT = single due moment (no end picker). */
+    val type: EventType = EventType.EVENT,
     val title: String = "",
     val description: String = "",
     val location: String = "",
@@ -52,6 +55,9 @@ data class CreateEventUiState(
      *  sees exactly what they typed; normalized via [normalizeCourseLabel] at
      *  save time. Empty = no course tag. */
     val courseLabel: String = "",
+    /** Carried through edit mode so save() doesn't reset a user's existing
+     *  completion state. The toggle itself lives on EventScreen, not the form. */
+    val isCompleted: Boolean = false,
     val friends: List<FriendUser> = emptyList(),
     val selectedFriendUids: Set<String> = emptySet(),
     /** Non-null when editing — drives Save vs Create label, branches the save() path,
@@ -64,12 +70,15 @@ data class CreateEventUiState(
     val showValidationErrors: Boolean = false,
 ) {
     val canSave: Boolean
-        get() = title.isNotBlank() && date != null && startTime != null && endTime != null &&
-            !endBeforeStart
+        get() = when (type) {
+            EventType.ASSIGNMENT -> title.isNotBlank() && date != null && startTime != null
+            else -> title.isNotBlank() && date != null && startTime != null && endTime != null && !endBeforeStart
+        }
 
-    /** True once both times are picked but end is not strictly after start. Shown immediately (not gated by save attempt). */
+    /** True once both times are picked but end is not strictly after start. Shown immediately (not gated by save attempt).
+     *  Only meaningful for EVENT type — ASSIGNMENT has no end picker. */
     val endBeforeStart: Boolean
-        get() = startTime != null && endTime != null && !endTime.isAfter(startTime)
+        get() = type != EventType.ASSIGNMENT && startTime != null && endTime != null && !endTime.isAfter(startTime)
 
     /** True when the chosen start moment is already behind us. Soft warning, not a hard block — matches Google Calendar. */
     val startsInPast: Boolean
@@ -82,7 +91,8 @@ data class CreateEventUiState(
     val titleError: Boolean get() = showValidationErrors && title.isBlank()
     val dateError: Boolean get() = showValidationErrors && date == null
     val startTimeError: Boolean get() = showValidationErrors && startTime == null
-    val endTimeError: Boolean get() = showValidationErrors && endTime == null
+    /** ASSIGNMENT has no end-time picker — never raise an end-time validation error for it. */
+    val endTimeError: Boolean get() = showValidationErrors && type != EventType.ASSIGNMENT && endTime == null
 }
 
 @HiltViewModel
@@ -140,6 +150,7 @@ class CreateEventViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     editingEventId = eventId,
+                    type = event.type,
                     title = event.title,
                     description = event.description,
                     location = event.location,
@@ -147,9 +158,12 @@ class CreateEventViewModel @Inject constructor(
                     pickedCustomLocation = event.customLocation,
                     date = zoned.toLocalDate(),
                     startTime = zoned.toLocalTime(),
-                    endTime = zonedEnd.toLocalTime(),
+                    // ASSIGNMENT events have endTime == startTime by construction;
+                    // null it out in state so the form's end-picker stays hidden.
+                    endTime = if (event.type == EventType.ASSIGNMENT) null else zonedEnd.toLocalTime(),
                     category = event.categories.firstOrNull() ?: EventCategory.GENERAL,
                     courseLabel = event.courseLabel.orEmpty(),
+                    isCompleted = event.isCompleted,
                     selectedFriendUids = attendeeMap.keys,
                     existingAttendees = attendeeMap,
                 )
@@ -176,6 +190,7 @@ class CreateEventViewModel @Inject constructor(
     fun setEndTime(value: LocalTime) = _uiState.update { it.copy(endTime = value) }
     fun setCategory(value: EventCategory) = _uiState.update { it.copy(category = value) }
     fun setCourseLabel(value: String) = _uiState.update { it.copy(courseLabel = value) }
+    fun setType(value: EventType) = _uiState.update { it.copy(type = value) }
 
     /** Free-text edit clears any previously-chosen suggestion id — typing past a selected
      *  place implies the user is no longer pinning it to that exact location. */
@@ -219,7 +234,14 @@ class CreateEventViewModel @Inject constructor(
         }
 
         val startInstant = state.date!!.atTime(state.startTime!!).atZone(EventZone).toInstant()
-        val endInstant = state.date.atTime(state.endTime!!).atZone(EventZone).toInstant()
+        // ASSIGNMENT collapses to a single moment — end == start so the existing
+        // bottom-anchored ASSIGNMENT pill renderer just works, and downstream
+        // duration logic stays a no-op for due-time-driven items.
+        val endInstant = if (state.type == EventType.ASSIGNMENT) {
+            startInstant
+        } else {
+            state.date.atTime(state.endTime!!).atZone(EventZone).toInstant()
+        }
 
         _uiState.update { it.copy(isSaving = true) }
 
@@ -344,9 +366,14 @@ class CreateEventViewModel @Inject constructor(
             ownerDisplayName = authRepository.getCurrentUserDisplayName().orEmpty(),
             placeId = resolvedPlaceId,
             customLocation = customLocation,
+            type = state.type,
+            // Mirror startInstant onto dueAt so render sites that prefer dueAt
+            // (assignment pills, timeline ordering) don't need a fallback.
+            dueAt = if (state.type == EventType.ASSIGNMENT) startInstant else null,
             // Normalize at the boundary so storage stays canonical (`comp 262` →
             // `COMP-262`) and the family-key extractor matches consistently.
             courseLabel = normalizeCourseLabel(state.courseLabel),
+            isCompleted = state.isCompleted,
         )
     }
 }
