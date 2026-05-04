@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -46,7 +44,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -56,7 +53,7 @@ import com.ekhonavigator.core.designsystem.theme.LocalSignedIn
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSourceType
 import com.ekhonavigator.core.model.Place
-import com.ekhonavigator.feature.canvas.courses.MyCoursesGrid
+import com.ekhonavigator.feature.canvas.courses.CoursesHomeContent
 import com.ekhonavigator.feature.event.component.FilterSheetContent
 import com.ekhonavigator.feature.study.StudyScreen
 import kotlinx.coroutines.launch
@@ -278,20 +275,10 @@ private fun DiscoverTabStrip(
 private fun CoursesTabContent(
     onCourseClick: (courseId: String) -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Text(
-            text = "My Courses",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-        )
-        MyCoursesGrid(onCourseClick = onCourseClick)
-    }
+    // The content (week outlook + recent announcements + course grid) lives
+    // in feature/canvas — every section it stacks pulls from Canvas-side
+    // repositories, so the composable is colocated with its data sources.
+    CoursesHomeContent(onCourseClick = onCourseClick)
 }
 
 @Composable
