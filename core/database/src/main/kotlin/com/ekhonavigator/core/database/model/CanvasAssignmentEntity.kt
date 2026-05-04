@@ -29,6 +29,13 @@ data class CanvasAssignmentEntity(
     /** Absolutized at sync time via `absolutizeCanvasUrl` — Canvas returns
      *  this as a relative path that crashes startActivity if launched as-is. */
     val htmlUrl: String?,
+    /** Foreign reference into `canvas_assignment_groups.id`. Not declared as a
+     *  Room @ForeignKey because the groups table populates in the same sync
+     *  transaction as the assignment row and cross-table integrity at write
+     *  time is enforced application-side; the column is read-side join-fuel
+     *  for the GradeSummarySection breakdown. Nullable for assignments Canvas
+     *  returns without a group (older courses, gradebook-disabled). */
+    val assignmentGroupId: String?,
     // Flattened submission fields (no nested entity, no @Embedded for nullable).
     val submissionScore: Double?,
     val submissionGrade: String?,

@@ -1,6 +1,7 @@
 package com.ekhonavigator.core.canvas.network
 
 import com.ekhonavigator.core.canvas.network.dto.CanvasAssignmentDto
+import com.ekhonavigator.core.canvas.network.dto.CanvasAssignmentGroupDto
 import com.ekhonavigator.core.canvas.network.dto.CanvasCourseDto
 import com.ekhonavigator.core.canvas.network.dto.PlannerItemDto
 import retrofit2.Response
@@ -53,6 +54,25 @@ interface CanvasApi {
     /** Pagination follow-up for [getAssignments]. Same opaque-URL rule as planner. */
     @GET
     suspend fun getAssignmentsByUrl(@Url url: String): Response<List<CanvasAssignmentDto>>
+
+    /**
+     * Per-course assignment-group tree with each group's assignments + each
+     * assignment's submission nested in. Strict superset of `getAssignments` —
+     * the same per-item submission payload is reachable, plus we get the
+     * `groupWeight` that powers the weighted-average breakdown.
+     *
+     * `include[]=submission` cascades through to the nested assignments.
+     */
+    @GET("api/v1/courses/{courseId}/assignment_groups")
+    suspend fun getAssignmentGroups(
+        @Path("courseId") courseId: String,
+        @Query("include[]") include: List<String> = listOf("assignments", "submission"),
+        @Query("per_page") perPage: Int = 100,
+    ): Response<List<CanvasAssignmentGroupDto>>
+
+    /** Pagination follow-up for [getAssignmentGroups]. */
+    @GET
+    suspend fun getAssignmentGroupsByUrl(@Url url: String): Response<List<CanvasAssignmentGroupDto>>
 
     companion object {
         // Picked to fill the My Courses card without follow-up calls per course.

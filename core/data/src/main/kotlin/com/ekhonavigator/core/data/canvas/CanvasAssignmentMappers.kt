@@ -7,7 +7,16 @@ import com.ekhonavigator.core.canvas.network.dto.CanvasSubmissionDto
 import com.ekhonavigator.core.database.model.CanvasAssignmentEntity
 import java.time.Instant
 
-internal fun CanvasAssignmentDto.toEntity(now: Instant = Instant.now()): CanvasAssignmentEntity {
+/**
+ * @param overrideGroupId when set, takes precedence over the DTO's
+ * `assignmentGroupId` field. Used when assignments arrive nested in an
+ * assignment_groups payload — the DTO field may be omitted in that response
+ * shape, but we already know the group from the parent traversal.
+ */
+internal fun CanvasAssignmentDto.toEntity(
+    now: Instant = Instant.now(),
+    overrideGroupId: String? = null,
+): CanvasAssignmentEntity {
     val s = submission
     return CanvasAssignmentEntity(
         id = id,
@@ -21,6 +30,7 @@ internal fun CanvasAssignmentDto.toEntity(now: Instant = Instant.now()): CanvasA
         // htmlUrl absolutized in DefaultCanvasAssignmentRepository.sync()
         // against the institution domain.
         htmlUrl = htmlUrl,
+        assignmentGroupId = overrideGroupId ?: assignmentGroupId,
         submissionScore = s?.score,
         submissionGrade = s?.grade,
         submittedAt = s?.submittedAt?.let { runCatching { Instant.parse(it) }.getOrNull() },

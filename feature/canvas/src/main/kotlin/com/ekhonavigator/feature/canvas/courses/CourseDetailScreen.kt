@@ -44,6 +44,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.ekhonavigator.core.canvas.model.CanvasAssignment
+import com.ekhonavigator.core.canvas.model.CanvasAssignmentGroup
 import com.ekhonavigator.core.canvas.model.CanvasCourse
 import com.ekhonavigator.core.canvas.model.PlannerItem
 import com.ekhonavigator.core.canvas.model.PlannerSubmissionStatus
@@ -146,11 +147,19 @@ private fun LoadedContent(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        HeroSection(course = course, courseColor = courseColor)
+        HeroSection(
+            course = course,
+            courseColor = courseColor,
+            showGradePill = state.gradeSummary !is GradeSummaryState.Available,
+        )
 
         val courseHtmlUrl = course.htmlUrl
         if (!courseHtmlUrl.isNullOrBlank()) {
             OpenInCanvasButton(url = courseHtmlUrl)
+        }
+
+        if (state.gradeSummary is GradeSummaryState.Available) {
+            GradeSummarySection(state = state.gradeSummary)
         }
 
         WhatIfSection(state = state.whatIf)
@@ -299,6 +308,128 @@ private fun PlannerItemSection(
 }
 
 @Composable
+private fun GradeSummarySection(state: GradeSummaryState.Available) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        SectionHeader("Grade summary")
+        // Headline: weighted total + caption with the source-of-truth + count.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = "${"%.1f".format(state.weightedPercent)}%",
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            val caption = if (state.usesWeights) {
+                "weighted · ${state.gradedAssignmentCount} graded"
+            } else {
+                "by points · ${state.gradedAssignmentCount} graded"
+            }
+            Text(
+                text = caption,
+                modifier = Modifier.padding(bottom = 6.dp),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        // Per-group rows. Sorted by Canvas position (already DAO-sorted), with
+        // the synthetic "Other" bucket trailing thanks to position=Int.MAX_VALUE.
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            state.groups.forEach { group ->
+                GradeGroupRow(group = group)
+            }
+        }
+    }
+}
+
+@Composable
+private fun GradeGroupRow(group: GroupBreakdown) {
+    val percent = group.percent
+    val barFraction = (percent ?: 0.0).coerceIn(0.0, 100.0).toFloat() / 100f
+    // Tier the tint by performance so the row's color reads the same way the
+    // hero pill does — green-ish for ≥90, neutral for 70-89, red for <70.
+    // Greyed out entirely when the group has no graded items yet.
+    val colors = MaterialTheme.colorScheme
+    val barColor = when {
+        percent == null -> colors.surfaceContainerHighest
+        percent >= 90.0 -> colors.secondary
+        percent >= 70.0 -> colors.tertiary
+        else -> colors.error
+    }
+    val titleColor = if (percent == null) colors.onSurfaceVariant else colors.onSurface
+
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = group.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = titleColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                val w = group.weight
+                if (w != null && w > 0.0) {
+                    WeightBadge(weight = w)
+                }
+            }
+            Text(
+                text = percent?.let { "${"%.1f".format(it)}%" } ?: "—",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = if (percent == null) colors.onSurfaceVariant else barColor,
+            )
+        }
+        // Slim performance bar — clipped to a rounded rect so the tint reads
+        // as a chip rather than a raw progress indicator.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(colors.surfaceContainerHighest),
+        ) {
+            if (barFraction > 0f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(fraction = barFraction)
+                        .height(6.dp)
+                        .background(barColor),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WeightBadge(weight: Double) {
+    Box(
+        modifier = Modifier
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+    ) {
+        Text(
+            text = "${formatPoints(weight)}%",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
 private fun WhatIfSection(state: WhatIfState) {
     if (state == WhatIfState.Unavailable) {
         // No grade or no points to project from — skip the section entirely
@@ -379,7 +510,11 @@ private fun projectFinal(
 }
 
 @Composable
-private fun HeroSection(course: CanvasCourse, courseColor: Color) {
+private fun HeroSection(
+    course: CanvasCourse,
+    courseColor: Color,
+    showGradePill: Boolean,
+) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -404,7 +539,9 @@ private fun HeroSection(course: CanvasCourse, courseColor: Color) {
                     color = courseColor,
                 )
             }
-            if (course.currentGrade != null || course.currentScore != null) {
+            // Hide the hero pill when the GradeSummarySection has its own
+            // (richer) total — the section's headline number replaces it.
+            if (showGradePill && (course.currentGrade != null || course.currentScore != null)) {
                 GradePill(grade = course.currentGrade, score = course.currentScore)
             }
         }
@@ -561,6 +698,21 @@ class CourseDetailViewModel @Inject constructor(
             initialValue = emptyList(),
         )
 
+    /** Same lazy-sync model as [assignments]: the sync trigger lives over there
+     *  so we don't fire it twice. This flow just reads the joined view the
+     *  repository composes (groups + their assignments), which the
+     *  GradeSummarySection turns into a weighted breakdown. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val assignmentGroups: StateFlow<List<CanvasAssignmentGroup>> = _courseId
+        .filterNotNull()
+        .distinctUntilChanged()
+        .flatMapLatest { id -> assignmentRepository.observeGroupsForCourse(id) }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList(),
+        )
+
     fun setCourseId(id: String) {
         _courseId.value = id
     }
@@ -570,7 +722,8 @@ class CourseDetailViewModel @Inject constructor(
         courseRepository.observeCourses(),
         plannerRepository.observeAllItems(),
         assignments,
-    ) { id, courses, planners, assigns ->
+        assignmentGroups,
+    ) { id, courses, planners, assigns, groups ->
         if (id == null) return@combine CourseDetailUiState.Loading
         val course = courses.firstOrNull { it.id == id }
             ?: return@combine CourseDetailUiState.NotFound
@@ -588,6 +741,7 @@ class CourseDetailViewModel @Inject constructor(
             upcoming = pickUpcoming(courseItems),
             recentSubmissions = pickRecentSubmissions(courseItems),
             pastAssignments = pickPastAssignments(assigns),
+            gradeSummary = computeGradeSummary(course = course, groups = groups),
             whatIf = computeWhatIf(course = course, items = courseItems),
         )
     }.stateIn(
@@ -650,6 +804,78 @@ private val PlannerSubmissionStatus.engaged: Boolean
     get() = submitted || graded || excused
 
 /**
+ * Builds the weighted grade-summary breakdown from the cached assignment_groups
+ * tree. Two-phase compute:
+ *
+ *  1. Per-group: Σ score / Σ pointsPossible across the group's graded,
+ *     non-excused assignments.
+ *  2. Course total: weighted average across groups that have at least one
+ *     graded item, renormalized so the un-started buckets don't drag the
+ *     average to zero. If no group exposes a weight, fall through to a
+ *     pure points-total fallback.
+ *
+ * Returns Unavailable when nothing's been graded yet — the UI falls back to
+ * the hero's `course.currentScore` pill in that case.
+ */
+private fun computeGradeSummary(
+    course: CanvasCourse,
+    groups: List<CanvasAssignmentGroup>,
+): GradeSummaryState {
+    if (groups.isEmpty()) return GradeSummaryState.Unavailable
+
+    val breakdowns = groups.map { g ->
+        val gradedAssignments = g.assignments.filter {
+            it.submission.graded && !it.submission.excused && it.pointsPossible != null
+        }
+        val earned = gradedAssignments.sumOf { it.submission.score ?: 0.0 }
+        val possible = gradedAssignments.sumOf { it.pointsPossible ?: 0.0 }
+        val pct = if (possible > 0.0) (earned / possible) * 100.0 else null
+        GroupBreakdown(
+            name = g.name,
+            weight = g.weight,
+            earnedPoints = earned,
+            possiblePoints = possible,
+            percent = pct,
+        )
+    }
+
+    val gradedCount = groups.sumOf { g ->
+        g.assignments.count { it.submission.graded && !it.submission.excused }
+    }
+    if (gradedCount == 0) return GradeSummaryState.Unavailable
+
+    val weightedActive = breakdowns.filter {
+        val w = it.weight
+        w != null && w > 0.0 && it.percent != null
+    }
+    val totalActiveWeight = weightedActive.sumOf { it.weight!! }
+
+    val (weightedPct, usesWeights) = if (totalActiveWeight > 0.0) {
+        val total = weightedActive.sumOf { (it.percent!! * it.weight!!) / totalActiveWeight }
+        total to true
+    } else {
+        // Points-only fallback: course doesn't expose weights, or no weighted
+        // group has graded items yet. Still useful to surface the raw percent.
+        val totalPossible = breakdowns.sumOf { it.possiblePoints }
+        if (totalPossible <= 0.0) {
+            // Last-ditch fall-through to the course-level Canvas number when
+            // we can't compute anything ourselves but Canvas can.
+            val fromCourse = course.currentScore ?: return GradeSummaryState.Unavailable
+            fromCourse to false
+        } else {
+            (breakdowns.sumOf { it.earnedPoints } / totalPossible) * 100.0 to false
+        }
+    }
+
+    return GradeSummaryState.Available(
+        weightedPercent = weightedPct,
+        gradedAssignmentCount = gradedCount,
+        usesWeights = usesWeights,
+        groups = breakdowns,
+    )
+}
+
+/**
  * Builds the what-if calculator's underlying numbers from cached planner items.
  *
  * Uses an approximation because the planner endpoint we read from doesn't
@@ -690,9 +916,42 @@ sealed interface CourseDetailUiState {
         val upcoming: List<PlannerItem>,
         val recentSubmissions: List<PlannerItem>,
         val pastAssignments: List<CanvasAssignment>,
+        val gradeSummary: GradeSummaryState,
         val whatIf: WhatIfState,
     ) : CourseDetailUiState
 }
+
+sealed interface GradeSummaryState {
+    /** Course has no graded items yet, or assignment_groups sync hasn't
+     *  populated. The hero falls back to `course.currentScore` (the existing
+     *  Canvas-aggregated number) in this state so the user still sees
+     *  *something* if Canvas knows a grade we can't yet break down. */
+    data object Unavailable : GradeSummaryState
+    data class Available(
+        /** Renormalized weighted total — computed only across groups that
+         *  have at least one graded assignment, so an early-term grade isn't
+         *  crushed by 0% on un-started buckets. */
+        val weightedPercent: Double,
+        val gradedAssignmentCount: Int,
+        /** Whether the renormalized total uses Canvas-supplied weights or
+         *  fell through to the points-only fallback (course doesn't use
+         *  weighted grading). Drives the caption in the UI. */
+        val usesWeights: Boolean,
+        val groups: List<GroupBreakdown>,
+    ) : GradeSummaryState
+}
+
+data class GroupBreakdown(
+    val name: String,
+    /** Null when Canvas didn't surface a weight (un-weighted course) — the
+     *  per-group bar still renders but no weight badge appears. */
+    val weight: Double?,
+    val earnedPoints: Double,
+    val possiblePoints: Double,
+    /** Null when no graded assignments in this group yet — the row renders
+     *  greyed with an em-dash so the structure stays visible. */
+    val percent: Double?,
+)
 
 sealed interface WhatIfState {
     data object Unavailable : WhatIfState

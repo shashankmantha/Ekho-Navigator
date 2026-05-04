@@ -87,6 +87,8 @@ class EventDetailViewModelTest {
             kotlinx.coroutines.flow.flowOf(emptyList<com.ekhonavigator.core.canvas.model.CanvasAssignment>())
         override fun observeById(assignmentId: String) =
             kotlinx.coroutines.flow.flowOf<com.ekhonavigator.core.canvas.model.CanvasAssignment?>(null)
+        override fun observeGroupsForCourse(courseId: String) =
+            kotlinx.coroutines.flow.flowOf(emptyList<com.ekhonavigator.core.canvas.model.CanvasAssignmentGroup>())
         override suspend fun sync(courseId: String) = Result.success(Unit)
         override suspend fun clearAll() {}
     }

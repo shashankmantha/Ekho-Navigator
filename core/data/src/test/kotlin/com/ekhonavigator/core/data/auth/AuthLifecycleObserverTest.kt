@@ -218,6 +218,7 @@ private class FakeCanvasAssignmentRepository : com.ekhonavigator.core.data.canva
     var clearAllCalls = 0
     override fun observeForCourse(courseId: String): kotlinx.coroutines.flow.Flow<List<com.ekhonavigator.core.canvas.model.CanvasAssignment>> = flowOf(emptyList())
     override fun observeById(assignmentId: String): kotlinx.coroutines.flow.Flow<com.ekhonavigator.core.canvas.model.CanvasAssignment?> = flowOf<com.ekhonavigator.core.canvas.model.CanvasAssignment?>(null)
+    override fun observeGroupsForCourse(courseId: String): kotlinx.coroutines.flow.Flow<List<com.ekhonavigator.core.canvas.model.CanvasAssignmentGroup>> = flowOf(emptyList())
     override suspend fun sync(courseId: String): Result<Unit> {
         syncCalls += courseId
         return Result.success(Unit)

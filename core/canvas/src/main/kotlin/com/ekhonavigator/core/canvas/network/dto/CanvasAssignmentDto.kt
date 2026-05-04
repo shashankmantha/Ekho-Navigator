@@ -14,6 +14,12 @@ data class CanvasAssignmentDto(
     val id: String,
     val name: String,
     @SerialName("course_id") val courseId: String,
+    /** Canvas's grading-scheme bucket id ("Homework", "Exams", etc). Populated
+     *  whether the assignment arrives via the standalone /assignments endpoint
+     *  or nested inside an assignment_groups payload. Drives the weighted
+     *  grade-summary breakdown — null assignments fall into an "Ungrouped"
+     *  bucket at compute time. */
+    @SerialName("assignment_group_id") val assignmentGroupId: String? = null,
     /** HTML body of the assignment. Backfilled into `calendar_events.description`
      *  during sync so EventScreen renders rich text for Canvas events. */
     val description: String? = null,

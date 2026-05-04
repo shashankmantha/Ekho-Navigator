@@ -1,6 +1,7 @@
 package com.ekhonavigator.core.data.canvas
 
 import com.ekhonavigator.core.canvas.model.CanvasAssignment
+import com.ekhonavigator.core.canvas.model.CanvasAssignmentGroup
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -20,6 +21,12 @@ interface CanvasAssignmentRepository {
      *  `plannableId` is the assignment id we resolve here. Emits null until the
      *  course has been synced (lazy, on per-class-detail open). */
     fun observeById(assignmentId: String): Flow<CanvasAssignment?>
+
+    /** Composed flow of grading-scheme buckets joined to their assignments.
+     *  Backs the GradeSummarySection's weighted breakdown — each group carries
+     *  its `weight`, and assignments without a Canvas-side group fall into a
+     *  synthetic "Other" bucket so they're never dropped from the UI. */
+    fun observeGroupsForCourse(courseId: String): Flow<List<CanvasAssignmentGroup>>
 
     /**
      * Fetches the full assignment list for `courseId` from Canvas (paginated)

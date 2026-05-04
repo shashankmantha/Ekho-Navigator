@@ -21,11 +21,13 @@ internal class FakeCanvasApi : CanvasApi {
     var coursesToReturn: List<CanvasCourseDto> = emptyList()
     var plannerItemsToReturn: List<PlannerItemDto> = emptyList()
     var assignmentsToReturn: List<com.ekhonavigator.core.canvas.network.dto.CanvasAssignmentDto> = emptyList()
+    var assignmentGroupsToReturn: List<com.ekhonavigator.core.canvas.network.dto.CanvasAssignmentGroupDto> = emptyList()
     var error: Throwable? = null
     var calls = 0
     val plannerCalls = mutableListOf<Pair<String, String>>()
     var lastPlannerContextCodes: List<String>? = null
     val assignmentCalls = mutableListOf<String>()
+    val assignmentGroupCalls = mutableListOf<String>()
 
     override suspend fun getCourses(
         enrollmentState: String,
@@ -69,6 +71,20 @@ internal class FakeCanvasApi : CanvasApi {
     // Same single-page convention as getPlannerItemsByUrl — pagination loop runs
     // against real Canvas in production; LinkHeaderTest covers the header parsing.
     override suspend fun getAssignmentsByUrl(url: String): Response<List<com.ekhonavigator.core.canvas.network.dto.CanvasAssignmentDto>> {
+        return Response.success(emptyList())
+    }
+
+    override suspend fun getAssignmentGroups(
+        courseId: String,
+        include: List<String>,
+        perPage: Int,
+    ): Response<List<com.ekhonavigator.core.canvas.network.dto.CanvasAssignmentGroupDto>> {
+        assignmentGroupCalls += courseId
+        error?.let { throw it }
+        return Response.success(assignmentGroupsToReturn)
+    }
+
+    override suspend fun getAssignmentGroupsByUrl(url: String): Response<List<com.ekhonavigator.core.canvas.network.dto.CanvasAssignmentGroupDto>> {
         return Response.success(emptyList())
     }
 }
