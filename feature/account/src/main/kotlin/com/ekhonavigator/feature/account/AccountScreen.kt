@@ -18,8 +18,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -41,12 +39,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import kotlinx.coroutines.launch
 
 @Composable
 fun AccountScreen(
-    onSettingsClick: () -> Unit = {},
+    onConnectCanvasClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: AccountViewModel = hiltViewModel(),
     forceSignedOutUi: Boolean = false,
@@ -75,20 +72,6 @@ fun AccountScreen(
                 modifier = Modifier
                     .padding(top = 16.dp, start = 16.dp, end = 16.dp),
             )
-        },
-        floatingActionButton = {
-            if (displayState is AccountUiState.SignedIn) {
-                FloatingActionButton(
-                    onClick = onSettingsClick,
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                ) {
-                    Icon(
-                        imageVector = EkhoIcons.Settings,
-                        contentDescription = "Settings",
-                    )
-                }
-            }
         },
     ) { paddingValues ->
         Box(
@@ -285,6 +268,7 @@ fun AccountScreen(
                         onSignOutClick = {
                             viewModel.onSignOutClick()
                         },
+                        onConnectCanvasClick = onConnectCanvasClick,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }

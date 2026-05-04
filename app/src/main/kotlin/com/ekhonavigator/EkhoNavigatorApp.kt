@@ -40,11 +40,8 @@ import com.ekhonavigator.core.navigation.Navigator
 import com.ekhonavigator.core.navigation.rememberNavigationState
 import com.ekhonavigator.core.navigation.toEntries
 import com.ekhonavigator.feature.account.AccountScreen
-import com.ekhonavigator.feature.account.SettingsScreen
 import com.ekhonavigator.feature.account.navigation.AccountNavKey
-import com.ekhonavigator.feature.account.navigation.SettingsNavKey
 import com.ekhonavigator.feature.account.navigation.navigateToAccount
-import com.ekhonavigator.feature.account.navigation.navigateToSettings
 import com.ekhonavigator.feature.canvas.settings.ConnectCanvasScreen
 import com.ekhonavigator.feature.canvas.courses.MyCoursesScreen
 import com.ekhonavigator.feature.canvas.navigation.ConnectCanvasNavKey
@@ -520,14 +517,6 @@ fun EkhoNavigatorApp(
                         is AccountNavKey -> {
                             NavEntry(key) {
                                 AccountScreen(
-                                    onSettingsClick = navigator::navigateToSettings,
-                                )
-                            }
-                        }
-
-                        is SettingsNavKey -> {
-                            NavEntry(key) {
-                                SettingsScreen(
                                     onConnectCanvasClick = navigator::navigateToConnectCanvas,
                                 )
                             }

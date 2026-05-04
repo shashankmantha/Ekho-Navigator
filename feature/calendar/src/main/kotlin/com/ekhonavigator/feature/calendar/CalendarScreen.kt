@@ -63,7 +63,6 @@ fun CalendarScreen(
     onEventClick: (String) -> Unit,
     onDayClick: (Long, Set<EventSourceType>, Set<EventCategory>) -> Unit,
     onCreateEventClick: (Long?) -> Unit = {},
-    onSettingsClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: CalendarViewModel = hiltViewModel(),
 ) {
