@@ -1,5 +1,6 @@
 package com.ekhonavigator.core.canvas.network
 
+import com.ekhonavigator.core.canvas.network.dto.CanvasAnnouncementDto
 import com.ekhonavigator.core.canvas.network.dto.CanvasAssignmentDto
 import com.ekhonavigator.core.canvas.network.dto.CanvasAssignmentGroupDto
 import com.ekhonavigator.core.canvas.network.dto.CanvasCourseDto
@@ -73,6 +74,28 @@ interface CanvasApi {
     /** Pagination follow-up for [getAssignmentGroups]. */
     @GET
     suspend fun getAssignmentGroupsByUrl(@Url url: String): Response<List<CanvasAssignmentGroupDto>>
+
+    /**
+     * Per-course announcement feed. Canvas treats announcements as discussion
+     * topics with `is_announcement=true`; this endpoint pre-filters to that
+     * subset. `context_codes[]` accepts `course_<id>` strings — pass one per
+     * course to scope the result.
+     *
+     * `start_date`/`end_date` are required by Canvas; we pass a 90-day
+     * trailing window which matches typical instructor cadence.
+     */
+    @GET("api/v1/announcements")
+    suspend fun getAnnouncements(
+        @Query("context_codes[]") contextCodes: List<String>,
+        @Query("start_date") startDate: String,
+        @Query("end_date") endDate: String,
+        @Query("active_only") activeOnly: Boolean = true,
+        @Query("per_page") perPage: Int = 50,
+    ): Response<List<CanvasAnnouncementDto>>
+
+    /** Pagination follow-up for [getAnnouncements]. */
+    @GET
+    suspend fun getAnnouncementsByUrl(@Url url: String): Response<List<CanvasAnnouncementDto>>
 
     companion object {
         // Picked to fill the My Courses card without follow-up calls per course.

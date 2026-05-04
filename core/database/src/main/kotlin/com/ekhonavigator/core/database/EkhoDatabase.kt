@@ -9,12 +9,14 @@ import com.ekhonavigator.core.database.converter.EventTypeConverter
 import com.ekhonavigator.core.database.converter.InstantConverter
 import com.ekhonavigator.core.database.converter.RsvpStatusConverter
 import com.ekhonavigator.core.database.dao.CalendarEventDao
+import com.ekhonavigator.core.database.dao.CanvasAnnouncementDao
 import com.ekhonavigator.core.database.dao.CanvasAssignmentDao
 import com.ekhonavigator.core.database.dao.CanvasAssignmentGroupDao
 import com.ekhonavigator.core.database.dao.CanvasCourseDao
 import com.ekhonavigator.core.database.dao.CanvasPlannerItemDao
 import com.ekhonavigator.core.database.dao.EventAttendeeDao
 import com.ekhonavigator.core.database.model.CalendarEventEntity
+import com.ekhonavigator.core.database.model.CanvasAnnouncementEntity
 import com.ekhonavigator.core.database.model.CanvasAssignmentEntity
 import com.ekhonavigator.core.database.model.CanvasAssignmentGroupEntity
 import com.ekhonavigator.core.database.model.CanvasCourseEntity
@@ -29,8 +31,9 @@ import com.ekhonavigator.core.database.model.EventAttendeeEntity
         CanvasPlannerItemEntity::class,
         CanvasAssignmentEntity::class,
         CanvasAssignmentGroupEntity::class,
+        CanvasAnnouncementEntity::class,
     ],
-    version = 15,
+    version = 16,
     exportSchema = false,
 )
 @TypeConverters(
@@ -47,4 +50,5 @@ abstract class EkhoDatabase : RoomDatabase() {
     abstract fun canvasPlannerItemDao(): CanvasPlannerItemDao
     abstract fun canvasAssignmentDao(): CanvasAssignmentDao
     abstract fun canvasAssignmentGroupDao(): CanvasAssignmentGroupDao
+    abstract fun canvasAnnouncementDao(): CanvasAnnouncementDao
 }

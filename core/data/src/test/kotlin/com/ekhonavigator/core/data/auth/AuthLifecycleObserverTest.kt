@@ -33,6 +33,7 @@ class AuthLifecycleObserverTest {
     private val courseRepo = FakeCanvasCourseRepository()
     private val plannerRepo = FakeCanvasPlannerRepository()
     private val assignmentRepo = FakeCanvasAssignmentRepository()
+    private val announcementRepo = FakeCanvasAnnouncementRepository()
 
     @Test
     fun `start with already signed-in uid fires onSignIn fan-out including Canvas sync`() = runTest {
@@ -64,6 +65,7 @@ class AuthLifecycleObserverTest {
         assertEquals(1, courseRepo.clearAllCalls)
         assertEquals(1, plannerRepo.clearAllCalls)
         assertEquals(1, assignmentRepo.clearAllCalls)
+        assertEquals(1, announcementRepo.clearAllCalls)
         // PAT and institution must NOT be wiped on signout — they're encrypted,
         // uid-keyed, and should let the same user re-sign-in without re-entering
         // credentials. Multi-account safety comes from the uid key, not from wipe.
@@ -132,6 +134,7 @@ class AuthLifecycleObserverTest {
             canvasCourseRepository = courseRepo,
             canvasPlannerRepository = plannerRepo,
             canvasAssignmentRepository = assignmentRepo,
+            canvasAnnouncementRepository = announcementRepo,
             scope = scope,
         )
 
@@ -223,5 +226,19 @@ private class FakeCanvasAssignmentRepository : com.ekhonavigator.core.data.canva
         syncCalls += courseId
         return Result.success(Unit)
     }
+    override suspend fun clearAll() { clearAllCalls++ }
+}
+
+private class FakeCanvasAnnouncementRepository : com.ekhonavigator.core.data.canvas.CanvasAnnouncementRepository {
+    val syncCalls = mutableListOf<String>()
+    var clearAllCalls = 0
+    override fun observeForCourse(courseId: String): kotlinx.coroutines.flow.Flow<List<com.ekhonavigator.core.canvas.model.CanvasAnnouncement>> = flowOf(emptyList())
+    override fun observeAll(): kotlinx.coroutines.flow.Flow<List<com.ekhonavigator.core.canvas.model.CanvasAnnouncement>> = flowOf(emptyList())
+    override fun observeUnreadCount(): kotlinx.coroutines.flow.Flow<Int> = flowOf(0)
+    override suspend fun sync(courseId: String): Result<Unit> {
+        syncCalls += courseId
+        return Result.success(Unit)
+    }
+    override suspend fun markRead(announcementId: String) {}
     override suspend fun clearAll() { clearAllCalls++ }
 }

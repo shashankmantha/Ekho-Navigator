@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -43,11 +44,13 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import com.ekhonavigator.core.canvas.model.CanvasAnnouncement
 import com.ekhonavigator.core.canvas.model.CanvasAssignment
 import com.ekhonavigator.core.canvas.model.CanvasAssignmentGroup
 import com.ekhonavigator.core.canvas.model.CanvasCourse
 import com.ekhonavigator.core.canvas.model.PlannerItem
 import com.ekhonavigator.core.canvas.model.PlannerSubmissionStatus
+import com.ekhonavigator.core.data.canvas.CanvasAnnouncementRepository
 import com.ekhonavigator.core.data.canvas.CanvasAssignmentRepository
 import com.ekhonavigator.core.data.canvas.CanvasCourseRepository
 import com.ekhonavigator.core.data.canvas.CanvasPlannerRepository
@@ -101,6 +104,7 @@ fun CourseDetailScreen(
                 state = state,
                 courseColor = courseColor,
                 onEventClick = onEventClick,
+                onAnnouncementMarkRead = viewModel::markAnnouncementRead,
                 modifier = modifier,
             )
         }
@@ -136,6 +140,7 @@ private fun LoadedContent(
     state: CourseDetailUiState.Loaded,
     courseColor: Color,
     onEventClick: (String) -> Unit,
+    onAnnouncementMarkRead: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val course = state.course
@@ -180,6 +185,13 @@ private fun LoadedContent(
             )
         }
 
+        if (state.announcements.isNotEmpty()) {
+            AnnouncementsSection(
+                announcements = state.announcements,
+                onMarkRead = onAnnouncementMarkRead,
+            )
+        }
+
         if (state.pastAssignments.isNotEmpty()) {
             PastAssignmentsSection(
                 assignments = state.pastAssignments,
@@ -188,6 +200,135 @@ private fun LoadedContent(
         }
     }
 }
+
+@Composable
+private fun AnnouncementsSection(
+    announcements: List<CanvasAnnouncement>,
+    onMarkRead: (String) -> Unit,
+) {
+    val zone = remember { java.time.ZoneId.systemDefault() }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        SectionHeader("Announcements")
+        announcements.forEach { announcement ->
+            AnnouncementRow(
+                announcement = announcement,
+                zone = zone,
+                onExpand = { if (announcement.isUnread) onMarkRead(announcement.id) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun AnnouncementRow(
+    announcement: CanvasAnnouncement,
+    zone: java.time.ZoneId,
+    onExpand: () -> Unit,
+) {
+    var expanded by remember(announcement.id) { mutableStateOf(false) }
+    val colors = MaterialTheme.colorScheme
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(colors.surfaceContainerLow)
+            .clickable {
+                if (!expanded) onExpand()
+                expanded = !expanded
+            }
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            // Unread indicator. Disappears the moment the row is expanded —
+            // markRead() lands by the time the next emission arrives.
+            if (announcement.isUnread) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(colors.primary),
+                )
+            }
+            Text(
+                text = announcement.title,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = if (announcement.isUnread) FontWeight.SemiBold else FontWeight.Medium,
+                color = colors.onSurface,
+                maxLines = if (expanded) Int.MAX_VALUE else 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        // Author + relative date — caption row beneath the title.
+        val caption = remember(announcement.authorName, announcement.postedAt) {
+            buildAnnouncementCaption(announcement, zone)
+        }
+        if (caption.isNotBlank()) {
+            Text(
+                text = caption,
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.onSurfaceVariant,
+            )
+        }
+        // Body shows on expand. Strip HTML tags first; rendering rich HTML in
+        // Compose without a WebView is non-trivial and the polish pass can
+        // upgrade this to a proper renderer later.
+        if (expanded) {
+            val body = remember(announcement.message) {
+                stripHtmlTags(announcement.message.orEmpty()).trim()
+            }
+            if (body.isNotBlank()) {
+                Text(
+                    text = body,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.onSurface,
+                )
+            }
+        }
+    }
+}
+
+private fun buildAnnouncementCaption(
+    announcement: CanvasAnnouncement,
+    zone: java.time.ZoneId,
+): String {
+    val parts = mutableListOf<String>()
+    announcement.authorName?.takeIf { it.isNotBlank() }?.let { parts += it }
+    announcement.postedAt?.let { instant ->
+        val local = instant.atZone(zone)
+        val formatter = java.time.format.DateTimeFormatter.ofPattern("MMM d", java.util.Locale.US)
+        parts += local.format(formatter)
+    }
+    return parts.joinToString(" · ")
+}
+
+/**
+ * Crude HTML-to-text fallback for announcement bodies. Drops tag markup,
+ * collapses whitespace, decodes the handful of entities Canvas actually emits.
+ * Good enough for the inline expand — the polish pass can swap in a proper
+ * HTML renderer if announcement formatting matters more than we currently
+ * think it does.
+ */
+private fun stripHtmlTags(html: String): String {
+    if (html.isEmpty()) return html
+    val withoutTags = html.replace(HTML_TAG_REGEX, " ")
+    return withoutTags
+        .replace("&nbsp;", " ")
+        .replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&#39;", "'")
+        .replace(WHITESPACE_REGEX, " ")
+}
+
+private val HTML_TAG_REGEX = Regex("<[^>]*>")
+private val WHITESPACE_REGEX = Regex("\\s+")
 
 @Composable
 private fun PastAssignmentsSection(
@@ -671,6 +812,7 @@ class CourseDetailViewModel @Inject constructor(
     private val courseRepository: CanvasCourseRepository,
     private val plannerRepository: CanvasPlannerRepository,
     private val assignmentRepository: CanvasAssignmentRepository,
+    private val announcementRepository: CanvasAnnouncementRepository,
 ) : ViewModel() {
 
     private val _courseId = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
@@ -713,28 +855,66 @@ class CourseDetailViewModel @Inject constructor(
             initialValue = emptyList(),
         )
 
+    /** Mirrors the assignment-side lazy-sync — fires once per distinct
+     *  courseId, observes the per-course feed. Cross-course aggregation
+     *  (Campus tab home) goes through a different observer. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val announcements: StateFlow<List<CanvasAnnouncement>> = _courseId
+        .filterNotNull()
+        .distinctUntilChanged()
+        .flatMapLatest { id ->
+            viewModelScope.launch {
+                runCatching { announcementRepository.sync(id) }
+            }
+            announcementRepository.observeForCourse(id)
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList(),
+        )
+
     fun setCourseId(id: String) {
         _courseId.value = id
     }
 
+    /** Stamps the row's `readAt` to now. Called on first row expand. */
+    fun markAnnouncementRead(announcementId: String) {
+        viewModelScope.launch {
+            announcementRepository.markRead(announcementId)
+        }
+    }
+
+    // Six total inputs — past Kotlin's typed combine arity (5). Inner combine
+    // bundles the three calendar-side flows into a Triple; outer combine takes
+    // that Triple plus the three Canvas-side flows for the final assembly.
+    private data class CalendarFacts(
+        val id: String?,
+        val courses: List<CanvasCourse>,
+        val planners: List<PlannerItem>,
+    )
+
     val uiState: StateFlow<CourseDetailUiState> = combine(
-        _courseId,
-        courseRepository.observeCourses(),
-        plannerRepository.observeAllItems(),
+        combine(
+            _courseId,
+            courseRepository.observeCourses(),
+            plannerRepository.observeAllItems(),
+        ) { id, courses, planners -> CalendarFacts(id, courses, planners) },
         assignments,
         assignmentGroups,
-    ) { id, courses, planners, assigns, groups ->
-        if (id == null) return@combine CourseDetailUiState.Loading
-        val course = courses.firstOrNull { it.id == id }
+        announcements,
+    ) { facts, assigns, groups, announces ->
+        val id = facts.id ?: return@combine CourseDetailUiState.Loading
+        val course = facts.courses.firstOrNull { it.id == id }
             ?: return@combine CourseDetailUiState.NotFound
         // Compute palette slot against the FULL active-course set so the color
         // matches every other surface (calendar pills, My Courses grid, filter
         // chips). Slot index is what travels — actual Color resolution happens
         // in the Composable layer where coursePalette() can be called.
         val slots = CourseColorAssigner.assign(
-            courses.map { CourseColorInput(id = it.id, code = it.code) },
+            facts.courses.map { CourseColorInput(id = it.id, code = it.code) },
         )
-        val courseItems = planners.filter { it.courseId == id }
+        val courseItems = facts.planners.filter { it.courseId == id }
         CourseDetailUiState.Loaded(
             course = course,
             paletteSlot = slots[id] ?: 0,
@@ -742,6 +922,7 @@ class CourseDetailViewModel @Inject constructor(
             recentSubmissions = pickRecentSubmissions(courseItems),
             pastAssignments = pickPastAssignments(assigns),
             gradeSummary = computeGradeSummary(course = course, groups = groups),
+            announcements = announces.take(MAX_ANNOUNCEMENTS_INLINE),
             whatIf = computeWhatIf(course = course, items = courseItems),
         )
     }.stateIn(
@@ -749,6 +930,12 @@ class CourseDetailViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = CourseDetailUiState.Loading,
     )
+
+    private companion object {
+        // Match the Past Assignments / Upcoming top-N convention. "View all in
+        // Canvas" tap-out covers the long tail.
+        const val MAX_ANNOUNCEMENTS_INLINE = 5
+    }
 }
 
 /** Future, not-yet-engaged work for this course. Top 5 by ascending due date —
@@ -917,6 +1104,7 @@ sealed interface CourseDetailUiState {
         val recentSubmissions: List<PlannerItem>,
         val pastAssignments: List<CanvasAssignment>,
         val gradeSummary: GradeSummaryState,
+        val announcements: List<CanvasAnnouncement>,
         val whatIf: WhatIfState,
     ) : CourseDetailUiState
 }

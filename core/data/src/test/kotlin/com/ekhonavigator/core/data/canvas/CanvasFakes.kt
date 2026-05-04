@@ -22,12 +22,14 @@ internal class FakeCanvasApi : CanvasApi {
     var plannerItemsToReturn: List<PlannerItemDto> = emptyList()
     var assignmentsToReturn: List<com.ekhonavigator.core.canvas.network.dto.CanvasAssignmentDto> = emptyList()
     var assignmentGroupsToReturn: List<com.ekhonavigator.core.canvas.network.dto.CanvasAssignmentGroupDto> = emptyList()
+    var announcementsToReturn: List<com.ekhonavigator.core.canvas.network.dto.CanvasAnnouncementDto> = emptyList()
     var error: Throwable? = null
     var calls = 0
     val plannerCalls = mutableListOf<Pair<String, String>>()
     var lastPlannerContextCodes: List<String>? = null
     val assignmentCalls = mutableListOf<String>()
     val assignmentGroupCalls = mutableListOf<String>()
+    val announcementCalls = mutableListOf<List<String>>()
 
     override suspend fun getCourses(
         enrollmentState: String,
@@ -85,6 +87,22 @@ internal class FakeCanvasApi : CanvasApi {
     }
 
     override suspend fun getAssignmentGroupsByUrl(url: String): Response<List<com.ekhonavigator.core.canvas.network.dto.CanvasAssignmentGroupDto>> {
+        return Response.success(emptyList())
+    }
+
+    override suspend fun getAnnouncements(
+        contextCodes: List<String>,
+        startDate: String,
+        endDate: String,
+        activeOnly: Boolean,
+        perPage: Int,
+    ): Response<List<com.ekhonavigator.core.canvas.network.dto.CanvasAnnouncementDto>> {
+        announcementCalls += contextCodes
+        error?.let { throw it }
+        return Response.success(announcementsToReturn)
+    }
+
+    override suspend fun getAnnouncementsByUrl(url: String): Response<List<com.ekhonavigator.core.canvas.network.dto.CanvasAnnouncementDto>> {
         return Response.success(emptyList())
     }
 }

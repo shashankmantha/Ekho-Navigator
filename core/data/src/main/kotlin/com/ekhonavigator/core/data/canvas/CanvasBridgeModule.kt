@@ -27,4 +27,9 @@ internal abstract class CanvasBridgeModule {
     internal abstract fun bindCanvasAssignmentRepository(
         impl: DefaultCanvasAssignmentRepository,
     ): CanvasAssignmentRepository
+
+    @Binds
+    internal abstract fun bindCanvasAnnouncementRepository(
+        impl: DefaultCanvasAnnouncementRepository,
+    ): CanvasAnnouncementRepository
 }

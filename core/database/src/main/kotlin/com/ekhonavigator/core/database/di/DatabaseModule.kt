@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.ekhonavigator.core.database.EkhoDatabase
 import com.ekhonavigator.core.database.dao.CalendarEventDao
+import com.ekhonavigator.core.database.dao.CanvasAnnouncementDao
 import com.ekhonavigator.core.database.dao.CanvasAssignmentDao
 import com.ekhonavigator.core.database.dao.CanvasAssignmentGroupDao
 import com.ekhonavigator.core.database.dao.CanvasCourseDao
@@ -53,4 +54,8 @@ internal object DatabaseModule {
     @Provides
     fun provideCanvasAssignmentGroupDao(db: EkhoDatabase): CanvasAssignmentGroupDao =
         db.canvasAssignmentGroupDao()
+
+    @Provides
+    fun provideCanvasAnnouncementDao(db: EkhoDatabase): CanvasAnnouncementDao =
+        db.canvasAnnouncementDao()
 }

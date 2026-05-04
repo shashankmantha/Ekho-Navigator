@@ -1,5 +1,6 @@
 package com.ekhonavigator.core.data.auth
 
+import com.ekhonavigator.core.data.canvas.CanvasAnnouncementRepository
 import com.ekhonavigator.core.data.canvas.CanvasAssignmentRepository
 import com.ekhonavigator.core.data.canvas.CanvasCourseRepository
 import com.ekhonavigator.core.data.canvas.CanvasPlannerRepository
@@ -32,6 +33,7 @@ class AuthLifecycleObserver @Inject constructor(
     private val canvasCourseRepository: CanvasCourseRepository,
     private val canvasPlannerRepository: CanvasPlannerRepository,
     private val canvasAssignmentRepository: CanvasAssignmentRepository,
+    private val canvasAnnouncementRepository: CanvasAnnouncementRepository,
     @ApplicationScope private val scope: CoroutineScope,
 ) {
     private var started = false
@@ -98,6 +100,10 @@ class AuthLifecycleObserver @Inject constructor(
         runCatching { canvasPlannerRepository.clearAll() }
         // Per-course assignment cache (A2.3) — same strict-isolation rule.
         runCatching { canvasAssignmentRepository.clearAll() }
+        // Per-course announcement cache (A2.4) — same rule. Read-state is
+        // local-only (Canvas doesn't round-trip it), so wiping the cache also
+        // wipes the unread-dot state — exactly what we want at signout.
+        runCatching { canvasAnnouncementRepository.clearAll() }
     }
 
     private fun plannerWindowStart() =
