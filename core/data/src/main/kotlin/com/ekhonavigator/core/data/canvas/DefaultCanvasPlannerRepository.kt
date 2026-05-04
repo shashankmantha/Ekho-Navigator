@@ -35,6 +35,10 @@ internal class DefaultCanvasPlannerRepository @Inject constructor(
         plannerDao.observeAll()
             .map { entities -> entities.map(CanvasPlannerItemEntity::toDomainModel) }
 
+    override fun observeById(id: String): Flow<PlannerItem?> =
+        plannerDao.observeAll()
+            .map { entities -> entities.firstOrNull { it.id == id }?.toDomainModel() }
+
     override suspend fun sync(start: Instant, end: Instant): Result<Unit> {
         Log.d(TAG, "sync starting window=[$start, $end]")
         return runCatching {

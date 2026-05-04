@@ -17,6 +17,13 @@ interface CanvasPlannerRepository {
     fun observeAllItems(): Flow<List<PlannerItem>>
 
     /**
+     * The cached planner item matching `id`, or null if no row matches. Used by
+     * EventScreen to surface Canvas-specific richness (points possible, submission
+     * status badge) for events bridged from canvas_planner_items.
+     */
+    fun observeById(id: String): Flow<PlannerItem?>
+
+    /**
      * Fetches planner items for `[start, end)` from Canvas and reconciles the cache:
      * upserts what came back, prunes anything in that window the response no longer contains.
      * Items outside the window are left alone.

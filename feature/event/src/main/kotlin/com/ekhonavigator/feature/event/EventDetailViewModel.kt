@@ -2,7 +2,9 @@ package com.ekhonavigator.feature.event
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ekhonavigator.core.canvas.model.PlannerItem
 import com.ekhonavigator.core.data.auth.AuthRepository
+import com.ekhonavigator.core.data.canvas.CanvasPlannerRepository
 import com.ekhonavigator.core.data.markers.MarkerRepository
 import com.ekhonavigator.core.data.markers.UserDroppedMarker
 import com.ekhonavigator.core.data.place.PlaceRepository
@@ -40,6 +42,7 @@ class EventDetailViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val placeRepository: PlaceRepository,
     private val markerRepository: MarkerRepository,
+    private val canvasPlannerRepository: CanvasPlannerRepository,
 ) : ViewModel() {
 
     private val _eventId = MutableStateFlow("")
@@ -55,6 +58,16 @@ class EventDetailViewModel @Inject constructor(
         .filter { it.isNotEmpty() }
         .flatMapLatest { id -> customEventRepository.observeAttendees(id) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Canvas-bridged planner item matching this event id, if any. Null for
+     *  iCal/personal events. Drives the EventScreen "Canvas details" section
+     *  (points possible, submission status badge) — fields the bridged
+     *  calendar_events row doesn't carry but the planner table does. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val canvasContext: StateFlow<PlannerItem?> = _eventId
+        .filter { it.isNotEmpty() }
+        .flatMapLatest { id -> canvasPlannerRepository.observeById(id) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** Resolves to a place id the user can navigate to. Falls through three checks:
      *   1. Direct match (campus or owner's own marker).

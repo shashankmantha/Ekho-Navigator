@@ -66,7 +66,19 @@ class EventDetailViewModelTest {
             authRepository,
             placeRepository,
             markerRepository,
+            StubPlannerRepository(),
         )
+    }
+
+    private class StubPlannerRepository : com.ekhonavigator.core.data.canvas.CanvasPlannerRepository {
+        override fun observeItems(start: java.time.Instant, end: java.time.Instant) =
+            kotlinx.coroutines.flow.flowOf(emptyList<com.ekhonavigator.core.canvas.model.PlannerItem>())
+        override fun observeAllItems() =
+            kotlinx.coroutines.flow.flowOf(emptyList<com.ekhonavigator.core.canvas.model.PlannerItem>())
+        override fun observeById(id: String) =
+            kotlinx.coroutines.flow.flowOf<com.ekhonavigator.core.canvas.model.PlannerItem?>(null)
+        override suspend fun sync(start: java.time.Instant, end: java.time.Instant) = Result.success(Unit)
+        override suspend fun clearAll() {}
     }
 
     @Test

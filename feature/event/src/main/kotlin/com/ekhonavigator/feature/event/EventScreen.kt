@@ -106,6 +106,7 @@ fun EventScreen(
     val customLocationOffer by viewModel.customLocationOffer.collectAsStateWithLifecycle()
     val friends by viewModel.friends.collectAsStateWithLifecycle()
     val shareSheetVisible by viewModel.shareSheetVisible.collectAsStateWithLifecycle()
+    val canvasContext by viewModel.canvasContext.collectAsStateWithLifecycle()
 
     // The VM emits the new (or deduped existing) marker placeId after save; route it
     // through the same nav callback the campus path uses so the camera-pan animation runs.
@@ -157,6 +158,7 @@ fun EventScreen(
             isOwner = viewModel.isOwner,
             currentUserRsvp = currentUserRsvp,
             attendees = attendees,
+            canvasContext = canvasContext,
             onRsvp = viewModel::rsvp,
             onLocationClick = onLocationClick,
             onLocationSaveOfferClick = { showSaveMarkerPrompt = true },
@@ -230,6 +232,7 @@ private fun EventDetailContent(
     onShareClick: () -> Unit = {},
     canMarkComplete: Boolean = false,
     onToggleCompleteClick: () -> Unit = {},
+    canvasContext: com.ekhonavigator.core.canvas.model.PlannerItem? = null,
     hasAttendees: Boolean = false,
     canRsvp: Boolean = false,
     isOwner: Boolean = false,
@@ -502,6 +505,10 @@ private fun EventDetailContent(
         val courseLabel = event.courseLabel
         if (!courseLabel.isNullOrBlank()) {
             CourseChipRow(label = courseLabel)
+        }
+
+        if (canvasContext != null) {
+            CanvasDetailsRow(item = canvasContext)
         }
 
         if (event.source == EventSource.CANVAS && event.url.isNotBlank()) {
@@ -815,6 +822,77 @@ private fun MetaChipsRow(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun CanvasDetailsRow(item: com.ekhonavigator.core.canvas.model.PlannerItem) {
+    // Canvas-only meta the bridged calendar_events row doesn't carry: status
+    // badge (submitted/late/missing/graded/excused) + points possible. The
+    // actual grade score requires the assignments endpoint — that lands in A2.
+    val (statusLabel, statusColor) = canvasStatus(item)
+    val points = item.pointsPossible
+    if (statusLabel == null && points == null) return
+
+    Row(
+        modifier = Modifier.padding(vertical = 5.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        MetaLabel("CANVAS", Modifier.width(MetaLabelWidth).padding(top = 6.dp))
+        FlowRow(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            if (statusLabel != null && statusColor != null) {
+                AssistChip(
+                    onClick = {},
+                    label = { Text(text = statusLabel, style = MaterialTheme.typography.labelSmall) },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = statusColor.copy(alpha = 0.12f),
+                        labelColor = statusColor,
+                    ),
+                    border = AssistChipDefaults.assistChipBorder(
+                        enabled = true,
+                        borderColor = statusColor.copy(alpha = 0.3f),
+                    ),
+                )
+            }
+            if (points != null) {
+                AssistChip(
+                    onClick = {},
+                    label = {
+                        val pointsText = if (points % 1.0 == 0.0) "${points.toInt()} pts" else "$points pts"
+                        Text(text = pointsText, style = MaterialTheme.typography.labelSmall)
+                    },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Picks the most user-meaningful status from the planner item's submission
+ * flags. Priority order matches what a student wants to see at a glance:
+ * Excused (it's done, don't worry) > Graded > Submitted > Late > Missing.
+ * "Needs grading" gets folded into Submitted since the user already submitted —
+ * the grading wait is the instructor's problem, not actionable from the user side.
+ */
+@Composable
+private fun canvasStatus(item: com.ekhonavigator.core.canvas.model.PlannerItem): Pair<String?, androidx.compose.ui.graphics.Color?> {
+    val submission = item.submission
+    val colors = MaterialTheme.colorScheme
+    return when {
+        submission.excused -> "Excused" to colors.onSurfaceVariant
+        submission.graded -> "Graded" to colors.secondary
+        submission.submitted -> "Submitted" to colors.secondary
+        submission.late -> "Late" to colors.tertiary
+        submission.missing -> "Missing" to colors.error
+        else -> null to null
     }
 }
 
