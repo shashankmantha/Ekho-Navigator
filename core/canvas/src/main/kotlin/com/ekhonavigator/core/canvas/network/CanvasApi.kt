@@ -1,9 +1,11 @@
 package com.ekhonavigator.core.canvas.network
 
+import com.ekhonavigator.core.canvas.network.dto.CanvasAssignmentDto
 import com.ekhonavigator.core.canvas.network.dto.CanvasCourseDto
 import com.ekhonavigator.core.canvas.network.dto.PlannerItemDto
 import retrofit2.Response
 import retrofit2.http.GET
+import retrofit2.http.Path
 import retrofit2.http.Query
 import retrofit2.http.Url
 
@@ -34,6 +36,23 @@ interface CanvasApi {
      */
     @GET
     suspend fun getPlannerItemsByUrl(@Url url: String): Response<List<PlannerItemDto>>
+
+    /**
+     * Per-course assignment list with each item's submission state nested in.
+     * `include[]=submission` is critical — without it the nested submission field
+     * is null and we lose access to the per-assignment numeric score/grade that
+     * the planner endpoint doesn't carry.
+     */
+    @GET("api/v1/courses/{courseId}/assignments")
+    suspend fun getAssignments(
+        @Path("courseId") courseId: String,
+        @Query("include[]") include: List<String> = listOf("submission"),
+        @Query("per_page") perPage: Int = 100,
+    ): Response<List<CanvasAssignmentDto>>
+
+    /** Pagination follow-up for [getAssignments]. Same opaque-URL rule as planner. */
+    @GET
+    suspend fun getAssignmentsByUrl(@Url url: String): Response<List<CanvasAssignmentDto>>
 
     companion object {
         // Picked to fill the My Courses card without follow-up calls per course.

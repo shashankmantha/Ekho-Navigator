@@ -22,4 +22,9 @@ internal abstract class CanvasBridgeModule {
     internal abstract fun bindCanvasPlannerRepository(
         impl: DefaultCanvasPlannerRepository,
     ): CanvasPlannerRepository
+
+    @Binds
+    internal abstract fun bindCanvasAssignmentRepository(
+        impl: DefaultCanvasAssignmentRepository,
+    ): CanvasAssignmentRepository
 }
