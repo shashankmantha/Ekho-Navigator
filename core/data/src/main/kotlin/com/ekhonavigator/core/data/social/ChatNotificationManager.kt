@@ -2,6 +2,7 @@ package com.ekhonavigator.core.data.social
 
 import android.Manifest
 import android.R
+import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -21,6 +22,7 @@ import kotlin.math.absoluteValue
 class ChatNotificationManager @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
+    @SuppressLint("MissingPermission")
     fun showMessageNotification(
         conversationId: String,
         senderId: String,
@@ -63,10 +65,14 @@ class ChatNotificationManager @Inject constructor(
             .setContentIntent(pendingIntent)
             .build()
 
-        NotificationManagerCompat.from(context).notify(
-            notificationId,
-            notification,
-        )
+        try {
+            NotificationManagerCompat.from(context).notify(
+                notificationId,
+                notification,
+            )
+        } catch (e: SecurityException) {
+            // Notification permission was revoked after our check.
+        }
     }
 
     private fun canPostNotifications(): Boolean {

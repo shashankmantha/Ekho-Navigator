@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ekhonavigator.core.data.auth.AuthRepository
 import com.ekhonavigator.core.data.repository.PresenceRepository
+import com.ekhonavigator.core.data.social.ChatConversation
 import com.ekhonavigator.core.data.social.ChatRepository
 import com.ekhonavigator.core.data.social.FriendRequest
 import com.ekhonavigator.core.data.social.FriendUser
@@ -36,8 +37,29 @@ data class SocialUiState(
     val users: List<SocialUser> = emptyList(),
     val incomingRequests: List<FriendRequest> = emptyList(),
     val friends: List<FriendUser> = emptyList(),
+    val conversations: List<ConversationUiModel> = emptyList(),
     val outgoingRequestIds: Set<String> = emptySet(),
     val errorMessage: String? = null,
+)
+
+data class ConversationUiModel(
+    val conversationId: String,
+    val title: String,
+    val avatarId: String = "",
+    val isGroup: Boolean = false,
+    val participantIds: List<String> = emptyList(),
+    val participantNames: Map<String, String> = emptyMap(),
+    val directFriendUserId: String = "",
+    val directFriendDisplayName: String = "",
+    val directFriendAvatarId: String = "",
+    val lastMessage: String = "",
+    val lastMessageTimestamp: Long = 0L,
+    val lastSenderId: String = "",
+    val hasUnreadMessages: Boolean = false,
+    val unreadCount: Int = 0,
+    val online: Boolean = false,
+    val onlineStatus: OnlineStatus = OnlineStatus.ONLINE,
+    val showOnlineStatus: Boolean = true,
 )
 
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
@@ -56,6 +78,131 @@ class SocialViewModel @Inject constructor(
     private var observationJob: Job? = null
 
     init {
+        observeSignedInUser()
+        observeSearchQuery()
+    }
+
+    fun onSearchQueryChange(query: String) {
+        _uiState.update {
+            it.copy(searchQuery = query)
+        }
+
+        queryFlow.value = query
+    }
+
+    fun loadSocialData() {
+        val currentUserId = authRepository.getCurrentUserUid()
+
+        if (currentUserId == null) {
+            stopObservingSocialData()
+            return
+        }
+
+        _uiState.update {
+            it.copy(
+                isSignedIn = true,
+                errorMessage = null,
+            )
+        }
+
+        if (observationJob == null || observationJob?.isActive == false) {
+            observeSocialData(currentUserId)
+        }
+    }
+
+    fun sendFriendRequest(targetUserId: String) {
+        val currentUserId = authRepository.getCurrentUserUid()
+
+        if (currentUserId == null) {
+            stopObservingSocialData()
+            return
+        }
+
+        viewModelScope.launch {
+            runCatching {
+                repository.sendFriendRequest(currentUserId, targetUserId)
+            }.onSuccess {
+                loadSocialData()
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        errorMessage = error.message ?: "Failed to send friend request",
+                    )
+                }
+            }
+        }
+    }
+
+    fun acceptFriendRequest(fromUserId: String) {
+        val currentUserId = authRepository.getCurrentUserUid()
+
+        if (currentUserId == null) {
+            stopObservingSocialData()
+            return
+        }
+
+        viewModelScope.launch {
+            runCatching {
+                repository.acceptFriendRequest(currentUserId, fromUserId)
+            }.onSuccess {
+                loadSocialData()
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        errorMessage = error.message ?: "Failed to accept friend request",
+                    )
+                }
+            }
+        }
+    }
+
+    fun denyFriendRequest(fromUserId: String) {
+        val currentUserId = authRepository.getCurrentUserUid()
+
+        if (currentUserId == null) {
+            stopObservingSocialData()
+            return
+        }
+
+        viewModelScope.launch {
+            runCatching {
+                repository.denyFriendRequest(currentUserId, fromUserId)
+            }.onSuccess {
+                loadSocialData()
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        errorMessage = error.message ?: "Failed to deny friend request",
+                    )
+                }
+            }
+        }
+    }
+
+    fun removeFriend(friendUserId: String) {
+        val currentUserId = authRepository.getCurrentUserUid()
+
+        if (currentUserId == null) {
+            stopObservingSocialData()
+            return
+        }
+
+        viewModelScope.launch {
+            runCatching {
+                repository.removeFriend(currentUserId, friendUserId)
+            }.onSuccess {
+                loadSocialData()
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        errorMessage = error.message ?: "Failed to remove friend",
+                    )
+                }
+            }
+        }
+    }
+
+    private fun observeSignedInUser() {
         viewModelScope.launch {
             authRepository.userFlow().collectLatest { uid ->
                 observationJob?.cancel()
@@ -80,70 +227,27 @@ class SocialViewModel @Inject constructor(
                 observeSocialData(uid)
             }
         }
+    }
 
+    private fun observeSearchQuery() {
         viewModelScope.launch {
             queryFlow
                 .debounce(300)
                 .distinctUntilChanged()
                 .collect { query ->
-                    val trimmed = query.trim()
+                    val trimmedQuery = query.trim()
 
                     if (!_uiState.value.isSignedIn) {
-                        _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                users = emptyList(),
-                                errorMessage = null,
-                            )
-                        }
+                        clearSearchResults()
                         return@collect
                     }
 
-                    if (trimmed.length < 2) {
-                        _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                users = emptyList(),
-                                errorMessage = null,
-                            )
-                        }
+                    if (trimmedQuery.length < 2) {
+                        clearSearchResults()
                     } else {
-                        searchUsers(trimmed)
+                        searchUsers(trimmedQuery)
                     }
                 }
-        }
-    }
-
-    fun onSearchQueryChange(query: String) {
-        _uiState.update {
-            it.copy(searchQuery = query)
-        }
-
-        queryFlow.value = query
-    }
-
-    fun loadSocialData() {
-        val currentUserId = authRepository.getCurrentUserUid()
-
-        if (currentUserId == null) {
-            observationJob?.cancel()
-            observationJob = null
-
-            _uiState.value = SocialUiState(
-                isSignedIn = false,
-            )
-            return
-        }
-
-        _uiState.update {
-            it.copy(
-                isSignedIn = true,
-                errorMessage = null,
-            )
-        }
-
-        if (observationJob == null || observationJob?.isActive == false) {
-            observeSocialData(currentUserId)
         }
     }
 
@@ -160,80 +264,42 @@ class SocialViewModel @Inject constructor(
                 friendsFlow,
                 conversationsFlow,
             ) { requests, friends, conversations ->
-                val conversationMap = conversations.associateBy { conversation ->
-                    conversation.participantIds.find { participantId ->
-                        participantId != userId
-                    } ?: ""
-                }
+                val friendsWithChat = attachDirectConversationDataToFriends(
+                    currentUserId = userId,
+                    friends = friends,
+                    conversations = conversations,
+                )
 
-                val friendsWithChat = friends.map { friend ->
-                    val conversation = conversationMap[friend.uid]
+                val conversationUiModels = buildConversationUiModels(
+                    currentUserId = userId,
+                    friends = friends,
+                    conversations = conversations,
+                )
 
-                    if (conversation != null) {
-                        val isUnread =
-                            conversation.lastSenderId != userId &&
-                                    (
-                                            conversation.unreadCount > 0 ||
-                                                    !conversation.readBy.contains(userId)
-                                            )
-
-                        friend.copy(
-                            lastMessage = conversation.lastMessage,
-                            lastMessageTimestamp = conversation.lastTimestamp,
-                            lastMessageSenderId = conversation.lastSenderId,
-                            hasUnreadMessages = isUnread,
-                            unreadCount = if (isUnread) {
-                                conversation.unreadCount.coerceAtLeast(1)
-                            } else {
-                                0
-                            },
-                        )
-                    } else {
-                        friend
-                    }
-                }
-
-                requests to friendsWithChat
-            }.flatMapLatest { (requests, friends) ->
-                if (friends.isEmpty()) {
-                    flowOf(requests to emptyList<FriendUser>())
-                } else {
-                    val presenceFlows = friends.map { friend ->
-                        presenceRepository.observePresence(friend.uid).map { presence ->
-                            val onlineStatus = try {
-                                OnlineStatus.valueOf(presence.state.uppercase())
-                            } catch (e: Exception) {
-                                OnlineStatus.ONLINE
-                            }
-
-                            friend.copy(
-                                online = presence.state != "offline",
-                                onlineStatus = onlineStatus,
-                                lastChanged = presence.lastChanged,
-                            )
-                        }
-                    }
-
-                    combine(presenceFlows) { updatedFriends ->
-                        requests to updatedFriends.toList()
-                    }
-                }
-            }.catch { e ->
+                SocialDataSnapshot(
+                    requests = requests,
+                    friends = friendsWithChat,
+                    conversations = conversationUiModels,
+                )
+            }.flatMapLatest { snapshot ->
+                observePresenceForSnapshot(snapshot)
+            }.catch { error ->
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = "Error observing social data: ${e.message}",
+                        errorMessage = "Error observing social data: ${error.message}",
                     )
                 }
-            }.collect { (requests, updatedFriends) ->
+            }.collect { snapshot ->
                 val outgoingRequestIds = repository.getOutgoingRequestIds(userId)
 
                 _uiState.update {
                     it.copy(
                         isSignedIn = true,
                         isLoading = false,
-                        incomingRequests = requests,
-                        friends = updatedFriends,
+                        incomingRequests = snapshot.requests,
+                        friends = snapshot.friends,
+                        conversations = snapshot.conversations,
                         outgoingRequestIds = outgoingRequestIds,
                         errorMessage = null,
                     )
@@ -242,103 +308,105 @@ class SocialViewModel @Inject constructor(
         }
     }
 
-    fun sendFriendRequest(targetUserId: String) {
-        val currentUserId = authRepository.getCurrentUserUid()
-
-        if (currentUserId == null) {
-            _uiState.value = SocialUiState(
-                isSignedIn = false,
-            )
-            return
-        }
-
-        viewModelScope.launch {
-            runCatching {
-                repository.sendFriendRequest(currentUserId, targetUserId)
-            }.onSuccess {
-                loadSocialData()
-            }.onFailure { e ->
-                _uiState.update {
-                    it.copy(
-                        errorMessage = e.message ?: "Failed to send friend request",
-                    )
-                }
+    private fun attachDirectConversationDataToFriends(
+        currentUserId: String,
+        friends: List<FriendUser>,
+        conversations: List<ChatConversation>,
+    ): List<FriendUser> {
+        val directConversationMap = conversations
+            .filter { conversation ->
+                !conversation.isGroup
             }
+            .associateBy { conversation ->
+                conversation.otherParticipantId(currentUserId)
+            }
+
+        return friends.map { friend ->
+            val conversation = directConversationMap[friend.uid] ?: return@map friend
+            val isUnread = conversation.isUnreadFor(currentUserId)
+
+            friend.copy(
+                lastMessage = conversation.lastMessage,
+                lastMessageTimestamp = conversation.lastTimestamp,
+                lastMessageSenderId = conversation.lastSenderId,
+                hasUnreadMessages = isUnread,
+                unreadCount = if (isUnread) {
+                    conversation.unreadCount.coerceAtLeast(1)
+                } else {
+                    0
+                },
+            )
         }
     }
 
-    fun acceptFriendRequest(fromUserId: String) {
-        val currentUserId = authRepository.getCurrentUserUid()
-
-        if (currentUserId == null) {
-            _uiState.value = SocialUiState(
-                isSignedIn = false,
-            )
-            return
+    private fun buildConversationUiModels(
+        currentUserId: String,
+        friends: List<FriendUser>,
+        conversations: List<ChatConversation>,
+    ): List<ConversationUiModel> {
+        val friendsById = friends.associateBy { friend ->
+            friend.uid
         }
 
-        viewModelScope.launch {
-            runCatching {
-                repository.acceptFriendRequest(currentUserId, fromUserId)
-            }.onSuccess {
-                loadSocialData()
-            }.onFailure { e ->
-                _uiState.update {
-                    it.copy(
-                        errorMessage = e.message ?: "Failed to accept friend request",
-                    )
-                }
+        return conversations
+            .filter { conversation ->
+                conversation.lastMessage.isNotBlank() || conversation.isUnreadFor(currentUserId)
             }
-        }
+            .map { conversation ->
+                conversation.toConversationUiModel(
+                    currentUserId = currentUserId,
+                    friendsById = friendsById,
+                )
+            }
+            .sortedWith(
+                compareByDescending<ConversationUiModel> {
+                    it.hasUnreadMessages
+                }.thenByDescending {
+                    it.lastMessageTimestamp
+                },
+            )
     }
 
-    fun denyFriendRequest(fromUserId: String) {
-        val currentUserId = authRepository.getCurrentUserUid()
+    private fun observePresenceForSnapshot(
+        snapshot: SocialDataSnapshot,
+    ) = if (snapshot.friends.isEmpty()) {
+        flowOf(snapshot)
+    } else {
+        val presenceFlows = snapshot.friends.map { friend ->
+            presenceRepository.observePresence(friend.uid).map { presence ->
+                val onlineStatus = presence.state.toOnlineStatus()
 
-        if (currentUserId == null) {
-            _uiState.value = SocialUiState(
-                isSignedIn = false,
-            )
-            return
-        }
-
-        viewModelScope.launch {
-            runCatching {
-                repository.denyFriendRequest(currentUserId, fromUserId)
-            }.onSuccess {
-                loadSocialData()
-            }.onFailure { e ->
-                _uiState.update {
-                    it.copy(
-                        errorMessage = e.message ?: "Failed to deny friend request",
-                    )
-                }
+                friend.copy(
+                    online = presence.state != "offline",
+                    onlineStatus = onlineStatus,
+                    lastChanged = presence.lastChanged,
+                )
             }
         }
-    }
 
-    fun removeFriend(friendUserId: String) {
-        val currentUserId = authRepository.getCurrentUserUid()
+        combine(presenceFlows) { updatedFriends ->
+            val friends = updatedFriends.toList()
 
-        if (currentUserId == null) {
-            _uiState.value = SocialUiState(
-                isSignedIn = false,
+            snapshot.copy(
+                friends = friends,
+                conversations = snapshot.conversations.map { conversation ->
+                    if (conversation.isGroup) {
+                        conversation
+                    } else {
+                        val friend = friends.firstOrNull {
+                            it.uid == conversation.directFriendUserId
+                        }
+
+                        conversation.copy(
+                            online = friend?.online ?: false,
+                            onlineStatus = friend?.onlineStatus ?: OnlineStatus.ONLINE,
+                            showOnlineStatus = friend?.showOnlineStatus ?: true,
+                            directFriendAvatarId = friend?.avatarId.orEmpty(),
+                            avatarId = friend?.avatarId.orEmpty(),
+                        )
+                    }
+                },
             )
-            return
-        }
-
-        viewModelScope.launch {
-            runCatching {
-                repository.removeFriend(currentUserId, friendUserId)
-            }.onSuccess {
-                loadSocialData()
-            }.onFailure { e ->
-                _uiState.update {
-                    it.copy(
-                        errorMessage = e.message ?: "Failed to remove friend",
-                    )
-                }
-            }
         }
     }
 
@@ -346,9 +414,7 @@ class SocialViewModel @Inject constructor(
         val currentUserId = authRepository.getCurrentUserUid()
 
         if (currentUserId == null) {
-            _uiState.value = SocialUiState(
-                isSignedIn = false,
-            )
+            stopObservingSocialData()
             return
         }
 
@@ -375,15 +441,123 @@ class SocialViewModel @Inject constructor(
                         errorMessage = null,
                     )
                 }
-            }.onFailure { e ->
+            }.onFailure { error ->
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         users = emptyList(),
-                        errorMessage = e.message ?: "Failed to search users",
+                        errorMessage = error.message ?: "Failed to search users",
                     )
                 }
             }
         }
     }
+
+    private fun clearSearchResults() {
+        _uiState.update {
+            it.copy(
+                isLoading = false,
+                users = emptyList(),
+                errorMessage = null,
+            )
+        }
+    }
+
+    private fun stopObservingSocialData() {
+        observationJob?.cancel()
+        observationJob = null
+
+        _uiState.value = SocialUiState(
+            isSignedIn = false,
+        )
+
+        queryFlow.value = ""
+    }
+
+    private fun ChatConversation.toConversationUiModel(
+        currentUserId: String,
+        friendsById: Map<String, FriendUser>,
+    ): ConversationUiModel {
+        val directFriendUserId = if (isGroup) {
+            ""
+        } else {
+            otherParticipantId(currentUserId)
+        }
+
+        val directFriend = friendsById[directFriendUserId]
+
+        val conversationTitle = when {
+            isGroup && title.isNotBlank() -> title
+            isGroup -> participantNames
+                .filterKeys { participantId ->
+                    participantId != currentUserId
+                }
+                .values
+                .joinToString(", ")
+                .ifBlank { "Group Chat" }
+
+            directFriend != null -> directFriend.displayName
+            directFriendUserId.isNotBlank() -> participantNames[directFriendUserId].orEmpty()
+            else -> "Chat"
+        }
+
+        val isUnread = isUnreadFor(currentUserId)
+
+        return ConversationUiModel(
+            conversationId = id,
+            title = conversationTitle,
+            avatarId = if (isGroup) "" else directFriend?.avatarId.orEmpty(),
+            isGroup = isGroup,
+            participantIds = participantIds,
+            participantNames = participantNames,
+            directFriendUserId = directFriendUserId,
+            directFriendDisplayName = if (isGroup) "" else conversationTitle,
+            directFriendAvatarId = if (isGroup) "" else directFriend?.avatarId.orEmpty(),
+            lastMessage = lastMessage,
+            lastMessageTimestamp = lastTimestamp,
+            lastSenderId = lastSenderId,
+            hasUnreadMessages = isUnread,
+            unreadCount = if (isUnread) {
+                unreadCount.coerceAtLeast(1)
+            } else {
+                0
+            },
+            online = directFriend?.online ?: false,
+            onlineStatus = directFriend?.onlineStatus ?: OnlineStatus.ONLINE,
+            showOnlineStatus = directFriend?.showOnlineStatus ?: true,
+        )
+    }
+
+    private fun ChatConversation.otherParticipantId(
+        currentUserId: String,
+    ): String {
+        return participantIds.firstOrNull { participantId ->
+            participantId != currentUserId
+        }.orEmpty()
+    }
+
+    private fun ChatConversation.isUnreadFor(
+        currentUserId: String,
+    ): Boolean {
+        return lastSenderId.isNotBlank() &&
+                lastSenderId != currentUserId &&
+                (
+                        unreadCount > 0 ||
+                                currentUserId !in readBy
+                        )
+    }
+
+    private fun String.toOnlineStatus(): OnlineStatus {
+        return try {
+            OnlineStatus.valueOf(uppercase())
+        } catch (e: Exception) {
+            OnlineStatus.ONLINE
+        }
+    }
+
+    private data class SocialDataSnapshot(
+        val requests: List<FriendRequest>,
+        val friends: List<FriendUser>,
+        val conversations: List<ConversationUiModel>,
+    )
 }

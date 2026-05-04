@@ -19,13 +19,19 @@ data class UserProfileNavKey(
 
 @Serializable
 data class ChatNavKey(
-    val friendUserId: String,
-    val friendDisplayName: String,
-    val friendAvatarId: String,
-    val sharedLocation: SharedLocation? = null
+    val conversationId: String? = null,
+    val friendUserId: String = "",
+    val friendDisplayName: String = "",
+    val friendAvatarId: String = "",
+    val chatTitle: String = "",
+    val isGroup: Boolean = false,
+    val sharedLocation: SharedLocation? = null,
 ) : NavKey
 
-fun EntryProviderScope<NavKey>.socialEntry(navigator: Navigator, onNavigateToMap: () -> Unit) {
+fun EntryProviderScope<NavKey>.socialEntry(
+    navigator: Navigator,
+    onNavigateToMap: () -> Unit,
+) {
     entry<SocialNavKey> {
         SocialScreen(
             onProfileClick = { userId ->
@@ -37,7 +43,21 @@ fun EntryProviderScope<NavKey>.socialEntry(navigator: Navigator, onNavigateToMap
                         friendUserId = friendUserId,
                         friendDisplayName = friendDisplayName,
                         friendAvatarId = friendAvatarId,
-                    )
+                        chatTitle = friendDisplayName,
+                        isGroup = false,
+                    ),
+                )
+            },
+            onConversationClick = { conversation ->
+                navigator.navigate(
+                    ChatNavKey(
+                        conversationId = conversation.conversationId,
+                        friendUserId = conversation.directFriendUserId,
+                        friendDisplayName = conversation.directFriendDisplayName,
+                        friendAvatarId = conversation.directFriendAvatarId,
+                        chatTitle = conversation.title,
+                        isGroup = conversation.isGroup,
+                    ),
                 )
             },
         )
@@ -46,17 +66,22 @@ fun EntryProviderScope<NavKey>.socialEntry(navigator: Navigator, onNavigateToMap
     entry<UserProfileNavKey> { key ->
         UserProfileScreen(
             userId = key.userId,
-            onBack = { navigator.goBack() }
+            onBack = {
+                navigator.goBack()
+            },
         )
     }
 
     entry<ChatNavKey> { key ->
         ChatScreen(
+            conversationId = key.conversationId,
             friendUserId = key.friendUserId,
             friendDisplayName = key.friendDisplayName,
             friendAvatarId = key.friendAvatarId,
+            chatTitle = key.chatTitle,
+            isGroup = key.isGroup,
             sharedLocation = key.sharedLocation,
-            onNavigateToMap = onNavigateToMap
+            onNavigateToMap = onNavigateToMap,
         )
     }
 }

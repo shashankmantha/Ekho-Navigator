@@ -1,5 +1,8 @@
 package com.ekhonavigator.core.data.social
 
+import com.ekhonavigator.core.model.SharedLocation
+import com.google.firebase.Timestamp
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
@@ -13,8 +16,13 @@ class ChatRepository @Inject constructor() {
 
     private val firestore = FirebaseFirestore.getInstance()
 
-    private fun buildConversationId(userA: String, userB: String): String {
-        return listOf(userA, userB).sorted().joinToString("_")
+    private fun buildDirectConversationId(
+        userA: String,
+        userB: String,
+    ): String {
+        return listOf(userA, userB)
+            .sorted()
+            .joinToString("_")
     }
 
     suspend fun getOrCreateConversation(
@@ -23,36 +31,206 @@ class ChatRepository @Inject constructor() {
         friendUserId: String,
         friendDisplayName: String,
     ): ChatConversation {
-        val conversationId = buildConversationId(currentUserId, friendUserId)
-        val conversationRef = firestore.collection("conversations").document(conversationId)
-
-        val now = System.currentTimeMillis()
-        val conversationData = mapOf(
-            "participantIds" to listOf(currentUserId, friendUserId),
-            "participantNames" to mapOf(
-                currentUserId to currentUserName,
-                friendUserId to friendDisplayName,
-            ),
-            "createdAt" to now,
-        )
-
-        conversationRef.set(conversationData, SetOptions.merge()).await()
-
-        return ChatConversation(
-            id = conversationId,
-            participantIds = listOf(currentUserId, friendUserId),
-            participantNames = mapOf(
-                currentUserId to currentUserName,
-                friendUserId to friendDisplayName,
-            ),
-            createdAt = now,
+        return getOrCreateDirectConversation(
+            currentUserId = currentUserId,
+            currentUserName = currentUserName,
+            friendUserId = friendUserId,
+            friendDisplayName = friendDisplayName,
         )
     }
 
-    fun observeMessages(conversationId: String): Flow<List<ChatMessage>> = callbackFlow {
-        val registration = firestore.collection("conversations")
+    suspend fun getOrCreateDirectConversation(
+        currentUserId: String,
+        currentUserName: String,
+        friendUserId: String,
+        friendDisplayName: String,
+    ): ChatConversation {
+        val conversationId = buildDirectConversationId(
+            userA = currentUserId,
+            userB = friendUserId,
+        )
+
+        val conversationRef = firestore
+            .collection(CONVERSATIONS_COLLECTION)
             .document(conversationId)
-            .collection("messages")
+
+        val existingConversation = conversationRef.get().await()
+
+        if (!existingConversation.exists()) {
+            val now = System.currentTimeMillis()
+
+            val conversationData = mapOf(
+                "type" to CONVERSATION_TYPE_DIRECT,
+                "isGroup" to false,
+                "title" to "",
+                "participantIds" to listOf(currentUserId, friendUserId),
+                "participantNames" to mapOf(
+                    currentUserId to currentUserName,
+                    friendUserId to friendDisplayName,
+                ),
+                "createdBy" to currentUserId,
+                "createdAt" to now,
+                "readBy" to listOf(currentUserId),
+                "unreadCount" to 0,
+            )
+
+            conversationRef.set(conversationData).await()
+        } else {
+            val updatedParticipantNames = mapOf(
+                "participantNames.$currentUserId" to currentUserName,
+                "participantNames.$friendUserId" to friendDisplayName,
+                "type" to CONVERSATION_TYPE_DIRECT,
+                "isGroup" to false,
+            )
+
+            conversationRef.set(
+                updatedParticipantNames,
+                SetOptions.merge(),
+            ).await()
+        }
+
+        return conversationRef.get().await().toChatConversation()
+            ?: ChatConversation(
+                id = conversationId,
+                participantIds = listOf(currentUserId, friendUserId),
+                participantNames = mapOf(
+                    currentUserId to currentUserName,
+                    friendUserId to friendDisplayName,
+                ),
+                createdAt = System.currentTimeMillis(),
+            )
+    }
+
+    suspend fun createGroupConversation(
+        currentUserId: String,
+        currentUserName: String,
+        groupTitle: String,
+        participantNames: Map<String, String>,
+    ): ChatConversation {
+        val conversationRef = firestore
+            .collection(CONVERSATIONS_COLLECTION)
+            .document()
+
+        val conversationId = conversationRef.id
+        val now = System.currentTimeMillis()
+
+        val allParticipantNames = participantNames
+            .toMutableMap()
+            .apply {
+                put(currentUserId, currentUserName)
+            }
+
+        val participantIds = allParticipantNames.keys.toList()
+
+        val conversationData = mapOf(
+            "type" to CONVERSATION_TYPE_GROUP,
+            "isGroup" to true,
+            "title" to groupTitle.trim(),
+            "participantIds" to participantIds,
+            "participantNames" to allParticipantNames,
+            "createdBy" to currentUserId,
+            "createdAt" to now,
+            "lastMessage" to "",
+            "lastSenderId" to "",
+            "lastTimestamp" to 0L,
+            "readBy" to listOf(currentUserId),
+            "unreadCount" to 0,
+        )
+
+        conversationRef.set(conversationData).await()
+
+        return conversationRef.get().await().toChatConversation()
+            ?: ChatConversation(
+                id = conversationId,
+                participantIds = participantIds,
+                participantNames = allParticipantNames,
+                createdAt = now,
+            )
+    }
+
+    fun observeConversationById(
+        conversationId: String,
+    ): Flow<ChatConversation?> = callbackFlow {
+        val registration = firestore
+            .collection(CONVERSATIONS_COLLECTION)
+            .document(conversationId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+
+                trySend(snapshot?.toChatConversation())
+            }
+
+        awaitClose {
+            registration.remove()
+        }
+    }
+
+    fun observeConversation(
+        currentUserId: String,
+        friendUserId: String,
+    ): Flow<ChatConversation?> = callbackFlow {
+        val conversationId = buildDirectConversationId(
+            userA = currentUserId,
+            userB = friendUserId,
+        )
+
+        val registration = firestore
+            .collection(CONVERSATIONS_COLLECTION)
+            .document(conversationId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+
+                trySend(snapshot?.toChatConversation())
+            }
+
+        awaitClose {
+            registration.remove()
+        }
+    }
+
+    fun observeAllConversations(
+        currentUserId: String,
+    ): Flow<List<ChatConversation>> = callbackFlow {
+        val registration = firestore
+            .collection(CONVERSATIONS_COLLECTION)
+            .whereArrayContains("participantIds", currentUserId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+
+                val conversations = snapshot
+                    ?.documents
+                    ?.mapNotNull { document ->
+                        document.toChatConversation()
+                    }
+                    ?.sortedByDescending { conversation ->
+                        conversation.lastTimestamp
+                    }
+                    .orEmpty()
+
+                trySend(conversations)
+            }
+
+        awaitClose {
+            registration.remove()
+        }
+    }
+
+    fun observeMessages(
+        conversationId: String,
+    ): Flow<List<ChatMessage>> = callbackFlow {
+        val registration = firestore
+            .collection(CONVERSATIONS_COLLECTION)
+            .document(conversationId)
+            .collection(MESSAGES_COLLECTION)
             .orderBy("timestamp")
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
@@ -60,60 +238,29 @@ class ChatRepository @Inject constructor() {
                     return@addSnapshotListener
                 }
 
-                val messages = snapshot?.documents?.map { doc ->
-                    doc.toChatMessage()
-                }
-                    ?.sortedBy { it.timestamp }
+                val messages = snapshot
+                    ?.documents
+                    ?.map { document ->
+                        document.toChatMessage()
+                    }
+                    ?.sortedBy { message ->
+                        message.timestamp
+                    }
                     .orEmpty()
 
                 trySend(messages)
             }
 
-        awaitClose { registration.remove() }
+        awaitClose {
+            registration.remove()
+        }
     }
 
-    private fun com.google.firebase.firestore.DocumentSnapshot.toChatMessage(): ChatMessage {
-        val timestampValue = get("timestamp")
-        val timestampMillis = when (timestampValue) {
-            is com.google.firebase.Timestamp -> timestampValue.toDate().time
-            is Long -> timestampValue
-            is Number -> timestampValue.toLong()
-            else -> getLong("clientTimestamp") ?: 0L
-        }
-
-        val sharedLocationData = get("sharedLocation") as? Map<String, Any>
-        val sharedLocation = sharedLocationData?.let {
-            com.ekhonavigator.core.model.SharedLocation(
-                title = it["title"] as? String ?: "",
-                latitude = (it["latitude"] as? Number)?.toDouble() ?: 0.0,
-                longitude = (it["longitude"] as? Number)?.toDouble() ?: 0.0,
-                details = it["details"] as? String ?: ""
-            )
-        }
-
-        return ChatMessage(
-            id = id,
-            senderId = getString("senderId") ?: "",
-            senderName = getString("senderName") ?: "",
-            text = getString("text") ?: "",
-            timestamp = timestampMillis,
-            readBy = (get("readBy") as? List<*>)?.filterIsInstance<String>()
-                ?: emptyList(),
-            clientMessageId = getString("clientMessageId") ?: "",
-            sharedLocation = sharedLocation
-        )
-    }
-
-    fun observeUnreadMessagesCount(currentUserId: String): Flow<Int> = callbackFlow {
-        // We'll use a collectionGroup query to find all messages that the current user hasn't read yet.
-        // This requires the message to have a 'participantIds' field to be queryable by collectionGroup safely for the user,
-        // OR we just query all messages where 'readBy' does not contain currentUserId.
-        // NOTE: 'not-in' or 'array-contains-any' might be needed.
-        // Firestore doesn't support 'array-not-contains'.
-        
-        // A common pattern is to store unread status on the conversation document.
-        // Let's check the conversation doc again.
-        val registration = firestore.collection("conversations")
+    fun observeUnreadMessagesCount(
+        currentUserId: String,
+    ): Flow<Int> = callbackFlow {
+        val registration = firestore
+            .collection(CONVERSATIONS_COLLECTION)
             .whereArrayContains("participantIds", currentUserId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
@@ -121,75 +268,21 @@ class ChatRepository @Inject constructor() {
                     return@addSnapshotListener
                 }
 
-                val unreadConversations = snapshot?.documents?.count { doc ->
-                    val lastSenderId = doc.getString("lastSenderId")
-                    val readBy = (doc.get("readBy") as? List<*>)?.filterIsInstance<String>() ?: emptyList()
-                    lastSenderId != null && lastSenderId != currentUserId && currentUserId !in readBy
+                val unreadConversations = snapshot?.documents?.count { document ->
+                    val lastSenderId = document.getString("lastSenderId")
+                    val readBy = document.getStringList("readBy")
+
+                    lastSenderId != null &&
+                            lastSenderId != currentUserId &&
+                            currentUserId !in readBy
                 } ?: 0
-                
+
                 trySend(unreadConversations)
             }
-        awaitClose { registration.remove() }
-    }
 
-    fun observeAllConversations(currentUserId: String): Flow<List<ChatConversation>> = callbackFlow {
-        val registration = firestore.collection("conversations")
-            .whereArrayContains("participantIds", currentUserId)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    close(error)
-                    return@addSnapshotListener
-                }
-                val conversations = snapshot?.documents?.mapNotNull { it.toChatConversation() } ?: emptyList()
-                trySend(conversations)
-            }
-        awaitClose { registration.remove() }
-    }
-
-    private fun com.google.firebase.firestore.DocumentSnapshot.toChatConversation(): ChatConversation? {
-        if (!exists()) return null
-        
-        val timestampValue = get("lastTimestamp")
-        val lastTimestamp = when (timestampValue) {
-            is com.google.firebase.Timestamp -> timestampValue.toDate().time
-            is Long -> timestampValue
-            is Number -> timestampValue.toLong()
-            else -> 0L
+        awaitClose {
+            registration.remove()
         }
-
-        val createdAtValue = get("createdAt")
-        val createdAt = when (createdAtValue) {
-            is com.google.firebase.Timestamp -> createdAtValue.toDate().time
-            is Long -> createdAtValue
-            is Number -> createdAtValue.toLong()
-            else -> 0L
-        }
-
-        return ChatConversation(
-            id = id,
-            participantIds = (get("participantIds") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
-            participantNames = (get("participantNames") as? Map<*, *>)?.map { it.key.toString() to it.value.toString() }?.toMap() ?: emptyMap(),
-            lastMessage = getString("lastMessage") ?: "",
-            lastSenderId = getString("lastSenderId") ?: "",
-            lastTimestamp = lastTimestamp,
-            readBy = (get("readBy") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
-            unreadCount = getLong("unreadCount")?.toInt() ?: 0,
-            createdAt = createdAt,
-        )
-    }
-
-    fun observeConversation(currentUserId: String, friendUserId: String): Flow<ChatConversation?> = callbackFlow {
-        val conversationId = buildConversationId(currentUserId, friendUserId)
-        val registration = firestore.collection("conversations")
-            .document(conversationId)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    close(error)
-                    return@addSnapshotListener
-                }
-                trySend(snapshot?.toChatConversation())
-            }
-        awaitClose { registration.remove() }
     }
 
     suspend fun sendMessage(
@@ -198,19 +291,26 @@ class ChatRepository @Inject constructor() {
         senderName: String,
         text: String,
         clientMessageId: String,
-        sharedLocation: com.ekhonavigator.core.model.SharedLocation? = null
+        sharedLocation: SharedLocation? = null,
     ) {
-        val trimmed = text.trim()
-        if (trimmed.isBlank() && sharedLocation == null) return
+        val trimmedText = text.trim()
+
+        if (trimmedText.isBlank() && sharedLocation == null) return
 
         val now = System.currentTimeMillis()
-        val conversationRef = firestore.collection("conversations").document(conversationId)
-        val messageRef = conversationRef.collection("messages").document()
+
+        val conversationRef = firestore
+            .collection(CONVERSATIONS_COLLECTION)
+            .document(conversationId)
+
+        val messageRef = conversationRef
+            .collection(MESSAGES_COLLECTION)
+            .document()
 
         val messageData = mutableMapOf<String, Any?>(
             "senderId" to senderId,
             "senderName" to senderName,
-            "text" to trimmed,
+            "text" to trimmedText,
             "timestamp" to FieldValue.serverTimestamp(),
             "clientTimestamp" to now,
             "readBy" to listOf(senderId),
@@ -221,18 +321,27 @@ class ChatRepository @Inject constructor() {
             messageData["sharedLocation"] = sharedLocation
         }
 
+        val lastMessageText = when {
+            trimmedText.isNotBlank() -> trimmedText
+            sharedLocation != null -> "Shared a location"
+            else -> "Sent a message"
+        }
+
         val batch = firestore.batch()
+
         batch.set(messageRef, messageData)
+
         batch.update(
             conversationRef,
             mapOf(
-                "lastMessage" to (if (trimmed.isEmpty() && sharedLocation != null) "Shared a location" else trimmed),
+                "lastMessage" to lastMessageText,
                 "lastSenderId" to senderId,
                 "lastTimestamp" to FieldValue.serverTimestamp(),
                 "readBy" to listOf(senderId),
-                "unreadCount" to FieldValue.increment(1)
-            )
+                "unreadCount" to FieldValue.increment(1),
+            ),
         )
+
         batch.commit().await()
     }
 
@@ -240,40 +349,166 @@ class ChatRepository @Inject constructor() {
         conversationId: String,
         currentUserId: String,
     ) {
-        val conversationRef = firestore.collection("conversations").document(conversationId)
+        markConversationAsRead(
+            conversationId = conversationId,
+            currentUserId = currentUserId,
+        )
+
+        markUnreadMessagesAsRead(
+            conversationId = conversationId,
+            currentUserId = currentUserId,
+        )
+    }
+
+    private suspend fun markConversationAsRead(
+        conversationId: String,
+        currentUserId: String,
+    ) {
+        val conversationRef = firestore
+            .collection(CONVERSATIONS_COLLECTION)
+            .document(conversationId)
 
         firestore.runTransaction { transaction ->
             val snapshot = transaction.get(conversationRef)
             val lastSenderId = snapshot.getString("lastSenderId")
-            
-            // Only reset if the current user is NOT the last sender 
-            // OR if there is an actual unread count to clear.
+
             if (lastSenderId != currentUserId) {
-                transaction.update(conversationRef, 
+                transaction.update(
+                    conversationRef,
                     mapOf(
                         "readBy" to FieldValue.arrayUnion(currentUserId),
-                        "unreadCount" to 0
-                    )
+                        "unreadCount" to 0,
+                    ),
                 )
             }
         }.await()
+    }
 
-        // Also mark individual messages as read (outside the transaction to keep it simple, 
-        // as this can be many documents)
-        val messagesRef = firestore.collection("conversations")
+    private suspend fun markUnreadMessagesAsRead(
+        conversationId: String,
+        currentUserId: String,
+    ) {
+        val messagesRef = firestore
+            .collection(CONVERSATIONS_COLLECTION)
             .document(conversationId)
-            .collection("messages")
+            .collection(MESSAGES_COLLECTION)
 
         val messageSnapshot = messagesRef.get().await()
         val batch = firestore.batch()
-        messageSnapshot.documents.forEach { doc ->
-            val senderId = doc.getString("senderId") ?: return@forEach
-            val readBy = (doc.get("readBy") as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+
+        messageSnapshot.documents.forEach { document ->
+            val senderId = document.getString("senderId") ?: return@forEach
+            val readBy = document.getStringList("readBy")
 
             if (senderId != currentUserId && currentUserId !in readBy) {
-                batch.update(doc.reference, "readBy", FieldValue.arrayUnion(currentUserId))
+                batch.update(
+                    document.reference,
+                    "readBy",
+                    FieldValue.arrayUnion(currentUserId),
+                )
             }
         }
+
         batch.commit().await()
+    }
+
+    private fun DocumentSnapshot.toChatMessage(): ChatMessage {
+        val sharedLocationData = get("sharedLocation") as? Map<*, *>
+        val sharedLocation = sharedLocationData?.toSharedLocation()
+
+        return ChatMessage(
+            id = id,
+            senderId = getString("senderId") ?: "",
+            senderName = getString("senderName") ?: "",
+            text = getString("text") ?: "",
+            timestamp = getTimestampMillis(
+                fieldName = "timestamp",
+                fallbackFieldName = "clientTimestamp",
+            ),
+            readBy = getStringList("readBy"),
+            clientMessageId = getString("clientMessageId") ?: "",
+            sharedLocation = sharedLocation,
+        )
+    }
+
+    private fun DocumentSnapshot.toChatConversation(): ChatConversation? {
+        if (!exists()) return null
+
+        val type = getString("type") ?: ChatConversation.TYPE_DIRECT
+        val isGroup = getBoolean("isGroup") ?: (type == ChatConversation.TYPE_GROUP)
+
+        return ChatConversation(
+            id = id,
+            type = type,
+            title = getString("title") ?: "",
+            isGroup = isGroup,
+            participantIds = getStringList("participantIds"),
+            participantNames = getStringMap("participantNames"),
+            createdBy = getString("createdBy") ?: "",
+            createdAt = getTimestampMillis("createdAt"),
+            lastMessage = getString("lastMessage") ?: "",
+            lastSenderId = getString("lastSenderId") ?: "",
+            lastTimestamp = getTimestampMillis("lastTimestamp"),
+            readBy = getStringList("readBy"),
+            unreadCount = getLong("unreadCount")?.toInt() ?: 0,
+        )
+    }
+
+    private fun DocumentSnapshot.getTimestampMillis(
+        fieldName: String,
+        fallbackFieldName: String? = null,
+    ): Long {
+        val timestampValue = get(fieldName)
+
+        return when (timestampValue) {
+            is Timestamp -> timestampValue.toDate().time
+            is Long -> timestampValue
+            is Number -> timestampValue.toLong()
+            else -> {
+                if (fallbackFieldName != null) {
+                    getLong(fallbackFieldName) ?: 0L
+                } else {
+                    0L
+                }
+            }
+        }
+    }
+
+    private fun DocumentSnapshot.getStringList(
+        fieldName: String,
+    ): List<String> {
+        return (get(fieldName) as? List<*>)
+            ?.filterIsInstance<String>()
+            .orEmpty()
+    }
+
+    private fun DocumentSnapshot.getStringMap(
+        fieldName: String,
+    ): Map<String, String> {
+        return (get(fieldName) as? Map<*, *>)
+            ?.mapNotNull { entry ->
+                val key = entry.key?.toString() ?: return@mapNotNull null
+                val value = entry.value?.toString() ?: return@mapNotNull null
+                key to value
+            }
+            ?.toMap()
+            .orEmpty()
+    }
+
+    private fun Map<*, *>.toSharedLocation(): SharedLocation {
+        return SharedLocation(
+            title = this["title"] as? String ?: "",
+            latitude = (this["latitude"] as? Number)?.toDouble() ?: 0.0,
+            longitude = (this["longitude"] as? Number)?.toDouble() ?: 0.0,
+            details = this["details"] as? String ?: "",
+        )
+    }
+
+    companion object {
+        private const val CONVERSATIONS_COLLECTION = "conversations"
+        private const val MESSAGES_COLLECTION = "messages"
+
+        private const val CONVERSATION_TYPE_DIRECT = "direct"
+        private const val CONVERSATION_TYPE_GROUP = "group"
     }
 }

@@ -101,6 +101,8 @@ fun EkhoNavigatorApp(
                 friendUserId = request.friendUserId,
                 friendDisplayName = request.friendDisplayName,
                 friendAvatarId = request.friendAvatarId,
+                chatTitle = request.friendDisplayName,
+                isGroup = false,
             ),
         )
 
@@ -299,7 +301,21 @@ fun EkhoNavigatorApp(
                                             friendUserId = friendUserId,
                                             friendDisplayName = friendDisplayName,
                                             friendAvatarId = friendAvatarId,
-                                        )
+                                            chatTitle = friendDisplayName,
+                                            isGroup = false,
+                                        ),
+                                    )
+                                },
+                                onConversationClick = { conversation ->
+                                    navigator.navigate(
+                                        ChatNavKey(
+                                            conversationId = conversation.conversationId,
+                                            friendUserId = conversation.directFriendUserId,
+                                            friendDisplayName = conversation.directFriendDisplayName,
+                                            friendAvatarId = conversation.directFriendAvatarId,
+                                            chatTitle = conversation.title,
+                                            isGroup = conversation.isGroup,
+                                        ),
                                     )
                                 },
                             )
@@ -318,13 +334,16 @@ fun EkhoNavigatorApp(
                     is ChatNavKey -> {
                         NavEntry(key) {
                             ChatScreen(
+                                conversationId = key.conversationId,
                                 friendUserId = key.friendUserId,
                                 friendDisplayName = key.friendDisplayName,
                                 friendAvatarId = key.friendAvatarId,
+                                chatTitle = key.chatTitle,
+                                isGroup = key.isGroup,
                                 sharedLocation = key.sharedLocation,
                                 onNavigateToMap = {
                                     navigator.navigate(MapNavKey())
-                                }
+                                },
                             )
                         }
                     }

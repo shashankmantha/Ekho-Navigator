@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -41,129 +42,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-
-import androidx.compose.ui.graphics.Color
-import com.ekhonavigator.core.model.OnlineStatus
-
-@Composable
-private fun ChatAvatar(
-    friendAvatarId: String,
-    friendDisplayName: String,
-    presenceStatus: com.ekhonavigator.core.model.PresenceStatus?,
-    modifier: Modifier = Modifier,
-) {
-    val avatarRes = when (friendAvatarId) {
-        "avatar_dolphin" -> com.ekhonavigator.core.designsystem.R.drawable.avatar_dolphin
-        "avatar_whale" -> com.ekhonavigator.core.designsystem.R.drawable.avatar_whale
-        "avatar_turtle" -> com.ekhonavigator.core.designsystem.R.drawable.avatar_turtle
-        else -> com.ekhonavigator.core.designsystem.R.drawable.avatar_default
-    }
-
-    val statusColor = if (presenceStatus != null) {
-        when (presenceStatus.state.uppercase()) {
-            "ONLINE" -> Color(0xFF4CAF50)
-            "AWAY" -> Color(0xFFFFC107)
-            "BUSY" -> Color(0xFFF44336)
-            else -> null
-        }
-    } else null
-
-    Box(modifier = modifier, contentAlignment = Alignment.BottomEnd) {
-        Image(
-            painter = painterResource(id = avatarRes),
-            contentDescription = "$friendDisplayName avatar",
-            modifier = Modifier
-                .size(72.dp)
-                .clip(CircleShape),
-            contentScale = ContentScale.Crop,
-        )
-
-        if (statusColor != null) {
-            Box(
-                modifier = Modifier
-                    .size(18.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(2.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(CircleShape)
-                        .background(statusColor)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun LocationPreviewCard(
-    location: com.ekhonavigator.core.model.SharedLocation,
-    modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null,
-    onDismiss: (() -> Unit)? = null
-) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .background(
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                shape = MaterialTheme.shapes.medium
-            )
-            .padding(horizontal = 12.dp, vertical = 8.dp)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Place,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Column {
-                    Text(
-                        text = "Sharing Location:",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                    Text(
-                        text = location.title,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                }
-            }
-            // Optional Dismiss "X" Button
-            if (onDismiss != null) {
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.size(24.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Dismiss",
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
-        }
-    }
-}
+import com.ekhonavigator.core.designsystem.R as DesignR
+import com.ekhonavigator.core.model.PresenceStatus
+import com.ekhonavigator.core.model.SharedLocation
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -172,35 +60,66 @@ fun ChatScreen(
     friendDisplayName: String,
     friendAvatarId: String,
     modifier: Modifier = Modifier,
-    sharedLocation: com.ekhonavigator.core.model.SharedLocation? = null,
+    conversationId: String? = null,
+    chatTitle: String = friendDisplayName,
+    isGroup: Boolean = false,
+    sharedLocation: SharedLocation? = null,
     onNavigateToMap: () -> Unit = {},
     viewModel: ChatViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     val currentUserId = viewModel.getCurrentUserId()
+
     val density = LocalDensity.current
     val imeBottom = WindowInsets.ime.getBottom(density)
 
-    LaunchedEffect(friendUserId) {
-        viewModel.startConversation(
-            friendUserId = friendUserId,
-            friendDisplayName = friendDisplayName,
-        )
+    val displayTitle = chatTitle.ifBlank {
+        friendDisplayName.ifBlank {
+            "Chat"
+        }
+    }
+
+    val displayAvatarId = if (isGroup) {
+        ""
+    } else {
+        friendAvatarId
+    }
+
+    LaunchedEffect(conversationId, friendUserId) {
+        if (conversationId != null) {
+            viewModel.startExistingConversation(
+                conversationId = conversationId,
+            )
+        } else if (friendUserId.isNotBlank()) {
+            viewModel.startConversation(
+                friendUserId = friendUserId,
+                friendDisplayName = friendDisplayName,
+            )
+        }
+
         if (sharedLocation != null) {
             viewModel.stageSharedLocation(sharedLocation)
         }
     }
 
     LaunchedEffect(uiState.messages.size) {
-        if (uiState.messages.isNotEmpty()) {
-            listState.animateScrollToItem(uiState.messages.lastIndex)
-        }
+        scrollToLatestMessageIfPossible(
+            messageCount = uiState.messages.size,
+            scrollToIndex = { index ->
+                listState.animateScrollToItem(index)
+            },
+        )
     }
 
     LaunchedEffect(imeBottom, uiState.messages.size) {
-        if (imeBottom > 0 && uiState.messages.isNotEmpty()) {
-            listState.animateScrollToItem(uiState.messages.lastIndex)
+        if (imeBottom > 0) {
+            scrollToLatestMessageIfPossible(
+                messageCount = uiState.messages.size,
+                scrollToIndex = { index ->
+                    listState.animateScrollToItem(index)
+                },
+            )
         }
     }
 
@@ -210,205 +129,506 @@ fun ChatScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            ChatAvatar(
-                friendAvatarId = friendAvatarId,
-                friendDisplayName = friendDisplayName,
-                presenceStatus = uiState.friendPresence,
-            )
+        ChatHeader(
+            title = displayTitle,
+            avatarId = displayAvatarId,
+            presenceStatus = if (isGroup) null else uiState.friendPresence,
+        )
 
-            Text(
-                text = friendDisplayName,
-                style = MaterialTheme.typography.headlineSmall,
-                textAlign = TextAlign.Center,
-            )
-        }
+        ChatContent(
+            uiState = uiState,
+            currentUserId = currentUserId,
+            friendUserId = friendUserId,
+            isGroup = isGroup,
+            onNavigateToMap = onNavigateToMap,
+            viewModel = viewModel,
+            modifier = Modifier.weight(1f),
+        )
 
-        when {
-            uiState.isLoading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
-
-            uiState.errorMessage != null -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = uiState.errorMessage ?: "Unknown error",
-                        color = MaterialTheme.colorScheme.error,
-                        textAlign = TextAlign.Center,
-                    )
-                }
-            }
-
-            else -> {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(bottom = 12.dp),
-                ) {
-                    items(uiState.messages, key = { it.id }) { message ->
-                        val isMine = message.senderId == currentUserId
-                        val statusText = when {
-                            !isMine -> ""
-                            friendUserId in message.readBy -> "Read"
-                            else -> "Sent"
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = if (isMine) {
-                                Arrangement.End
-                            } else {
-                                Arrangement.Start
-                            },
-                        ) {
-                            Column(
-                                horizontalAlignment = if (isMine) Alignment.End else Alignment.Start,
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .background(
-                                            color = if (isMine) {
-                                                MaterialTheme.colorScheme.primaryContainer
-                                            } else {
-                                                MaterialTheme.colorScheme.surfaceVariant
-                                            },
-                                            shape = MaterialTheme.shapes.medium,
-                                        )
-                                        .padding(12.dp),
-                                ) {
-                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        message.sharedLocation?.let { location ->
-                                            LocationPreviewCard(
-                                                location = location,
-                                                modifier = Modifier.padding(bottom = 4.dp),
-                                                onClick = {
-                                                    viewModel.saveSharedLocationToMap(
-                                                        location = location,
-                                                        onSaved = onNavigateToMap
-                                                    )
-                                                }
-                                            )
-                                        }
-                                        Text(
-                                            text = message.text,
-                                            color = if (isMine) {
-                                                MaterialTheme.colorScheme.onPrimaryContainer
-                                            } else {
-                                                MaterialTheme.colorScheme.onSurfaceVariant
-                                            },
-                                        )
-                                    }
-                                }
-
-                                if (isMine) {
-                                    Text(
-                                        text = statusText,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(top = 4.dp, end = 4.dp),
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        AnimatedVisibility(
-            visible = uiState.infoMessage != null,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier.padding(horizontal = 8.dp)
-        ) {
-            Surface(
-                onClick = { viewModel.dismissInfoMessage() },
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                shape = MaterialTheme.shapes.medium,
-                tonalElevation = 4.dp,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(
-                        start = 12.dp,
-                        end = 4.dp,
-                        top = 4.dp,
-                        bottom = 4.dp
-                    ),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = uiState.infoMessage ?: "",
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.labelLarge,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                    IconButton( // <-- ADDED IconButton
-                        onClick = { viewModel.dismissInfoMessage() },
-                        modifier = Modifier.size(24.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Dismiss",
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-            }
-        }
+        InfoMessageCard(
+            message = uiState.infoMessage,
+            onDismiss = viewModel::dismissInfoMessage,
+        )
 
         uiState.pendingSharedLocation?.let { location ->
             LocationPreviewCard(
                 location = location,
                 modifier = Modifier.padding(horizontal = 8.dp),
-                onDismiss = { viewModel.clearPendingSharedLocation() }
+                onDismiss = viewModel::clearPendingSharedLocation,
             )
         }
 
+        MessageInputRow(
+            draftMessage = uiState.draftMessage,
+            onDraftMessageChange = viewModel::onDraftMessageChange,
+            onSendClick = {
+                // Current behavior: direct chat sending.
+                // Next refactor: ChatViewModel.sendMessage() will send by conversationId.
+                viewModel.sendMessage(
+                    friendUserId = friendUserId,
+                    friendDisplayName = friendDisplayName,
+                )
+            },
+        )
+    }
+}
 
-        Row(
+private suspend fun scrollToLatestMessageIfPossible(
+    messageCount: Int,
+    scrollToIndex: suspend (Int) -> Unit,
+) {
+    if (messageCount > 0) {
+        scrollToIndex(messageCount - 1)
+    }
+}
+
+@Composable
+private fun ChatHeader(
+    title: String,
+    avatarId: String,
+    presenceStatus: PresenceStatus?,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        ChatAvatar(
+            avatarId = avatarId,
+            displayName = title,
+            presenceStatus = presenceStatus,
+        )
+
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineSmall,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun ChatAvatar(
+    avatarId: String,
+    displayName: String,
+    presenceStatus: PresenceStatus?,
+    modifier: Modifier = Modifier,
+) {
+    val avatarRes = when (avatarId) {
+        "avatar_dolphin" -> DesignR.drawable.avatar_dolphin
+        "avatar_whale" -> DesignR.drawable.avatar_whale
+        "avatar_turtle" -> DesignR.drawable.avatar_turtle
+        else -> DesignR.drawable.avatar_default
+    }
+
+    val statusColor = presenceStatus?.state?.uppercase()?.let { state ->
+        when (state) {
+            "ONLINE" -> Color(0xFF4CAF50)
+            "AWAY" -> Color(0xFFFFC107)
+            "BUSY" -> Color(0xFFF44336)
+            else -> null
+        }
+    }
+
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.BottomEnd,
+    ) {
+        Image(
+            painter = painterResource(id = avatarRes),
+            contentDescription = "$displayName avatar",
             modifier = Modifier
-                .fillMaxWidth()
-                .imePadding(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            OutlinedTextField(
-                value = uiState.draftMessage,
-                onValueChange = viewModel::onDraftMessageChange,
-                modifier = Modifier.weight(1f),
-                label = { Text("Message") },
-                singleLine = true,
+                .size(72.dp)
+                .clip(CircleShape),
+            contentScale = ContentScale.Crop,
+        )
+
+        if (statusColor != null) {
+            PresenceDot(statusColor = statusColor)
+        }
+    }
+}
+
+@Composable
+private fun PresenceDot(
+    statusColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .size(18.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(2.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(CircleShape)
+                .background(statusColor),
+        )
+    }
+}
+
+@Composable
+private fun ChatContent(
+    uiState: ChatUiState,
+    currentUserId: String?,
+    friendUserId: String,
+    isGroup: Boolean,
+    onNavigateToMap: () -> Unit,
+    viewModel: ChatViewModel,
+    modifier: Modifier = Modifier,
+) {
+    when {
+        uiState.isLoading -> {
+            LoadingChatContent(modifier = modifier)
+        }
+
+        uiState.errorMessage != null -> {
+            ErrorChatContent(
+                message = uiState.errorMessage,
+                modifier = modifier,
+            )
+        }
+
+        else -> {
+            MessageList(
+                uiState = uiState,
+                currentUserId = currentUserId,
+                friendUserId = friendUserId,
+                isGroup = isGroup,
+                onNavigateToMap = onNavigateToMap,
+                viewModel = viewModel,
+                modifier = modifier,
+            )
+        }
+    }
+}
+
+@Composable
+private fun LoadingChatContent(
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center,
+    ) {
+        CircularProgressIndicator()
+    }
+}
+
+@Composable
+private fun ErrorChatContent(
+    message: String,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = message,
+            color = MaterialTheme.colorScheme.error,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun MessageList(
+    uiState: ChatUiState,
+    currentUserId: String?,
+    friendUserId: String,
+    isGroup: Boolean,
+    onNavigateToMap: () -> Unit,
+    viewModel: ChatViewModel,
+    modifier: Modifier = Modifier,
+) {
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(uiState.messages.size) {
+        scrollToLatestMessageIfPossible(
+            messageCount = uiState.messages.size,
+            scrollToIndex = { index ->
+                listState.animateScrollToItem(index)
+            },
+        )
+    }
+
+    LazyColumn(
+        state = listState,
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(bottom = 12.dp),
+    ) {
+        items(
+            items = uiState.messages,
+            key = { it.id },
+        ) { message ->
+            val isMine = message.senderId == currentUserId
+            val statusText = getMessageStatusText(
+                isMine = isMine,
+                isGroup = isGroup,
+                friendUserId = friendUserId,
+                readBy = message.readBy,
             )
 
-            Button(
-                onClick = {
-                    viewModel.sendMessage(
-                        friendUserId = friendUserId,
-                        friendDisplayName = friendDisplayName,
-                    )
+            MessageBubble(
+                text = message.text,
+                sharedLocation = message.sharedLocation,
+                isMine = isMine,
+                statusText = statusText,
+                onLocationClick = {
+                    message.sharedLocation?.let { location ->
+                        viewModel.saveSharedLocationToMap(
+                            location = location,
+                            onSaved = onNavigateToMap,
+                        )
+                    }
                 },
+            )
+        }
+    }
+}
+
+private fun getMessageStatusText(
+    isMine: Boolean,
+    isGroup: Boolean,
+    friendUserId: String,
+    readBy: List<String>,
+): String {
+    return when {
+        !isMine -> ""
+        isGroup -> "Sent"
+        friendUserId in readBy -> "Read"
+        else -> "Sent"
+    }
+}
+
+@Composable
+private fun MessageBubble(
+    text: String,
+    sharedLocation: SharedLocation?,
+    isMine: Boolean,
+    statusText: String,
+    onLocationClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = if (isMine) {
+            Arrangement.End
+        } else {
+            Arrangement.Start
+        },
+    ) {
+        Column(
+            horizontalAlignment = if (isMine) {
+                Alignment.End
+            } else {
+                Alignment.Start
+            },
+        ) {
+            Box(
+                modifier = Modifier
+                    .background(
+                        color = if (isMine) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        },
+                        shape = MaterialTheme.shapes.medium,
+                    )
+                    .padding(12.dp),
             ) {
-                Text("Send")
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    sharedLocation?.let { location ->
+                        LocationPreviewCard(
+                            location = location,
+                            modifier = Modifier.padding(bottom = 4.dp),
+                            onClick = onLocationClick,
+                        )
+                    }
+
+                    if (text.isNotBlank()) {
+                        Text(
+                            text = text,
+                            color = if (isMine) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
+                    }
+                }
             }
+
+            if (isMine && statusText.isNotBlank()) {
+                Text(
+                    text = statusText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp, end = 4.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LocationPreviewCard(
+    location: SharedLocation,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    onDismiss: (() -> Unit)? = null,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(onClick = onClick)
+                } else {
+                    Modifier
+                },
+            )
+            .background(
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                shape = MaterialTheme.shapes.medium,
+            )
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Place,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+
+                Column {
+                    Text(
+                        text = "Sharing Location:",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+
+                    Text(
+                        text = location.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                }
+            }
+
+            if (onDismiss != null) {
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.size(24.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Dismiss",
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun InfoMessageCard(
+    message: String?,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedVisibility(
+        visible = message != null,
+        enter = fadeIn(),
+        exit = fadeOut(),
+        modifier = modifier.padding(horizontal = 8.dp),
+    ) {
+        Surface(
+            onClick = onDismiss,
+            color = MaterialTheme.colorScheme.secondaryContainer,
+            shape = MaterialTheme.shapes.medium,
+            tonalElevation = 4.dp,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Row(
+                modifier = Modifier.padding(
+                    start = 12.dp,
+                    end = 4.dp,
+                    top = 4.dp,
+                    bottom = 4.dp,
+                ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = message.orEmpty(),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.labelLarge,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.size(24.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Dismiss",
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MessageInputRow(
+    draftMessage: String,
+    onDraftMessageChange: (String) -> Unit,
+    onSendClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .imePadding(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        OutlinedTextField(
+            value = draftMessage,
+            onValueChange = onDraftMessageChange,
+            modifier = Modifier.weight(1f),
+            label = {
+                Text("Message")
+            },
+            singleLine = true,
+        )
+
+        Button(
+            onClick = onSendClick,
+        ) {
+            Text("Send")
         }
     }
 }

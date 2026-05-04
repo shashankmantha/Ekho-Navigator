@@ -70,6 +70,7 @@ private enum class SocialTab(
 fun SocialScreen(
     onProfileClick: (String) -> Unit,
     onMessageClick: (String, String, String) -> Unit,
+    onConversationClick: (ConversationUiModel) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SocialViewModel = hiltViewModel(),
 ) {
@@ -112,34 +113,11 @@ fun SocialScreen(
             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
         )
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            OutlinedTextField(
-                value = uiState.searchQuery,
-                onValueChange = viewModel::onSearchQueryChange,
-                modifier = Modifier.weight(1f),
-                label = { Text("Search users") },
-                singleLine = true,
-                trailingIcon = {
-                    if (uiState.searchQuery.isNotEmpty()) {
-                        IconButton(
-                            onClick = {
-                                viewModel.onSearchQueryChange("")
-                            },
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Close,
-                                contentDescription = "Clear search",
-                            )
-                        }
-                    }
-                },
-            )
-        }
+        SearchBar(
+            searchQuery = uiState.searchQuery,
+            onSearchQueryChange = viewModel::onSearchQueryChange,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        )
 
         HorizontalDivider(
             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
@@ -157,9 +135,8 @@ fun SocialScreen(
                 SocialTab.Chats -> {
                     ChatsTab(
                         uiState = uiState,
-                        onMessageClick = onMessageClick,
+                        onConversationClick = onConversationClick,
                         onProfileClick = onProfileClick,
-                        onRemoveFriendClick = viewModel::removeFriend,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
@@ -177,6 +154,42 @@ fun SocialScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SearchBar(
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = onSearchQueryChange,
+            modifier = Modifier.weight(1f),
+            label = {
+                Text("Search users")
+            },
+            singleLine = true,
+            trailingIcon = {
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(
+                        onClick = {
+                            onSearchQueryChange("")
+                        },
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Close,
+                            contentDescription = "Clear search",
+                        )
+                    }
+                }
+            },
+        )
     }
 }
 
@@ -222,72 +235,60 @@ private fun SocialTabStrip(
 @Composable
 private fun ChatsTab(
     uiState: SocialUiState,
-    onMessageClick: (String, String, String) -> Unit,
+    onConversationClick: (ConversationUiModel) -> Unit,
     onProfileClick: (String) -> Unit,
-    onRemoveFriendClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val chatFriends = uiState.friends
-        .filter { friend ->
-            friend.lastMessage.isNotBlank() || friend.hasUnreadMessages
-        }
-        .sortedWith(
-            compareByDescending<com.ekhonavigator.core.data.social.FriendUser> {
-                it.hasUnreadMessages
-            }.thenByDescending {
-                it.lastMessageTimestamp
-            },
-        )
+    val conversations = uiState.conversations
 
     LazyColumn(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
-        if (uiState.errorMessage != null) {
+        uiState.errorMessage?.let { error ->
             item {
                 Text(
-                    text = uiState.errorMessage,
+                    text = error,
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(16.dp),
                 )
             }
         }
 
-        if (chatFriends.isEmpty()) {
+        if (conversations.isEmpty()) {
             item {
-                Box(
+                EmptyStateMessage(
+                    text = "No chats yet",
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 48.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "No chats yet",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                )
             }
         } else {
             items(
-                items = chatFriends,
-                key = { "chat_${it.uid}" },
-            ) { friend ->
+                items = conversations,
+                key = { conversation ->
+                    "conversation_${conversation.conversationId}"
+                },
+            ) { conversation ->
                 ChatRow(
-                    chatId = friend.uid,
-                    title = friend.displayName,
-                    avatarId = friend.avatarId,
-                    online = friend.online,
-                    onlineStatus = friend.onlineStatus,
-                    showOnlineStatus = friend.showOnlineStatus,
-                    lastMessage = friend.lastMessage,
-                    hasUnreadMessages = friend.hasUnreadMessages,
-                    unreadCount = friend.unreadCount,
+                    title = conversation.title,
+                    avatarId = conversation.avatarId,
+                    online = conversation.online,
+                    onlineStatus = conversation.onlineStatus,
+                    showOnlineStatus = conversation.showOnlineStatus && !conversation.isGroup,
+                    lastMessage = conversation.lastMessage,
+                    hasUnreadMessages = conversation.hasUnreadMessages,
+                    unreadCount = conversation.unreadCount,
                     onChatClick = {
-                        onMessageClick(friend.uid, friend.displayName, friend.avatarId)
+                        onConversationClick(conversation)
                     },
-                    onProfileClick = {
-                        onProfileClick(friend.uid)
+                    onProfileClick = if (!conversation.isGroup && conversation.directFriendUserId.isNotBlank()) {
+                        {
+                            onProfileClick(conversation.directFriendUserId)
+                        }
+                    } else {
+                        null
                     },
                 )
 
@@ -314,10 +315,10 @@ private fun FriendsTab(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
-        if (uiState.errorMessage != null) {
+        uiState.errorMessage?.let { error ->
             item {
                 Text(
-                    text = uiState.errorMessage,
+                    text = error,
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(16.dp),
                 )
@@ -331,7 +332,9 @@ private fun FriendsTab(
 
             items(
                 items = uiState.incomingRequests,
-                key = { "request_${it.uid}" },
+                key = { request ->
+                    "request_${request.uid}"
+                },
             ) { request ->
                 ListItem(
                     modifier = Modifier.clickable {
@@ -389,7 +392,9 @@ private fun FriendsTab(
         } else {
             items(
                 items = uiState.friends,
-                key = { "friend_${it.uid}" },
+                key = { friend ->
+                    "friend_${friend.uid}"
+                },
             ) { friend ->
                 FriendRow(
                     uid = friend.uid,
@@ -457,101 +462,27 @@ private fun SearchPeopleTab(
 
             uiState.users.isEmpty() -> {
                 item {
-                    Box(
+                    EmptyStateMessage(
+                        text = "No users found",
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 24.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = "No users found",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                    )
                 }
             }
 
             else -> {
                 items(
                     items = uiState.users,
-                    key = { "user_${it.id}" },
+                    key = { user ->
+                        "user_${user.id}"
+                    },
                 ) { user ->
-                    ListItem(
-                        modifier = Modifier.clickable {
-                            onProfileClick(user.id)
-                        },
-                        headlineContent = {
-                            Text(user.displayName)
-                        },
-                        supportingContent = {
-                            val subtitle = buildString {
-                                if (user.major.isNotBlank()) {
-                                    append(user.major)
-                                }
-
-                                if (user.email.isNotBlank()) {
-                                    if (isNotEmpty()) {
-                                        append(" • ")
-                                    }
-
-                                    append(user.email)
-                                }
-                            }
-
-                            if (subtitle.isNotBlank()) {
-                                Text(subtitle)
-                            }
-                        },
-                        trailingContent = {
-                            val isFriend = uiState.friends.any {
-                                it.uid == user.id
-                            }
-
-                            val isPending = user.id in uiState.outgoingRequestIds
-
-                            val hasIncomingRequest = uiState.incomingRequests.any {
-                                it.uid == user.id
-                            }
-
-                            when {
-                                isFriend -> {
-                                    Button(
-                                        onClick = {},
-                                        enabled = false,
-                                    ) {
-                                        Text("Friended")
-                                    }
-                                }
-
-                                isPending -> {
-                                    Button(
-                                        onClick = {},
-                                        enabled = false,
-                                    ) {
-                                        Text("Pending")
-                                    }
-                                }
-
-                                hasIncomingRequest -> {
-                                    Button(
-                                        onClick = {},
-                                        enabled = false,
-                                    ) {
-                                        Text("Requested You")
-                                    }
-                                }
-
-                                else -> {
-                                    Button(
-                                        onClick = {
-                                            onSendFriendRequest(user.id)
-                                        },
-                                    ) {
-                                        Text("Add")
-                                    }
-                                }
-                            }
-                        },
+                    SearchUserRow(
+                        user = user,
+                        uiState = uiState,
+                        onProfileClick = onProfileClick,
+                        onSendFriendRequest = onSendFriendRequest,
                     )
 
                     HorizontalDivider(
@@ -561,6 +492,92 @@ private fun SearchPeopleTab(
             }
         }
     }
+}
+
+@Composable
+private fun SearchUserRow(
+    user: com.ekhonavigator.core.data.social.SocialUser,
+    uiState: SocialUiState,
+    onProfileClick: (String) -> Unit,
+    onSendFriendRequest: (String) -> Unit,
+) {
+    ListItem(
+        modifier = Modifier.clickable {
+            onProfileClick(user.id)
+        },
+        headlineContent = {
+            Text(user.displayName)
+        },
+        supportingContent = {
+            val subtitle = buildString {
+                if (user.major.isNotBlank()) {
+                    append(user.major)
+                }
+
+                if (user.email.isNotBlank()) {
+                    if (isNotEmpty()) {
+                        append(" • ")
+                    }
+
+                    append(user.email)
+                }
+            }
+
+            if (subtitle.isNotBlank()) {
+                Text(subtitle)
+            }
+        },
+        trailingContent = {
+            val isFriend = uiState.friends.any { friend ->
+                friend.uid == user.id
+            }
+
+            val isPending = user.id in uiState.outgoingRequestIds
+
+            val hasIncomingRequest = uiState.incomingRequests.any { request ->
+                request.uid == user.id
+            }
+
+            when {
+                isFriend -> {
+                    Button(
+                        onClick = {},
+                        enabled = false,
+                    ) {
+                        Text("Friended")
+                    }
+                }
+
+                isPending -> {
+                    Button(
+                        onClick = {},
+                        enabled = false,
+                    ) {
+                        Text("Pending")
+                    }
+                }
+
+                hasIncomingRequest -> {
+                    Button(
+                        onClick = {},
+                        enabled = false,
+                    ) {
+                        Text("Requested You")
+                    }
+                }
+
+                else -> {
+                    Button(
+                        onClick = {
+                            onSendFriendRequest(user.id)
+                        },
+                    ) {
+                        Text("Add")
+                    }
+                }
+            }
+        },
+    )
 }
 
 @Composable
@@ -580,9 +597,26 @@ private fun SectionTitle(
         ),
     )
 }
+
+@Composable
+private fun EmptyStateMessage(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
 @Composable
 private fun ChatRow(
-    chatId: String,
     title: String,
     avatarId: String,
     online: Boolean,
@@ -592,7 +626,7 @@ private fun ChatRow(
     hasUnreadMessages: Boolean,
     unreadCount: Int,
     onChatClick: () -> Unit,
-    onProfileClick: () -> Unit,
+    onProfileClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     ListItem(
@@ -602,59 +636,13 @@ private fun ChatRow(
                 onChatClick()
             },
         leadingContent = {
-            Box(
-                modifier = Modifier.size(44.dp),
-                contentAlignment = Alignment.BottomEnd,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .clickable {
-                            onProfileClick()
-                        },
-                    contentAlignment = Alignment.BottomEnd,
-                ) {
-                    val resId = when (avatarId) {
-                        "avatar_dolphin" -> DesignR.drawable.avatar_dolphin
-                        "avatar_whale" -> DesignR.drawable.avatar_whale
-                        "avatar_turtle" -> DesignR.drawable.avatar_turtle
-                        else -> DesignR.drawable.avatar_default
-                    }
-
-                    Image(
-                        painter = painterResource(resId),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop,
-                    )
-                }
-
-                if (online && showOnlineStatus) {
-                    val statusColor = when (onlineStatus) {
-                        OnlineStatus.ONLINE -> Color(0xFF4CAF50)
-                        OnlineStatus.AWAY -> Color(0xFFFFC107)
-                        OnlineStatus.BUSY -> Color(0xFFF44336)
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .size(14.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surface)
-                            .padding(2.dp),
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(CircleShape)
-                                .background(statusColor),
-                        )
-                    }
-                }
-            }
+            ChatAvatar(
+                avatarId = avatarId,
+                online = online,
+                onlineStatus = onlineStatus,
+                showOnlineStatus = showOnlineStatus,
+                onClick = onProfileClick,
+            )
         },
         headlineContent = {
             Text(
@@ -669,69 +657,20 @@ private fun ChatRow(
             )
         },
         supportingContent = {
-            if (lastMessage.isNotBlank()) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (hasUnreadMessages) {
-                        Box(
-                            modifier = Modifier
-                                .padding(end = 6.dp)
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF2196F3)),
-                        )
-                    }
-
-                    val fadeBrush = Brush.horizontalGradient(
-                        colors = listOf(
-                            if (hasUnreadMessages) {
-                                MaterialTheme.colorScheme.onSurface
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                            Color.Transparent,
-                        ),
-                        startX = 0f,
-                        endX = 600f,
-                    )
-
-                    Text(
-                        text = lastMessage,
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            brush = fadeBrush,
-                            fontWeight = if (hasUnreadMessages) {
-                                FontWeight.Bold
-                            } else {
-                                FontWeight.Normal
-                            },
-                        ),
-                        maxLines = 1,
-                        overflow = TextOverflow.Clip,
-                    )
-                }
-            }
+            LastMessagePreview(
+                lastMessage = lastMessage,
+                hasUnreadMessages = hasUnreadMessages,
+            )
         },
         trailingContent = {
-            if (hasUnreadMessages) {
-                Box(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(Color(0xFF2196F3))
-                        .padding(horizontal = 6.dp, vertical = 2.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "+$unreadCount",
-                        color = Color.White,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            }
+            UnreadBadge(
+                visible = hasUnreadMessages,
+                unreadCount = unreadCount,
+            )
         },
     )
 }
+
 @Composable
 private fun FriendRow(
     uid: String,
@@ -761,59 +700,15 @@ private fun FriendRow(
                     onMessageClick(uid, displayName, avatarId)
                 },
             leadingContent = {
-                Box(
-                    modifier = Modifier.size(44.dp),
-                    contentAlignment = Alignment.BottomEnd,
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .clickable {
-                                onViewProfileClick(uid)
-                            },
-                        contentAlignment = Alignment.BottomEnd,
-                    ) {
-                        val resId = when (avatarId) {
-                            "avatar_dolphin" -> DesignR.drawable.avatar_dolphin
-                            "avatar_whale" -> DesignR.drawable.avatar_whale
-                            "avatar_turtle" -> DesignR.drawable.avatar_turtle
-                            else -> DesignR.drawable.avatar_default
-                        }
-
-                        Image(
-                            painter = painterResource(resId),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop,
-                        )
-                    }
-
-                    if (online && showOnlineStatus) {
-                        val statusColor = when (onlineStatus) {
-                            OnlineStatus.ONLINE -> Color(0xFF4CAF50)
-                            OnlineStatus.AWAY -> Color(0xFFFFC107)
-                            OnlineStatus.BUSY -> Color(0xFFF44336)
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .size(14.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surface)
-                                .padding(2.dp),
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape)
-                                    .background(statusColor),
-                            )
-                        }
-                    }
-                }
+                ChatAvatar(
+                    avatarId = avatarId,
+                    online = online,
+                    onlineStatus = onlineStatus,
+                    showOnlineStatus = showOnlineStatus,
+                    onClick = {
+                        onViewProfileClick(uid)
+                    },
+                )
             },
             headlineContent = {
                 Text(
@@ -832,48 +727,10 @@ private fun FriendRow(
                         )
                     }
 
-                    if (lastMessage.isNotBlank()) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            if (hasUnreadMessages) {
-                                Box(
-                                    modifier = Modifier
-                                        .padding(end = 6.dp)
-                                        .size(8.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFF2196F3)),
-                                )
-                            }
-
-                            val fadeBrush = Brush.horizontalGradient(
-                                colors = listOf(
-                                    if (hasUnreadMessages) {
-                                        MaterialTheme.colorScheme.onSurface
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    },
-                                    Color.Transparent,
-                                ),
-                                startX = 0f,
-                                endX = 600f,
-                            )
-
-                            Text(
-                                text = lastMessage,
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    brush = fadeBrush,
-                                    fontWeight = if (hasUnreadMessages) {
-                                        FontWeight.Bold
-                                    } else {
-                                        FontWeight.Normal
-                                    },
-                                ),
-                                maxLines = 1,
-                                overflow = TextOverflow.Clip,
-                            )
-                        }
-                    }
+                    LastMessagePreview(
+                        lastMessage = lastMessage,
+                        hasUnreadMessages = hasUnreadMessages,
+                    )
                 }
             },
             trailingContent = {
@@ -881,22 +738,10 @@ private fun FriendRow(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    if (hasUnreadMessages) {
-                        Box(
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .background(Color(0xFF2196F3))
-                                .padding(horizontal = 6.dp, vertical = 2.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text = "+$unreadCount",
-                                color = Color.White,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                            )
-                        }
-                    }
+                    UnreadBadge(
+                        visible = hasUnreadMessages,
+                        unreadCount = unreadCount,
+                    )
 
                     IconButton(
                         onClick = {
@@ -943,5 +788,150 @@ private fun FriendRow(
                 },
             )
         }
+    }
+}
+
+@Composable
+private fun ChatAvatar(
+    avatarId: String,
+    online: Boolean,
+    onlineStatus: OnlineStatus,
+    showOnlineStatus: Boolean,
+    onClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier.size(44.dp),
+        contentAlignment = Alignment.BottomEnd,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .then(
+                    if (onClick != null) {
+                        Modifier.clickable {
+                            onClick()
+                        }
+                    } else {
+                        Modifier
+                    },
+                ),
+            contentAlignment = Alignment.BottomEnd,
+        ) {
+            val resId = when (avatarId) {
+                "avatar_dolphin" -> DesignR.drawable.avatar_dolphin
+                "avatar_whale" -> DesignR.drawable.avatar_whale
+                "avatar_turtle" -> DesignR.drawable.avatar_turtle
+                else -> DesignR.drawable.avatar_default
+            }
+
+            Image(
+                painter = painterResource(resId),
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop,
+            )
+        }
+
+        if (online && showOnlineStatus) {
+            val statusColor = when (onlineStatus) {
+                OnlineStatus.ONLINE -> Color(0xFF4CAF50)
+                OnlineStatus.AWAY -> Color(0xFFFFC107)
+                OnlineStatus.BUSY -> Color(0xFFF44336)
+            }
+
+            Box(
+                modifier = Modifier
+                    .size(14.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(2.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .background(statusColor),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LastMessagePreview(
+    lastMessage: String,
+    hasUnreadMessages: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    if (lastMessage.isBlank()) return
+
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (hasUnreadMessages) {
+            Box(
+                modifier = Modifier
+                    .padding(end = 6.dp)
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF2196F3)),
+            )
+        }
+
+        val fadeBrush = Brush.horizontalGradient(
+            colors = listOf(
+                if (hasUnreadMessages) {
+                    MaterialTheme.colorScheme.onSurface
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                Color.Transparent,
+            ),
+            startX = 0f,
+            endX = 600f,
+        )
+
+        Text(
+            text = lastMessage,
+            style = MaterialTheme.typography.bodySmall.copy(
+                brush = fadeBrush,
+                fontWeight = if (hasUnreadMessages) {
+                    FontWeight.Bold
+                } else {
+                    FontWeight.Normal
+                },
+            ),
+            maxLines = 1,
+            overflow = TextOverflow.Clip,
+        )
+    }
+}
+
+@Composable
+private fun UnreadBadge(
+    visible: Boolean,
+    unreadCount: Int,
+    modifier: Modifier = Modifier,
+) {
+    if (!visible) return
+
+    Box(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(Color(0xFF2196F3))
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "+$unreadCount",
+            color = Color.White,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+        )
     }
 }
