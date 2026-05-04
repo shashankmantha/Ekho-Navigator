@@ -60,6 +60,7 @@ import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventSource
 import com.ekhonavigator.core.model.EventType
 import com.ekhonavigator.core.model.RsvpStatus
+import com.ekhonavigator.core.model.isPast
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -461,19 +462,22 @@ private fun TimelineEventBlock(
 
     val isPendingInvite = event.myRsvpStatus == RsvpStatus.PENDING
     val pendingBorder = colors.error
-    // Completed assignments dim the WHOLE pill (not just text) so the
-    // strikethrough lands on a recessive base instead of competing with the
-    // saturated bg. Pending overrides take priority since it's a stronger
-    // "needs attention" signal.
+    // Pill alpha priority: pending (needs attention, strongest dim) → completed
+    // (struck-through, dim) → past (subtle dim, no strike — the user can still
+    // tell it's past via context). Past + completed collapse to the completed
+    // treatment so completed history reads uniformly across weeks.
     val isCompletedPill = LocalAssignmentDecorator.current.isCompleted(event.id)
+    val isPastEvent = event.isPast()
     val effectiveBg = when {
         isPendingInvite -> bgColor.copy(alpha = 0.35f)
         isCompletedPill -> bgColor.copy(alpha = 0.4f)
+        isPastEvent -> bgColor.copy(alpha = 0.65f)
         else -> bgColor
     }
     val effectiveText = when {
         isPendingInvite -> textColor.copy(alpha = 0.75f)
         isCompletedPill -> textColor.copy(alpha = 0.75f)
+        isPastEvent -> textColor.copy(alpha = 0.85f)
         else -> textColor
     }
 

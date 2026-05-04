@@ -31,6 +31,7 @@ import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventSource
 import com.ekhonavigator.core.model.EventType
 import com.ekhonavigator.core.model.RsvpStatus
+import com.ekhonavigator.core.model.isPast
 import com.kizitonwose.calendar.core.CalendarDay
 import com.kizitonwose.calendar.core.DayPosition
 
@@ -150,12 +151,14 @@ fun DayContent(
                     val isPendingInvite = event.myRsvpStatus == RsvpStatus.PENDING
                     val pendingBorder = MaterialTheme.colorScheme.error
                     val isCompleted = decorator.isCompleted(event.id)
-                    // Completed assignments dim their full pill (not just text) so
-                    // the strikethrough lands on a recessive base instead of fighting
-                    // a saturated bg. Pending overrides take priority.
+                    val isPastEvent = event.isPast()
+                    // Pill alpha priority: pending (needs attention) → completed
+                    // (struck-through) → past (subtle dim, no strike). Past + done
+                    // collapses to the completed treatment.
                     val effectivePillBg = when {
                         isPendingInvite -> pillBg.copy(alpha = 0.35f)
                         isCompleted -> pillBg.copy(alpha = 0.4f)
+                        isPastEvent -> pillBg.copy(alpha = 0.65f)
                         else -> pillBg
                     }
 
@@ -192,6 +195,7 @@ fun DayContent(
                             color = when {
                                 isPendingInvite -> pillText.copy(alpha = 0.75f)
                                 isCompleted -> pillText.copy(alpha = 0.7f)
+                                isPastEvent -> pillText.copy(alpha = 0.85f)
                                 else -> pillText
                             },
                             maxLines = 1,

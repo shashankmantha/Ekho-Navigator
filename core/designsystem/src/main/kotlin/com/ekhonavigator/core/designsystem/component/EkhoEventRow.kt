@@ -104,10 +104,12 @@ fun EkhoEventRow(
                 Spacer(Modifier.height(2.dp))
             }
 
-            // Strikethrough on completed assignments — sourced from the
-            // decorator (Canvas: submitted/graded/excused; personal: isCompleted
-            // toggle). Title text also dims so completed items recede visually.
+            // Strikethrough on completed assignments (decorator: Canvas
+            // submitted/graded/excused OR personal isCompleted toggle).
+            // Past events get a softer dim — same temporal recede signal as
+            // calendar pills, but no strikethrough (past ≠ done).
             val isCompleted = eventId != null && LocalAssignmentDecorator.current.isCompleted(eventId)
+            val isPastEvent = endTime <= java.time.Instant.now()
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleSmall.copy(
@@ -116,10 +118,10 @@ fun EkhoEventRow(
                     lineHeight = 18.sp,
                     textDecoration = if (isCompleted) TextDecoration.LineThrough else null,
                 ),
-                color = if (isCompleted) {
-                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
-                } else {
-                    MaterialTheme.colorScheme.onSurface
+                color = when {
+                    isCompleted -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+                    isPastEvent -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    else -> MaterialTheme.colorScheme.onSurface
                 },
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
