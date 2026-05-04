@@ -21,10 +21,19 @@ class DefaultCanvasPlannerRepositoryTest {
 
     private val api = FakeCanvasApi()
     private val provider = FakeCanvasApiProvider(api = api)
+    private val accountSource = StubAccountSource(
+        com.ekhonavigator.core.canvas.auth.CanvasAccount("uid-1", "csuci.instructure.com"),
+    )
     private val dao = FakeCanvasPlannerItemDao()
     private val calendarDao = FakeCalendarEventDao()
     private val courseRepository = FakeCanvasCourseRepository()
-    private val repo = DefaultCanvasPlannerRepository(provider, dao, calendarDao, courseRepository)
+    private val repo = DefaultCanvasPlannerRepository(provider, accountSource, dao, calendarDao, courseRepository)
+
+    private class StubAccountSource(
+        var account: com.ekhonavigator.core.canvas.auth.CanvasAccount?,
+    ) : com.ekhonavigator.core.canvas.auth.CanvasAccountSource {
+        override fun currentOrNull(): com.ekhonavigator.core.canvas.auth.CanvasAccount? = account
+    }
 
     private val windowStart = Instant.parse("2026-04-01T00:00:00Z")
     private val windowEnd = Instant.parse("2026-05-01T00:00:00Z")

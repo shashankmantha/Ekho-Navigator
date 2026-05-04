@@ -1,6 +1,7 @@
 package com.ekhonavigator.core.data.canvas
 
 import android.util.Log
+import com.ekhonavigator.core.canvas.auth.CanvasAccountSource
 import com.ekhonavigator.core.canvas.model.PlannerItem
 import com.ekhonavigator.core.canvas.network.CanvasApi
 import com.ekhonavigator.core.canvas.network.CanvasApiProvider
@@ -20,6 +21,7 @@ import javax.inject.Singleton
 @Singleton
 internal class DefaultCanvasPlannerRepository @Inject constructor(
     private val apiProvider: CanvasApiProvider,
+    private val accountSource: CanvasAccountSource,
     private val plannerDao: CanvasPlannerItemDao,
     private val calendarEventDao: CalendarEventDao,
     private val courseRepository: CanvasCourseRepository,
@@ -52,7 +54,18 @@ internal class DefaultCanvasPlannerRepository @Inject constructor(
 
             val dtos = fetchAllPages(api, contextCodes, start, end)
             Log.d(TAG, "sync: Canvas returned ${dtos.size} planner items")
-            val entities = dtos.map { it.toEntity() }
+            // Canvas returns `html_url` as a relative path (`/courses/.../assignments/...`).
+            // Store the absolute form so any "Open in Canvas" launch can resolve it
+            // without having to plumb the institution domain into every render site.
+            // Falls back to the relative URL if no account (shouldn't happen here —
+            // the api call above would have already 401'd — but defensive).
+            val domain = accountSource.currentOrNull()?.domain
+            val entities = dtos.map { dto ->
+                dto.toEntity().let { entity ->
+                    if (domain != null) entity.copy(htmlUrl = absolutizeCanvasUrl(entity.htmlUrl, domain))
+                    else entity
+                }
+            }
             plannerDao.upsertAll(entities)
             plannerDao.deleteInRangeExcept(start, end, entities.map { it.id })
 

@@ -22,11 +22,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.net.toUri
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -500,6 +504,11 @@ private fun EventDetailContent(
             CourseChipRow(label = courseLabel)
         }
 
+        if (event.source == EventSource.CANVAS && event.url.isNotBlank()) {
+            Spacer(modifier = Modifier.height(20.dp))
+            OpenInCanvasButton(url = event.url)
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
     }
 
@@ -806,6 +815,47 @@ private fun MetaChipsRow(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun OpenInCanvasButton(url: String) {
+    // Hide the button entirely if the URL isn't launchable — Canvas's planner
+    // endpoint historically returned relative paths (`/courses/123/...`) that
+    // crash startActivity with ActivityNotFoundException. The data layer now
+    // absolutizes via `absolutizeCanvasUrl`, so this guard is belt-and-suspenders
+    // for any entity rows already in Room from before that fix landed.
+    val isLaunchable = url.startsWith("http://", ignoreCase = true) ||
+        url.startsWith("https://", ignoreCase = true)
+    if (!isLaunchable) return
+
+    val context = LocalContext.current
+    OutlinedButton(
+        onClick = {
+            // runCatching defends against odd device configurations (no browser
+            // installed, no Custom Tabs provider, malformed URI sneaking through).
+            // Better to silently no-op than crash the app — A2's per-class
+            // detail screen will give users another path to course content.
+            runCatching {
+                CustomTabsIntent.Builder()
+                    .setShowTitle(true)
+                    .build()
+                    .launchUrl(context, url.toUri())
+            }
+        },
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        Icon(
+            imageVector = EkhoIcons.OpenInNew,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = "Open in Canvas",
+            style = MaterialTheme.typography.labelLarge,
+        )
     }
 }
 
