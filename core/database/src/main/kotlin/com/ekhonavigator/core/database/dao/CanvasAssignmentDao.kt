@@ -26,6 +26,12 @@ interface CanvasAssignmentDao {
     @Query("SELECT * FROM canvas_assignments WHERE id = :id")
     suspend fun getById(id: String): CanvasAssignmentEntity?
 
+    /** Reactive single-item lookup. Powers the EventScreen grade chip — the
+     *  bridged calendar event id maps back to a planner item, and that planner
+     *  item's `plannableId` is the assignment id we look up here. */
+    @Query("SELECT * FROM canvas_assignments WHERE id = :id")
+    fun observeById(id: String): Flow<CanvasAssignmentEntity?>
+
     @Upsert
     suspend fun upsertAll(items: List<CanvasAssignmentEntity>)
 

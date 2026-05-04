@@ -5,6 +5,11 @@ import java.time.Instant
 data class PlannerItem(
     /** Composite "$kind_$plannableId" — globally unique across plannable types. */
     val id: String,
+    /** Raw Canvas plannable id, without the kind prefix. For ASSIGNMENT items
+     *  this is the assignment id used by the assignments endpoint, which lets
+     *  callers join a planner item to its `CanvasAssignment` (e.g. to surface
+     *  the per-item grade on EventScreen). */
+    val plannableId: String,
     val kind: PlannerKind,
     val courseId: String?,
     val title: String,

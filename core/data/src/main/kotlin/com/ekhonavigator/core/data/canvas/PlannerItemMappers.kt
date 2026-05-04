@@ -36,6 +36,7 @@ internal fun PlannerItemDto.toEntity(now: Instant = Instant.now()): CanvasPlanne
 
 internal fun CanvasPlannerItemEntity.toDomainModel(): PlannerItem = PlannerItem(
     id = id,
+    plannableId = plannableId,
     kind = PlannerKind.fromCanvasType(plannableType),
     courseId = courseId,
     title = title,

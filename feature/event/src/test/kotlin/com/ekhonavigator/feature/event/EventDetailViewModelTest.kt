@@ -67,6 +67,7 @@ class EventDetailViewModelTest {
             placeRepository,
             markerRepository,
             StubPlannerRepository(),
+            StubAssignmentRepository(),
         )
     }
 
@@ -78,6 +79,15 @@ class EventDetailViewModelTest {
         override fun observeById(id: String) =
             kotlinx.coroutines.flow.flowOf<com.ekhonavigator.core.canvas.model.PlannerItem?>(null)
         override suspend fun sync(start: java.time.Instant, end: java.time.Instant) = Result.success(Unit)
+        override suspend fun clearAll() {}
+    }
+
+    private class StubAssignmentRepository : com.ekhonavigator.core.data.canvas.CanvasAssignmentRepository {
+        override fun observeForCourse(courseId: String) =
+            kotlinx.coroutines.flow.flowOf(emptyList<com.ekhonavigator.core.canvas.model.CanvasAssignment>())
+        override fun observeById(assignmentId: String) =
+            kotlinx.coroutines.flow.flowOf<com.ekhonavigator.core.canvas.model.CanvasAssignment?>(null)
+        override suspend fun sync(courseId: String) = Result.success(Unit)
         override suspend fun clearAll() {}
     }
 

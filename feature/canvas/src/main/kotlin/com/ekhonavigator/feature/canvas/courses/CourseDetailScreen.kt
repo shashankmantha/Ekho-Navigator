@@ -2,6 +2,7 @@ package com.ekhonavigator.feature.canvas.courses
 
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,9 +43,11 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import com.ekhonavigator.core.canvas.model.CanvasAssignment
 import com.ekhonavigator.core.canvas.model.CanvasCourse
 import com.ekhonavigator.core.canvas.model.PlannerItem
 import com.ekhonavigator.core.canvas.model.PlannerSubmissionStatus
+import com.ekhonavigator.core.data.canvas.CanvasAssignmentRepository
 import com.ekhonavigator.core.data.canvas.CanvasCourseRepository
 import com.ekhonavigator.core.data.canvas.CanvasPlannerRepository
 import com.ekhonavigator.core.designsystem.component.EkhoEventRow
@@ -54,10 +57,15 @@ import com.ekhonavigator.core.designsystem.theme.CourseColorAssigner
 import com.ekhonavigator.core.designsystem.theme.CourseColorInput
 import com.ekhonavigator.core.designsystem.theme.coursePalette
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
@@ -163,13 +171,98 @@ private fun LoadedContent(
             )
         }
 
-        // A2.3/A2.4: Past assignments + grades + Announcements land below.
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "Past assignments + announcements coming next.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-        )
+        if (state.pastAssignments.isNotEmpty()) {
+            PastAssignmentsSection(
+                assignments = state.pastAssignments,
+                onAssignmentClick = onEventClick,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PastAssignmentsSection(
+    assignments: List<CanvasAssignment>,
+    onAssignmentClick: (eventId: String) -> Unit,
+) {
+    val zone = remember { java.time.ZoneId.systemDefault() }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        SectionHeader("Past assignments")
+        assignments.forEach { assignment ->
+            // Tap routes to EventScreen via the planner-bridged calendar event
+            // uid (`assignment_<id>`). EventScreen already handles "row not in
+            // Room anymore" by auto-navigating back, so out-of-window items
+            // gracefully bail rather than rendering an empty detail.
+            val plannerBridgedUid = "assignment_${assignment.id}"
+            PastAssignmentRow(
+                assignment = assignment,
+                zone = zone,
+                onClick = { onAssignmentClick(plannerBridgedUid) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun PastAssignmentRow(
+    assignment: CanvasAssignment,
+    zone: java.time.ZoneId,
+    onClick: () -> Unit,
+) {
+    // Strikethrough engaged assignments (graded/submitted/excused) the same
+    // way EkhoEventRow + LocalAssignmentDecorator do for in-window planner
+    // rows — this section is outside the decorator's index, so we apply the
+    // style locally using the assignment's own submission state.
+    val struck = assignment.submission.engaged
+    val titleStyle = MaterialTheme.typography.bodyMedium.copy(
+        textDecoration = if (struck) {
+            androidx.compose.ui.text.style.TextDecoration.LineThrough
+        } else {
+            androidx.compose.ui.text.style.TextDecoration.None
+        },
+        color = if (struck) {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        } else {
+            MaterialTheme.colorScheme.onSurface
+        },
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = assignment.name,
+                style = titleStyle,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            val due = assignment.dueAt
+            if (due != null) {
+                val dueText = remember(due) {
+                    val local = due.atZone(zone)
+                    val formatter = java.time.format.DateTimeFormatter.ofPattern("MMM d", java.util.Locale.US)
+                    "Due ${local.format(formatter)}"
+                }
+                Text(
+                    text = dueText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        AssignmentGradePill(assignment = assignment)
     }
 }
 
@@ -335,6 +428,54 @@ private fun HeroSection(course: CanvasCourse, courseColor: Color) {
     }
 }
 
+/**
+ * Per-assignment grade pill. Mirrors the course-level GradePill visual so the
+ * vocabulary stays consistent. Falls back through three render modes:
+ *  1. "score / pointsPossible" — most informative; both numbers Canvas-known
+ *  2. "Excused" / "Missing" — terminal states with no numeric grade
+ *  3. status-only badge ("Submitted" / "Late") — Canvas knows the workflow
+ *     state but no score has been entered yet
+ *  4. nothing — assignment is past-due but un-engaged; the row's just listed
+ *     for the "what was assigned this term" recap
+ */
+@Composable
+private fun AssignmentGradePill(assignment: CanvasAssignment) {
+    val sub = assignment.submission
+    val colors = MaterialTheme.colorScheme
+    val score = sub.score
+    val points = assignment.pointsPossible
+
+    val (label, container, content) = when {
+        sub.excused -> Triple("Excused", colors.surfaceContainerHigh, colors.onSurfaceVariant)
+        score != null && points != null && points > 0.0 ->
+            Triple(
+                "${formatPoints(score)}/${formatPoints(points)}",
+                colors.secondaryContainer,
+                colors.onSecondaryContainer,
+            )
+        sub.graded && sub.grade != null ->
+            Triple(sub.grade!!, colors.secondaryContainer, colors.onSecondaryContainer)
+        sub.missing -> Triple("Missing", colors.errorContainer, colors.onErrorContainer)
+        sub.late -> Triple("Late", colors.tertiaryContainer, colors.onTertiaryContainer)
+        sub.submitted -> Triple("Submitted", colors.surfaceContainerHigh, colors.onSurfaceVariant)
+        else -> return
+    }
+
+    Box(
+        modifier = Modifier
+            .clip(CircleShape)
+            .background(container)
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = content,
+        )
+    }
+}
+
 @Composable
 private fun GradePill(grade: String?, score: Double?) {
     val text = grade ?: score?.let { "${it.toInt()}%" } ?: return
@@ -392,9 +533,33 @@ class CourseDetailViewModel @Inject constructor(
     @Suppress("unused") savedStateHandle: SavedStateHandle,
     private val courseRepository: CanvasCourseRepository,
     private val plannerRepository: CanvasPlannerRepository,
+    private val assignmentRepository: CanvasAssignmentRepository,
 ) : ViewModel() {
 
     private val _courseId = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+
+    /** Per-course assignment sync runs lazily here — the planner sync that
+     *  AuthLifecycleObserver fires at sign-in covers calendar surfaces, but the
+     *  assignments endpoint is the only source of per-item grades, and we
+     *  don't want to N×-fan-out at app launch (one call per course). Triggered
+     *  every time a new courseId arrives; `distinctUntilChanged` keeps repeat
+     *  Composable recompositions from re-firing. NoCanvasAccountException is
+     *  expected for signed-out users — runCatching swallows it. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val assignments: StateFlow<List<CanvasAssignment>> = _courseId
+        .filterNotNull()
+        .distinctUntilChanged()
+        .flatMapLatest { id ->
+            viewModelScope.launch {
+                runCatching { assignmentRepository.sync(id) }
+            }
+            assignmentRepository.observeForCourse(id)
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList(),
+        )
 
     fun setCourseId(id: String) {
         _courseId.value = id
@@ -404,7 +569,8 @@ class CourseDetailViewModel @Inject constructor(
         _courseId,
         courseRepository.observeCourses(),
         plannerRepository.observeAllItems(),
-    ) { id, courses, planners ->
+        assignments,
+    ) { id, courses, planners, assigns ->
         if (id == null) return@combine CourseDetailUiState.Loading
         val course = courses.firstOrNull { it.id == id }
             ?: return@combine CourseDetailUiState.NotFound
@@ -421,6 +587,7 @@ class CourseDetailViewModel @Inject constructor(
             paletteSlot = slots[id] ?: 0,
             upcoming = pickUpcoming(courseItems),
             recentSubmissions = pickRecentSubmissions(courseItems),
+            pastAssignments = pickPastAssignments(assigns),
             whatIf = computeWhatIf(course = course, items = courseItems),
         )
     }.stateIn(
@@ -445,13 +612,37 @@ private fun pickUpcoming(items: List<PlannerItem>, now: java.time.Instant = java
         .toList()
 
 /** Anything submitted, graded, or excused — sorted most-recent first. Same
- *  top-5 cap as upcoming; the future "Past assignments + grades" section in
- *  A2.3 will surface the full graded history with per-item scores. */
+ *  top-5 cap as upcoming. The full graded history with per-item scores lives
+ *  in pickPastAssignments (assignments endpoint, not planner). */
 private fun pickRecentSubmissions(items: List<PlannerItem>): List<PlannerItem> =
     items
         .filter { it.submission.engaged }
         .sortedByDescending { it.dueAt ?: it.plannableDate }
         .take(5)
+
+/**
+ * Full graded-history view for the course. Shows assignments where the user
+ * has either acted on it (submitted/graded/excused) OR the due date is in the
+ * past — the second clause catches missing assignments + ungraded busywork the
+ * student should still see in their term recap.
+ *
+ * Sorted most-recent first; assignments with no due date sink to the bottom
+ * (matches DAO sort, repeated here so the in-memory list-flow path stays
+ * consistent if ordering ever moves off the DAO).
+ */
+private fun pickPastAssignments(
+    assignments: List<CanvasAssignment>,
+    now: java.time.Instant = java.time.Instant.now(),
+): List<CanvasAssignment> =
+    assignments
+        .filter { a ->
+            val due = a.dueAt
+            a.submission.engaged || (due != null && !due.isAfter(now))
+        }
+        .sortedWith(
+            compareByDescending<CanvasAssignment> { it.dueAt != null }
+                .thenByDescending { it.dueAt },
+        )
 
 /** True when the user has acted on (or been excused from) the assignment —
  *  the submission row should land in "Recent submissions", not "Upcoming". */
@@ -498,6 +689,7 @@ sealed interface CourseDetailUiState {
         val paletteSlot: Int,
         val upcoming: List<PlannerItem>,
         val recentSubmissions: List<PlannerItem>,
+        val pastAssignments: List<CanvasAssignment>,
         val whatIf: WhatIfState,
     ) : CourseDetailUiState
 }

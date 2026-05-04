@@ -107,6 +107,7 @@ fun EventScreen(
     val friends by viewModel.friends.collectAsStateWithLifecycle()
     val shareSheetVisible by viewModel.shareSheetVisible.collectAsStateWithLifecycle()
     val canvasContext by viewModel.canvasContext.collectAsStateWithLifecycle()
+    val assignmentContext by viewModel.assignmentContext.collectAsStateWithLifecycle()
 
     // The VM emits the new (or deduped existing) marker placeId after save; route it
     // through the same nav callback the campus path uses so the camera-pan animation runs.
@@ -159,6 +160,7 @@ fun EventScreen(
             currentUserRsvp = currentUserRsvp,
             attendees = attendees,
             canvasContext = canvasContext,
+            assignmentContext = assignmentContext,
             onRsvp = viewModel::rsvp,
             onLocationClick = onLocationClick,
             onLocationSaveOfferClick = { showSaveMarkerPrompt = true },
@@ -233,6 +235,7 @@ private fun EventDetailContent(
     canMarkComplete: Boolean = false,
     onToggleCompleteClick: () -> Unit = {},
     canvasContext: com.ekhonavigator.core.canvas.model.PlannerItem? = null,
+    assignmentContext: com.ekhonavigator.core.canvas.model.CanvasAssignment? = null,
     hasAttendees: Boolean = false,
     canRsvp: Boolean = false,
     isOwner: Boolean = false,
@@ -508,7 +511,7 @@ private fun EventDetailContent(
         }
 
         if (canvasContext != null) {
-            CanvasDetailsRow(item = canvasContext)
+            CanvasDetailsRow(item = canvasContext, assignment = assignmentContext)
         }
 
         if (event.source == EventSource.CANVAS && event.url.isNotBlank()) {
@@ -826,13 +829,18 @@ private fun MetaChipsRow(
 }
 
 @Composable
-private fun CanvasDetailsRow(item: com.ekhonavigator.core.canvas.model.PlannerItem) {
+private fun CanvasDetailsRow(
+    item: com.ekhonavigator.core.canvas.model.PlannerItem,
+    assignment: com.ekhonavigator.core.canvas.model.CanvasAssignment? = null,
+) {
     // Canvas-only meta the bridged calendar_events row doesn't carry: status
-    // badge (submitted/late/missing/graded/excused) + points possible. The
-    // actual grade score requires the assignments endpoint — that lands in A2.
+    // badge (submitted/late/missing/graded/excused) + points possible + the
+    // numeric grade when the per-class detail screen has populated the
+    // assignments cache (read-time join, no schema change).
     val (statusLabel, statusColor) = canvasStatus(item)
     val points = item.pointsPossible
-    if (statusLabel == null && points == null) return
+    val gradeText = assignment?.let(::gradeChipLabel)
+    if (statusLabel == null && points == null && gradeText == null) return
 
     Row(
         modifier = Modifier.padding(vertical = 5.dp),
@@ -844,6 +852,21 @@ private fun CanvasDetailsRow(item: com.ekhonavigator.core.canvas.model.PlannerIt
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
+            if (gradeText != null) {
+                val gradeColor = MaterialTheme.colorScheme.secondary
+                AssistChip(
+                    onClick = {},
+                    label = { Text(text = gradeText, style = MaterialTheme.typography.labelSmall) },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        labelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    ),
+                    border = AssistChipDefaults.assistChipBorder(
+                        enabled = true,
+                        borderColor = gradeColor.copy(alpha = 0.3f),
+                    ),
+                )
+            }
             if (statusLabel != null && statusColor != null) {
                 AssistChip(
                     onClick = {},
@@ -874,6 +897,25 @@ private fun CanvasDetailsRow(item: com.ekhonavigator.core.canvas.model.PlannerIt
         }
     }
 }
+
+/**
+ * Numeric-grade chip text. Returns null when there's nothing the user would
+ * value seeing — Canvas might know the assignment exists but not have a grade
+ * yet. Format priorities match the Past Assignments row pill so the same
+ * assignment reads identically on both surfaces.
+ */
+private fun gradeChipLabel(assignment: com.ekhonavigator.core.canvas.model.CanvasAssignment): String? {
+    val score = assignment.submission.score
+    val points = assignment.pointsPossible
+    return when {
+        score != null && points != null && points > 0.0 -> "${formatPoints(score)} / ${formatPoints(points)}"
+        assignment.submission.graded && assignment.submission.grade != null -> assignment.submission.grade
+        else -> null
+    }
+}
+
+private fun formatPoints(value: Double): String =
+    if (value % 1.0 == 0.0) value.toInt().toString() else "%.1f".format(value)
 
 /**
  * Picks the most user-meaningful status from the planner item's submission

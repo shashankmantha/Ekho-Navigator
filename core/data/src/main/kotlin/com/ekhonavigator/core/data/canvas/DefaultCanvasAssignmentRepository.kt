@@ -27,6 +27,10 @@ internal class DefaultCanvasAssignmentRepository @Inject constructor(
         assignmentDao.observeForCourse(courseId)
             .map { entities -> entities.map(CanvasAssignmentEntity::toDomainModel) }
 
+    override fun observeById(assignmentId: String): Flow<CanvasAssignment?> =
+        assignmentDao.observeById(assignmentId)
+            .map { entity -> entity?.toDomainModel() }
+
     override suspend fun sync(courseId: String): Result<Unit> {
         Log.d(TAG, "sync starting course=$courseId")
         return runCatching {

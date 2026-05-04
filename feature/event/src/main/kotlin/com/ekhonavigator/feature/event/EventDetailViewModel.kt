@@ -2,8 +2,11 @@ package com.ekhonavigator.feature.event
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ekhonavigator.core.canvas.model.CanvasAssignment
 import com.ekhonavigator.core.canvas.model.PlannerItem
+import com.ekhonavigator.core.canvas.model.PlannerKind
 import com.ekhonavigator.core.data.auth.AuthRepository
+import com.ekhonavigator.core.data.canvas.CanvasAssignmentRepository
 import com.ekhonavigator.core.data.canvas.CanvasPlannerRepository
 import com.ekhonavigator.core.data.markers.MarkerRepository
 import com.ekhonavigator.core.data.markers.UserDroppedMarker
@@ -43,6 +46,7 @@ class EventDetailViewModel @Inject constructor(
     private val placeRepository: PlaceRepository,
     private val markerRepository: MarkerRepository,
     private val canvasPlannerRepository: CanvasPlannerRepository,
+    private val canvasAssignmentRepository: CanvasAssignmentRepository,
 ) : ViewModel() {
 
     private val _eventId = MutableStateFlow("")
@@ -67,6 +71,24 @@ class EventDetailViewModel @Inject constructor(
     val canvasContext: StateFlow<PlannerItem?> = _eventId
         .filter { it.isNotEmpty() }
         .flatMapLatest { id -> canvasPlannerRepository.observeById(id) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Read-time join from the planner item to its full assignment record. The
+     *  assignments table is populated lazily — only courses the user has opened
+     *  the per-class detail screen for will have entries — so this stays null
+     *  for assignment events the user navigated to via calendar tap without
+     *  ever drilling into the course. That's intentional: showing a numeric
+     *  grade is a bonus, not a requirement, and the planner item already
+     *  carries enough for the status/points chips. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val assignmentContext: StateFlow<CanvasAssignment?> = canvasContext
+        .flatMapLatest { item ->
+            if (item == null || item.kind != PlannerKind.ASSIGNMENT) {
+                kotlinx.coroutines.flow.flowOf<CanvasAssignment?>(null)
+            } else {
+                canvasAssignmentRepository.observeById(item.plannableId)
+            }
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** Resolves to a place id the user can navigate to. Falls through three checks:

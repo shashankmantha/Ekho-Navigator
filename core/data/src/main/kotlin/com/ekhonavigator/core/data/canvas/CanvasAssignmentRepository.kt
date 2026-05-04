@@ -15,6 +15,12 @@ interface CanvasAssignmentRepository {
      *  descending (DAO-side sort). Empty until the first sync completes. */
     fun observeForCourse(courseId: String): Flow<List<CanvasAssignment>>
 
+    /** Reactive single-assignment lookup. Backs the read-time grade backfill on
+     *  EventScreen — given a planner-bridged calendar event, the planner item's
+     *  `plannableId` is the assignment id we resolve here. Emits null until the
+     *  course has been synced (lazy, on per-class-detail open). */
+    fun observeById(assignmentId: String): Flow<CanvasAssignment?>
+
     /**
      * Fetches the full assignment list for `courseId` from Canvas (paginated)
      * and reconciles the cache. Backfills `calendar_events.description` for
