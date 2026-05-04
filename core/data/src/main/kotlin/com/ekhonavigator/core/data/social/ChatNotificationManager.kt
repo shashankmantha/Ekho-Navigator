@@ -1,0 +1,100 @@
+package com.ekhonavigator.core.data.social
+
+import android.Manifest
+import android.R
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
+import kotlin.math.absoluteValue
+
+@Singleton
+class ChatNotificationManager @Inject constructor(
+    @ApplicationContext private val context: Context,
+) {
+    fun showMessageNotification(
+        conversationId: String,
+        senderId: String,
+        senderName: String,
+        messageText: String,
+    ) {
+        if (!canPostNotifications()) return
+
+        createNotificationChannel()
+
+        val launchIntent = Intent().apply {
+            setClassName(context.packageName, "com.ekhonavigator.MainActivity")
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP
+
+            putExtra("openChat", true)
+            putExtra("conversationId", conversationId)
+            putExtra("friendUserId", senderId)
+            putExtra("friendDisplayName", senderName)
+            putExtra("friendAvatarId", "")
+        }
+
+        val notificationId = conversationId.hashCode().absoluteValue
+
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            notificationId,
+            launchIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_dialog_info)
+            .setContentTitle(senderName.ifBlank { "New message" })
+            .setContentText(messageText.ifBlank { "Sent a message" })
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .build()
+
+        NotificationManagerCompat.from(context).notify(
+            notificationId,
+            notification,
+        )
+    }
+
+    private fun canPostNotifications(): Boolean {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS,
+                ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+
+        val manager =
+            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            "Chat messages",
+            NotificationManager.IMPORTANCE_HIGH,
+        ).apply {
+            description = "Notifications for new chat messages"
+        }
+
+        manager.createNotificationChannel(channel)
+    }
+
+    companion object {
+        private const val CHANNEL_ID = "chat_messages"
+    }
+}

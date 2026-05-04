@@ -52,11 +52,20 @@ fun AccountScreen(
     onSettingsClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: AccountViewModel = hiltViewModel(),
+    forceSignedOutUi: Boolean = false,
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    LaunchedEffect(uiState) {
-        if (uiState is AccountUiState.SignedIn) onSignIn()
+    val displayState = if (forceSignedOutUi) {
+        AccountUiState.SignedOut
+    } else {
+        uiState
+    }
+
+    LaunchedEffect(uiState, forceSignedOutUi) {
+        if (!forceSignedOutUi && uiState is AccountUiState.SignedIn) {
+            onSignIn()
+        }
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -77,7 +86,7 @@ fun AccountScreen(
             )
         },
         floatingActionButton = {
-            if (uiState is AccountUiState.SignedIn) {
+            if (displayState is AccountUiState.SignedIn) {
                 FloatingActionButton(
                     onClick = onSettingsClick,
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -89,7 +98,7 @@ fun AccountScreen(
                     )
                 }
             }
-        }
+        },
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -97,7 +106,7 @@ fun AccountScreen(
                 .padding(paddingValues)
                 .background(MaterialTheme.colorScheme.background),
         ) {
-            when (val state = uiState) {
+            when (val state = displayState) {
                 AccountUiState.Loading -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -290,7 +299,6 @@ fun AccountScreen(
                     )
                 }
             }
-
         }
     }
 }

@@ -3,34 +3,34 @@ package com.ekhonavigator.feature.social
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ekhonavigator.core.data.auth.AuthRepository
+import com.ekhonavigator.core.data.repository.PresenceRepository
+import com.ekhonavigator.core.data.social.ChatRepository
+import com.ekhonavigator.core.data.social.FriendRequest
+import com.ekhonavigator.core.data.social.FriendUser
 import com.ekhonavigator.core.data.social.SocialRepository
 import com.ekhonavigator.core.data.social.SocialUser
+import com.ekhonavigator.core.model.OnlineStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import com.ekhonavigator.core.data.social.FriendRequest
-import com.ekhonavigator.core.data.social.FriendUser
-import com.ekhonavigator.core.data.repository.PresenceRepository
-import com.ekhonavigator.core.data.social.ChatRepository
-import com.ekhonavigator.core.model.OnlineStatus
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 data class SocialUiState(
+    val isSignedIn: Boolean = false,
     val searchQuery: String = "",
     val isLoading: Boolean = false,
     val users: List<SocialUser> = emptyList(),
@@ -59,11 +59,25 @@ class SocialViewModel @Inject constructor(
         viewModelScope.launch {
             authRepository.userFlow().collectLatest { uid ->
                 observationJob?.cancel()
-                if (uid != null) {
-                    observeSocialData(uid)
-                } else {
-                    _uiState.update { SocialUiState() }
+                observationJob = null
+
+                if (uid == null) {
+                    _uiState.value = SocialUiState(
+                        isSignedIn = false,
+                    )
+                    queryFlow.value = ""
+                    return@collectLatest
                 }
+
+                _uiState.update {
+                    it.copy(
+                        isSignedIn = true,
+                        isLoading = false,
+                        errorMessage = null,
+                    )
+                }
+
+                observeSocialData(uid)
             }
         }
 
@@ -73,6 +87,17 @@ class SocialViewModel @Inject constructor(
                 .distinctUntilChanged()
                 .collect { query ->
                     val trimmed = query.trim()
+
+                    if (!_uiState.value.isSignedIn) {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                users = emptyList(),
+                                errorMessage = null,
+                            )
+                        }
+                        return@collect
+                    }
 
                     if (trimmed.length < 2) {
                         _uiState.update {
@@ -90,13 +115,33 @@ class SocialViewModel @Inject constructor(
     }
 
     fun onSearchQueryChange(query: String) {
-        _uiState.update { it.copy(searchQuery = query) }
+        _uiState.update {
+            it.copy(searchQuery = query)
+        }
+
         queryFlow.value = query
     }
 
     fun loadSocialData() {
-        // Redundant with auth flow observation but kept for manual triggers if needed
-        val currentUserId = authRepository.getCurrentUserUid() ?: return
+        val currentUserId = authRepository.getCurrentUserUid()
+
+        if (currentUserId == null) {
+            observationJob?.cancel()
+            observationJob = null
+
+            _uiState.value = SocialUiState(
+                isSignedIn = false,
+            )
+            return
+        }
+
+        _uiState.update {
+            it.copy(
+                isSignedIn = true,
+                errorMessage = null,
+            )
+        }
+
         if (observationJob == null || observationJob?.isActive == false) {
             observeSocialData(currentUserId)
         }
@@ -104,6 +149,7 @@ class SocialViewModel @Inject constructor(
 
     private fun observeSocialData(userId: String) {
         observationJob?.cancel()
+
         observationJob = viewModelScope.launch {
             val incomingRequestsFlow = repository.observeIncomingRequests(userId)
             val friendsFlow = repository.observeFriends(userId)
@@ -112,25 +158,41 @@ class SocialViewModel @Inject constructor(
             combine(
                 incomingRequestsFlow,
                 friendsFlow,
-                conversationsFlow
+                conversationsFlow,
             ) { requests, friends, conversations ->
-                val conversationMap = conversations.associateBy { conv ->
-                    conv.participantIds.find { it != userId } ?: ""
+                val conversationMap = conversations.associateBy { conversation ->
+                    conversation.participantIds.find { participantId ->
+                        participantId != userId
+                    } ?: ""
                 }
-                
+
                 val friendsWithChat = friends.map { friend ->
-                    val conv = conversationMap[friend.uid]
-                    if (conv != null) {
-                        val isUnread = conv.lastSenderId != userId && (conv.unreadCount > 0 || !conv.readBy.contains(userId))
+                    val conversation = conversationMap[friend.uid]
+
+                    if (conversation != null) {
+                        val isUnread =
+                            conversation.lastSenderId != userId &&
+                                    (
+                                            conversation.unreadCount > 0 ||
+                                                    !conversation.readBy.contains(userId)
+                                            )
+
                         friend.copy(
-                            lastMessage = conv.lastMessage,
-                            lastMessageTimestamp = conv.lastTimestamp,
-                            lastMessageSenderId = conv.lastSenderId,
+                            lastMessage = conversation.lastMessage,
+                            lastMessageTimestamp = conversation.lastTimestamp,
+                            lastMessageSenderId = conversation.lastSenderId,
                             hasUnreadMessages = isUnread,
-                            unreadCount = if (isUnread) conv.unreadCount.coerceAtLeast(1) else 0
+                            unreadCount = if (isUnread) {
+                                conversation.unreadCount.coerceAtLeast(1)
+                            } else {
+                                0
+                            },
                         )
-                    } else friend
+                    } else {
+                        friend
+                    }
                 }
+
                 requests to friendsWithChat
             }.flatMapLatest { (requests, friends) ->
                 if (friends.isEmpty()) {
@@ -138,33 +200,42 @@ class SocialViewModel @Inject constructor(
                 } else {
                     val presenceFlows = friends.map { friend ->
                         presenceRepository.observePresence(friend.uid).map { presence ->
-                            val statusStr = presence.state.uppercase()
                             val onlineStatus = try {
-                                OnlineStatus.valueOf(statusStr)
+                                OnlineStatus.valueOf(presence.state.uppercase())
                             } catch (e: Exception) {
                                 OnlineStatus.ONLINE
                             }
+
                             friend.copy(
                                 online = presence.state != "offline",
                                 onlineStatus = onlineStatus,
-                                lastChanged = presence.lastChanged
+                                lastChanged = presence.lastChanged,
                             )
                         }
                     }
+
                     combine(presenceFlows) { updatedFriends ->
                         requests to updatedFriends.toList()
                     }
                 }
             }.catch { e ->
-                _uiState.update { it.copy(errorMessage = "Error observing social data: ${e.message}") }
-            }.collect { (requests, updatedFriends) ->
-                val outgoingRequestIds = repository.getOutgoingRequestIds(userId)
                 _uiState.update {
                     it.copy(
+                        isLoading = false,
+                        errorMessage = "Error observing social data: ${e.message}",
+                    )
+                }
+            }.collect { (requests, updatedFriends) ->
+                val outgoingRequestIds = repository.getOutgoingRequestIds(userId)
+
+                _uiState.update {
+                    it.copy(
+                        isSignedIn = true,
+                        isLoading = false,
                         incomingRequests = requests,
                         friends = updatedFriends,
                         outgoingRequestIds = outgoingRequestIds,
-                        errorMessage = null
+                        errorMessage = null,
                     )
                 }
             }
@@ -172,7 +243,14 @@ class SocialViewModel @Inject constructor(
     }
 
     fun sendFriendRequest(targetUserId: String) {
-        val currentUserId = authRepository.getCurrentUserUid() ?: return
+        val currentUserId = authRepository.getCurrentUserUid()
+
+        if (currentUserId == null) {
+            _uiState.value = SocialUiState(
+                isSignedIn = false,
+            )
+            return
+        }
 
         viewModelScope.launch {
             runCatching {
@@ -190,7 +268,14 @@ class SocialViewModel @Inject constructor(
     }
 
     fun acceptFriendRequest(fromUserId: String) {
-        val currentUserId = authRepository.getCurrentUserUid() ?: return
+        val currentUserId = authRepository.getCurrentUserUid()
+
+        if (currentUserId == null) {
+            _uiState.value = SocialUiState(
+                isSignedIn = false,
+            )
+            return
+        }
 
         viewModelScope.launch {
             runCatching {
@@ -208,7 +293,14 @@ class SocialViewModel @Inject constructor(
     }
 
     fun denyFriendRequest(fromUserId: String) {
-        val currentUserId = authRepository.getCurrentUserUid() ?: return
+        val currentUserId = authRepository.getCurrentUserUid()
+
+        if (currentUserId == null) {
+            _uiState.value = SocialUiState(
+                isSignedIn = false,
+            )
+            return
+        }
 
         viewModelScope.launch {
             runCatching {
@@ -226,7 +318,14 @@ class SocialViewModel @Inject constructor(
     }
 
     fun removeFriend(friendUserId: String) {
-        val currentUserId = authRepository.getCurrentUserUid() ?: return
+        val currentUserId = authRepository.getCurrentUserUid()
+
+        if (currentUserId == null) {
+            _uiState.value = SocialUiState(
+                isSignedIn = false,
+            )
+            return
+        }
 
         viewModelScope.launch {
             runCatching {
@@ -243,11 +342,20 @@ class SocialViewModel @Inject constructor(
         }
     }
 
-
     private fun searchUsers(query: String) {
+        val currentUserId = authRepository.getCurrentUserUid()
+
+        if (currentUserId == null) {
+            _uiState.value = SocialUiState(
+                isSignedIn = false,
+            )
+            return
+        }
+
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
+                    isSignedIn = true,
                     isLoading = true,
                     errorMessage = null,
                 )
@@ -256,11 +364,12 @@ class SocialViewModel @Inject constructor(
             runCatching {
                 repository.searchUsersByName(
                     query = query,
-                    currentUserId = authRepository.getCurrentUserUid(),
+                    currentUserId = currentUserId,
                 )
             }.onSuccess { users ->
                 _uiState.update {
                     it.copy(
+                        isSignedIn = true,
                         isLoading = false,
                         users = users,
                         errorMessage = null,

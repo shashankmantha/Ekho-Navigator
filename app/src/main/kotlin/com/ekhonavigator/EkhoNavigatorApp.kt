@@ -82,6 +82,8 @@ import com.ekhonavigator.navigation.TOP_LEVEL_NAV_ITEMS
 fun EkhoNavigatorApp(
     onSignIn: () -> Unit = {},
     onSignOut: () -> Unit = {},
+    notificationChatRequest: NotificationChatRequest? = null,
+    onNotificationChatRequestHandled: () -> Unit = {},
     socialActionViewModel: SocialActionViewModel = hiltViewModel(),
 ) {
     val hasUnreadMessages by socialActionViewModel.hasUnreadMessages.collectAsStateWithLifecycle()
@@ -91,37 +93,25 @@ fun EkhoNavigatorApp(
     )
     val navigator = Navigator(navigationState)
 
+    LaunchedEffect(notificationChatRequest) {
+        val request = notificationChatRequest ?: return@LaunchedEffect
+
+        navigator.navigate(
+            ChatNavKey(
+                friendUserId = request.friendUserId,
+                friendDisplayName = request.friendDisplayName,
+                friendAvatarId = request.friendAvatarId,
+            ),
+        )
+
+        onNotificationChatRequestHandled()
+    }
+
     val currentKey = navigationState.currentKey
     val topLevelDestination =
         TOP_LEVEL_NAV_ITEMS.entries.find { (key, _) -> key::class == currentKey::class }?.value
     val isTopLevelDestination = topLevelDestination != null
     val isDefaultTopLevel = TOP_LEVEL_NAV_ITEMS.containsKey(currentKey)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     val topAppBarState = rememberTopAppBarState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(topAppBarState)
