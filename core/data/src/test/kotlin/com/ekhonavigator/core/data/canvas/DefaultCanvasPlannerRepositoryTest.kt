@@ -102,7 +102,10 @@ class DefaultCanvasPlannerRepositoryTest {
         assertEquals("L08 Submit", saved.title)
         assertEquals(20.0, saved.pointsPossible!!, 0.0)
         assertEquals(Instant.parse("2026-04-01T18:59:00Z"), saved.dueAt)
-        assertEquals("/courses/33959/assignments/768813", saved.htmlUrl)
+        // The repo absolutizes Canvas's relative `html_url` against the user's
+        // institution domain so any later "Open in Canvas" launch is launchable
+        // (relative paths crash startActivity with ActivityNotFoundException).
+        assertEquals("https://csuci.instructure.com/courses/33959/assignments/768813", saved.htmlUrl)
         assertTrue(saved.submitted)
         assertTrue(saved.needsGrading)
     }

@@ -62,6 +62,7 @@ internal class FakeCanvasPlannerRepository : CanvasPlannerRepository {
     var clearAllCalls = 0
     override fun observeItems(start: Instant, end: Instant): Flow<List<PlannerItem>> = flowOf(emptyList())
     override fun observeAllItems(): Flow<List<PlannerItem>> = flowOf(emptyList())
+    override fun observeById(id: String): Flow<PlannerItem?> = flowOf<PlannerItem?>(null)
     override suspend fun sync(start: Instant, end: Instant): Result<Unit> {
         syncCalls += start to end
         return Result.success(Unit)

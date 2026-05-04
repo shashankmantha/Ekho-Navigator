@@ -202,6 +202,7 @@ private class FakeCanvasPlannerRepository : CanvasPlannerRepository {
     var clearAllCalls = 0
     override fun observeItems(start: Instant, end: Instant): kotlinx.coroutines.flow.Flow<List<PlannerItem>> = flowOf(emptyList())
     override fun observeAllItems(): kotlinx.coroutines.flow.Flow<List<PlannerItem>> = flowOf(emptyList())
+    override fun observeById(id: String): kotlinx.coroutines.flow.Flow<PlannerItem?> = flowOf<PlannerItem?>(null)
     override suspend fun sync(start: Instant, end: Instant): Result<Unit> {
         syncCalls += start to end
         return Result.success(Unit)
