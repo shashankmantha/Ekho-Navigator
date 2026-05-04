@@ -62,6 +62,7 @@ fun CalendarEvent.toCustomEventEntity(
     customLocationLatitude = customLocation?.latitude,
     customLocationLongitude = customLocation?.longitude,
     type = type,
+    courseLabel = courseLabel,
 )
 
 /** [source] defaults to SHARED but is overridden when an owner's second device receives their own event back through the listener. */
@@ -129,5 +130,6 @@ internal fun firestoreDataToEntity(
                 EventType.EVENT
             }
         } ?: EventType.EVENT,
+        courseLabel = data["courseLabel"] as? String,
     )
 }

@@ -286,6 +286,7 @@ class DefaultCustomEventRepository @Inject constructor(
             "placeId" to event.placeId,
             "customLocation" to event.customLocation?.toFirestoreMap(),
             "type" to event.type.name,
+            "courseLabel" to event.courseLabel,
         )
         firestore.collection("events").document(eventId).set(data).await()
     }
@@ -304,6 +305,7 @@ class DefaultCustomEventRepository @Inject constructor(
             "placeId" to event.placeId,
             "customLocation" to event.customLocation?.toFirestoreMap(),
             "type" to event.type.name,
+            "courseLabel" to event.courseLabel,
         )
         firestore.collection("events").document(eventId).update(data).await()
     }

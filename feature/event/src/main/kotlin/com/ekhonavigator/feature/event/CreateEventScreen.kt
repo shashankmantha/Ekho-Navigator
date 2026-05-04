@@ -69,6 +69,7 @@ fun CreateEventScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val locationSuggestions by viewModel.locationSuggestions.collectAsStateWithLifecycle()
+    val courseSuggestions by viewModel.courseSuggestions.collectAsStateWithLifecycle()
 
     LaunchedEffect(eventId) {
         if (eventId != null) viewModel.setEventId(eventId)
@@ -189,6 +190,12 @@ fun CreateEventScreen(
         CategoryDropdown(
             selected = uiState.category,
             onSelected = viewModel::setCategory,
+        )
+
+        CourseField(
+            value = uiState.courseLabel,
+            suggestions = courseSuggestions,
+            onValueChange = viewModel::setCourseLabel,
         )
 
         Spacer(Modifier.height(8.dp))
@@ -379,6 +386,66 @@ private fun CategoryDropdown(
                         expanded = false
                     },
                 )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CourseField(
+    value: String,
+    suggestions: List<String>,
+    onValueChange: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    // Filter suggestions by case-insensitive substring on the typed value, so
+    // "comp" matches "COMP-262", "COMP-360", etc. Hide menu when no matches
+    // (still accepts free-text — the OutlinedTextField is always editable).
+    val filteredSuggestions = remember(value, suggestions) {
+        if (value.isBlank()) suggestions
+        else suggestions.filter { it.contains(value, ignoreCase = true) }
+    }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded && filteredSuggestions.isNotEmpty(),
+        onExpandedChange = { expanded = it },
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {
+                onValueChange(it)
+                expanded = true
+            },
+            label = { Text("Course (optional)") },
+            placeholder = { Text("e.g. COMP-262") },
+            singleLine = true,
+            trailingIcon = if (suggestions.isNotEmpty()) {
+                { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) }
+            } else {
+                null
+            },
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
+                .fillMaxWidth(),
+        )
+
+        if (filteredSuggestions.isNotEmpty()) {
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+            ) {
+                filteredSuggestions.forEach { code ->
+                    DropdownMenuItem(
+                        text = { Text(code) },
+                        onClick = {
+                            onValueChange(code)
+                            expanded = false
+                        },
+                    )
+                }
             }
         }
     }

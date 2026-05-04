@@ -64,6 +64,24 @@ fun coursePalette(): List<Color> =
  * users mostly view one semester at a time and per-semester collision-freedom wins
  * over cross-semester color identity.
  */
+/**
+ * Normalizes raw user input into the canonical course-code shape that
+ * [CourseColorAssigner.familyKey] can extract from. Handles common copy/paste
+ * and casing variations so `comp 262` and `Comp262` both round-trip into
+ * `COMP-262`. Empty input returns null so callers can drop the field cleanly.
+ */
+fun normalizeCourseLabel(raw: String): String? {
+    val trimmed = raw.trim()
+    if (trimmed.isEmpty()) return null
+    // Uppercase first; then collapse internal whitespace; then ensure a hyphen
+    // sits between the leading letters and digits if missing.
+    val upper = trimmed.uppercase()
+    val noInnerSpaces = upper.replace(Regex("\\s+"), "")
+    return Regex("^([A-Z]+)(\\d+.*)\$").find(noInnerSpaces)?.let { match ->
+        "${match.groupValues[1]}-${match.groupValues[2]}"
+    } ?: noInnerSpaces
+}
+
 object CourseColorAssigner {
 
     private val FAMILY_KEY_REGEX = Regex("^([A-Z]+-?\\d+)")
@@ -76,20 +94,29 @@ object CourseColorAssigner {
     fun assign(courses: List<CourseColorInput>): Map<String, Int> {
         if (courses.isEmpty()) return emptyMap()
 
-        // Family keys, sorted; build the slot-position lookup once.
-        val familySlots: Map<String, Int> = courses
+        return courses.associate { course ->
+            course.id to familySlots(courses).getValue(familyKey(course.code))
+        }
+    }
+
+    /**
+     * Builds the `familyKey -> paletteIndex` map directly. Same sort-position
+     * logic as [assign], but exposes the family-key map so callers without a
+     * concrete course id (e.g. personal events tagged with a free-text course
+     * label) can resolve a color through a shared lookup.
+     */
+    fun familySlots(courses: List<CourseColorInput>): Map<String, Int> =
+        courses
             .map { familyKey(it.code) }
             .distinct()
             .sorted()
             .withIndex()
             .associate { (slot, family) -> family to slot }
 
-        return courses.associate { course ->
-            course.id to (familySlots.getValue(familyKey(course.code)))
-        }
-    }
-
-    private fun familyKey(code: String): String =
+    /** Extracts the family key (e.g. `COMP-262`) from a raw course code or
+     *  free-text label. Falls back to the full input string if no leading
+     *  letters+digits prefix is found. */
+    fun familyKey(code: String): String =
         FAMILY_KEY_REGEX.find(code)?.groupValues?.get(1) ?: code
 }
 

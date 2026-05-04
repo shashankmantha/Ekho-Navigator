@@ -3,12 +3,15 @@ package com.ekhonavigator.feature.event
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ekhonavigator.core.data.auth.AuthRepository
+import com.ekhonavigator.core.data.canvas.CanvasCourseRepository
 import com.ekhonavigator.core.data.place.PlaceRepository
 import com.ekhonavigator.core.data.repository.CalendarRepository
 import com.ekhonavigator.core.data.repository.CustomEventRepository
 import com.ekhonavigator.core.data.social.FriendUser
 import com.ekhonavigator.core.data.social.SocialRepository
 import com.ekhonavigator.core.designsystem.component.LocationSuggestion
+import com.ekhonavigator.core.designsystem.theme.CourseColorAssigner
+import com.ekhonavigator.core.designsystem.theme.normalizeCourseLabel
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSource
@@ -45,6 +48,10 @@ data class CreateEventUiState(
     val startTime: LocalTime? = null,
     val endTime: LocalTime? = null,
     val category: EventCategory = EventCategory.GENERAL,
+    /** Free-text course tag (e.g. "COMP-262"). Stays raw in state so the user
+     *  sees exactly what they typed; normalized via [normalizeCourseLabel] at
+     *  save time. Empty = no course tag. */
+    val courseLabel: String = "",
     val friends: List<FriendUser> = emptyList(),
     val selectedFriendUids: Set<String> = emptySet(),
     /** Non-null when editing — drives Save vs Create label, branches the save() path,
@@ -85,6 +92,7 @@ class CreateEventViewModel @Inject constructor(
     private val customEventRepository: CustomEventRepository,
     private val socialRepository: SocialRepository,
     private val placeRepository: PlaceRepository,
+    canvasCourseRepository: CanvasCourseRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CreateEventUiState())
@@ -95,6 +103,23 @@ class CreateEventViewModel @Inject constructor(
     val locationSuggestions: StateFlow<List<LocationSuggestion>> = placeRepository
         .observePlaces()
         .map { places -> places.map { it.toSuggestion() } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Course-code suggestions for the Course autocomplete field — extracted to
+     *  the family-key form (e.g. "COMP-262") so the dropdown shows clean codes
+     *  rather than Canvas's verbose `course.code` (which often equals the full
+     *  course name). Family-key extraction also collapses lab+lecture sections
+     *  (`COMP-262 Sec 001` and `COMP-262 Sec 01L`) into a single suggestion —
+     *  they share a course, and a personal event tagged "COMP-262" should match
+     *  both via the same family-key palette mapping anyway.
+     *  Empty when Canvas isn't connected — field falls back to free-text only. */
+    val courseSuggestions: StateFlow<List<String>> = canvasCourseRepository
+        .observeCourses()
+        .map { courses ->
+            courses.map { CourseColorAssigner.familyKey(it.code) }
+                .distinct()
+                .sorted()
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {
@@ -124,6 +149,7 @@ class CreateEventViewModel @Inject constructor(
                     startTime = zoned.toLocalTime(),
                     endTime = zonedEnd.toLocalTime(),
                     category = event.categories.firstOrNull() ?: EventCategory.GENERAL,
+                    courseLabel = event.courseLabel.orEmpty(),
                     selectedFriendUids = attendeeMap.keys,
                     existingAttendees = attendeeMap,
                 )
@@ -149,6 +175,7 @@ class CreateEventViewModel @Inject constructor(
     fun setStartTime(value: LocalTime) = _uiState.update { it.copy(startTime = value) }
     fun setEndTime(value: LocalTime) = _uiState.update { it.copy(endTime = value) }
     fun setCategory(value: EventCategory) = _uiState.update { it.copy(category = value) }
+    fun setCourseLabel(value: String) = _uiState.update { it.copy(courseLabel = value) }
 
     /** Free-text edit clears any previously-chosen suggestion id — typing past a selected
      *  place implies the user is no longer pinning it to that exact location. */
@@ -317,6 +344,9 @@ class CreateEventViewModel @Inject constructor(
             ownerDisplayName = authRepository.getCurrentUserDisplayName().orEmpty(),
             placeId = resolvedPlaceId,
             customLocation = customLocation,
+            // Normalize at the boundary so storage stays canonical (`comp 262` →
+            // `COMP-262`) and the family-key extractor matches consistently.
+            courseLabel = normalizeCourseLabel(state.courseLabel),
         )
     }
 }

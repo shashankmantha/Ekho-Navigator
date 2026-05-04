@@ -63,6 +63,7 @@ import com.ekhonavigator.core.designsystem.component.FriendPickerSheet
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventAttendee
+import com.ekhonavigator.core.designsystem.theme.LocalAssignmentDecorator
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSource
 import com.ekhonavigator.core.model.RsvpStatus
@@ -475,6 +476,11 @@ private fun EventDetailContent(
             MetaChipsRow(label = "TAGGED", categories = event.categories)
         }
 
+        val courseLabel = event.courseLabel
+        if (!courseLabel.isNullOrBlank()) {
+            CourseChipRow(label = courseLabel)
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
     }
 
@@ -762,6 +768,47 @@ private fun MetaChipsRow(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun CourseChipRow(label: String) {
+    // Color resolved through the same family-key map the calendar pills + My
+    // Courses tiles use; falls back to onSurfaceVariant when the user typed a
+    // course not in the cached Canvas list (signed out / not connected).
+    val decorator = LocalAssignmentDecorator.current
+    val courseColor = decorator.courseColorForLabel(label)
+        ?: MaterialTheme.colorScheme.onSurfaceVariant
+    Row(
+        modifier = Modifier.padding(vertical = 5.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        MetaLabel("COURSE", Modifier.width(MetaLabelWidth).padding(top = 6.dp))
+        AssistChip(
+            onClick = { /* clickable course-detail nav lands in Phase 7.A2 */ },
+            label = {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            },
+            leadingIcon = {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .background(courseColor),
+                )
+            },
+            colors = AssistChipDefaults.assistChipColors(
+                containerColor = courseColor.copy(alpha = 0.12f),
+                labelColor = courseColor,
+            ),
+            border = AssistChipDefaults.assistChipBorder(
+                enabled = true,
+                borderColor = courseColor.copy(alpha = 0.3f),
+            ),
+        )
     }
 }
 

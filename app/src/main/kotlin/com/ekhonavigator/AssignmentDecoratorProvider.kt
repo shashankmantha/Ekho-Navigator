@@ -55,9 +55,9 @@ class AssignmentDecoratorViewModel @Inject constructor(
             return@combine AssignmentDecorator.Empty
         }
 
-        val courseSlots = CourseColorAssigner.assign(
-            courses.map { CourseColorInput(id = it.id, code = it.code) },
-        )
+        val courseInputs = courses.map { CourseColorInput(id = it.id, code = it.code) }
+        val courseSlots = CourseColorAssigner.assign(courseInputs)
+        val familyKeyToSlot = CourseColorAssigner.familySlots(courseInputs)
 
         val itemsWithCourse = plannerItems.mapNotNull { item ->
             val courseId = item.courseId ?: return@mapNotNull null
@@ -82,6 +82,7 @@ class AssignmentDecoratorViewModel @Inject constructor(
             courseColorSlotByEventId = courseColorSlotByEventId,
             completedEventIds = completedEventIds,
             courseIdByEventId = courseIdByEventId,
+            familyKeyToSlot = familyKeyToSlot,
         )
     }.stateIn(
         scope = viewModelScope,

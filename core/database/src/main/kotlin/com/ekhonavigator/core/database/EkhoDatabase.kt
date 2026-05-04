@@ -24,7 +24,7 @@ import com.ekhonavigator.core.database.model.EventAttendeeEntity
         CanvasCourseEntity::class,
         CanvasPlannerItemEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = false,
 )
 @TypeConverters(

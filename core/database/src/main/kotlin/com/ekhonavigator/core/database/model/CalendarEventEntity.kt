@@ -41,6 +41,12 @@ data class CalendarEventEntity(
     val customLocationLatitude: Double? = null,
     val customLocationLongitude: Double? = null,
     val type: EventType = EventType.EVENT,
+    /** User-supplied or autocompleted course code (e.g. "COMP-262"). The
+     *  family-key extracted from this string drives the per-course palette
+     *  color across calendar pills, mini-month dots, and event detail chips —
+     *  same family-key the Canvas course list uses, so personal events tagged
+     *  to a course visually match that course's identity. Null = no tag. */
+    val courseLabel: String? = null,
 )
 
 fun CalendarEventEntity.isPast(now: Instant = Instant.now()): Boolean = endTime <= now
@@ -77,4 +83,5 @@ fun CalendarEventEntity.toDomainModel(
         if (lat != null && lng != null) SharedLocation(title, lat, lng) else null
     },
     type = type,
+    courseLabel = courseLabel,
 )

@@ -58,6 +58,7 @@ fun testCalendarEvent(
     dueAt: Instant? = null,
     customLocation: SharedLocation? = null,
     type: EventType = EventType.EVENT,
+    courseLabel: String? = null,
 ): CalendarEvent = CalendarEvent(
     id = id,
     title = title,
@@ -84,4 +85,5 @@ fun testCalendarEvent(
     dueAt = dueAt,
     customLocation = customLocation,
     type = type,
+    courseLabel = courseLabel,
 )

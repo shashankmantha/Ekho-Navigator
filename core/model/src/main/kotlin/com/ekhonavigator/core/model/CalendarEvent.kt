@@ -31,6 +31,12 @@ data class CalendarEvent(
      *  the location without owning the source marker — they can save it as their own. */
     val customLocation: SharedLocation? = null,
     val type: EventType = EventType.EVENT,
+    /** Course code tag (e.g. "COMP-262"). Personal events created by the user
+     *  can be tied to a course; family-key extraction (`CourseColorAssigner.familyKey()`)
+     *  drives the visual color, so a personal event tagged "COMP-262" matches
+     *  the Canvas COMP-262 course's palette slot — no Canvas link required.
+     *  Null = no course tag. */
+    val courseLabel: String? = null,
 ) {
     val primaryCategory: EventCategory
         get() = categories.firstOrNull() ?: EventCategory.GENERAL
