@@ -34,10 +34,16 @@ internal class FakeCanvasInstitutionStore : CanvasInstitutionStore {
 
 internal class FakeCanvasTokenStore : CanvasTokenStore {
     private val tokens = mutableMapOf<CanvasAccount, String>()
+    private val mutations = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(
+        replay = 1,
+        extraBufferCapacity = 1,
+        onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST,
+    ).apply { tryEmit(Unit) }
     override fun get(account: CanvasAccount): String? = tokens[account]
-    override fun put(account: CanvasAccount, token: String) { tokens[account] = token }
-    override fun delete(account: CanvasAccount) { tokens.remove(account) }
-    override fun deleteAll() { tokens.clear() }
+    override fun put(account: CanvasAccount, token: String) { tokens[account] = token; mutations.tryEmit(Unit) }
+    override fun delete(account: CanvasAccount) { tokens.remove(account); mutations.tryEmit(Unit) }
+    override fun deleteAll() { tokens.clear(); mutations.tryEmit(Unit) }
+    override fun changes(): kotlinx.coroutines.flow.Flow<Unit> = mutations
 }
 
 internal class FakeCanvasCourseRepository : CanvasCourseRepository {

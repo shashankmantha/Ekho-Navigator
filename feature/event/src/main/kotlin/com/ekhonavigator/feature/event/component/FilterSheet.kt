@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import com.ekhonavigator.core.designsystem.component.CollapsibleMultiSelectSection
 import com.ekhonavigator.core.designsystem.component.EkhoMonogramBadge
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import com.ekhonavigator.core.designsystem.theme.LocalCanvasConnected
 import com.ekhonavigator.core.designsystem.theme.coursePalette
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSourceType
@@ -71,6 +72,14 @@ fun FilterSheetContent(
     onClearCourses: () -> Unit = {},
 ) {
     val colors = MaterialTheme.colorScheme
+    val canvasConnected = LocalCanvasConnected.current
+    // Hide the CANVAS source chip when no Canvas connection — without a PAT
+    // there are no Canvas events anyway, so the chip would just toggle "show
+    // events that don't exist". Re-appears automatically the moment a PAT is
+    // saved (CanvasTokenStore.changes() drives the holder).
+    val visibleSourceTypes = EventSourceType.entries.filter { type ->
+        type != EventSourceType.CANVAS || canvasConnected
+    }
 
     Column(
         modifier = modifier
@@ -89,7 +98,7 @@ fun FilterSheetContent(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            EventSourceType.entries.forEach { type ->
+            visibleSourceTypes.forEach { type ->
                     val isActive = type in activeSourceTypes
                     val (accentColor, _) = sourceTypeThemeColors(type, colors)
 
