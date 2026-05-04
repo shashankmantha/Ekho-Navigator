@@ -545,7 +545,10 @@ fun EkhoNavigatorApp(
 
                         is CourseDetailNavKey -> {
                             NavEntry(key) {
-                                CourseDetailScreen(courseId = key.courseId)
+                                CourseDetailScreen(
+                                    courseId = key.courseId,
+                                    onEventClick = navigator::navigateToEvent,
+                                )
                             }
                         }
 

@@ -25,6 +25,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,7 +43,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.ekhonavigator.core.canvas.model.CanvasCourse
+import com.ekhonavigator.core.canvas.model.PlannerItem
+import com.ekhonavigator.core.canvas.model.PlannerSubmissionStatus
 import com.ekhonavigator.core.data.canvas.CanvasCourseRepository
+import com.ekhonavigator.core.data.canvas.CanvasPlannerRepository
+import com.ekhonavigator.core.designsystem.component.EkhoEventRow
+import com.ekhonavigator.core.designsystem.component.EkhoEventRowState
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.designsystem.theme.CourseColorAssigner
 import com.ekhonavigator.core.designsystem.theme.CourseColorInput
@@ -62,6 +70,7 @@ import javax.inject.Inject
 @Composable
 fun CourseDetailScreen(
     courseId: String,
+    onEventClick: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: CourseDetailViewModel = hiltViewModel(),
 ) {
@@ -80,8 +89,9 @@ fun CourseDetailScreen(
             val palette = coursePalette()
             val courseColor = palette[state.paletteSlot % palette.size]
             LoadedContent(
-                course = state.course,
+                state = state,
                 courseColor = courseColor,
+                onEventClick = onEventClick,
                 modifier = modifier,
             )
         }
@@ -114,17 +124,19 @@ private fun NotFoundState(modifier: Modifier = Modifier) {
 
 @Composable
 private fun LoadedContent(
-    course: CanvasCourse,
+    state: CourseDetailUiState.Loaded,
     courseColor: Color,
+    onEventClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val course = state.course
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         HeroSection(course = course, courseColor = courseColor)
 
@@ -133,15 +145,144 @@ private fun LoadedContent(
             OpenInCanvasButton(url = courseHtmlUrl)
         }
 
-        // A2.2/A2.3/A2.4 sections land here: What-if calculator, Upcoming,
-        // Recent submissions, Past assignments + grades, Announcements.
+        WhatIfSection(state = state.whatIf)
+
+        if (state.upcoming.isNotEmpty()) {
+            PlannerItemSection(
+                title = "Upcoming",
+                items = state.upcoming,
+                onItemClick = onEventClick,
+            )
+        }
+
+        if (state.recentSubmissions.isNotEmpty()) {
+            PlannerItemSection(
+                title = "Recent submissions",
+                items = state.recentSubmissions,
+                onItemClick = onEventClick,
+            )
+        }
+
+        // A2.3/A2.4: Past assignments + grades + Announcements land below.
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "More course detail coming soon — what-if calculator, upcoming work, past grades, announcements.",
+            text = "Past assignments + announcements coming next.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
         )
     }
+}
+
+@Composable
+private fun PlannerItemSection(
+    title: String,
+    items: List<PlannerItem>,
+    onItemClick: (eventId: String) -> Unit,
+) {
+    val zone = remember { java.time.ZoneId.systemDefault() }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        SectionHeader(title)
+        items.forEach { item ->
+            // Reuse EkhoEventRow so the row gets the same family-key palette,
+            // strikethrough wiring (LocalAssignmentDecorator), and pending-invite
+            // border behavior every other row in the app uses. The `eventId`
+            // matches the bridged calendar_events.uid so the decorator's
+            // courseColorFor() / isCompleted() lookups resolve.
+            val instant = item.dueAt ?: item.plannableDate
+            EkhoEventRow(
+                title = item.title,
+                startTime = instant,
+                endTime = instant,
+                zone = zone,
+                location = "",
+                monograms = emptyList(),
+                state = EkhoEventRowState.ASSIGNMENT,
+                onClick = { onItemClick(item.id) },
+                onBookmarkClick = { /* assignments aren't bookmarkable */ },
+                eventId = item.id,
+            )
+        }
+    }
+}
+
+@Composable
+private fun WhatIfSection(state: WhatIfState) {
+    if (state == WhatIfState.Unavailable) {
+        // No grade or no points to project from — skip the section entirely
+        // rather than render an empty stub. Most common cause: instructor
+        // hasn't released grades yet, so currentScore on the course is null.
+        return
+    }
+    val loaded = state as WhatIfState.Available
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SectionHeader("What-if calculator")
+        Text(
+            text = "Slide to assume an average score on the ${formatPoints(loaded.remainingPoints)} pts " +
+                "you have remaining — projected final updates live.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            text = "Estimated from your current ${"%.1f".format(loaded.currentPercent)}% — " +
+                "Canvas weighting can shift the actual result.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        // Slider lives in the screen so we can keep WhatIfState pure-data;
+        // the slider's onValueChange computes the projection on the fly.
+        WhatIfSlider(state = loaded)
+    }
+}
+
+@Composable
+private fun WhatIfSlider(state: WhatIfState.Available) {
+    var sliderValue by remember(state.assumedRemainingPercent) {
+        mutableFloatStateOf(state.assumedRemainingPercent)
+    }
+    androidx.compose.material3.Slider(
+        value = sliderValue,
+        onValueChange = { sliderValue = it },
+        valueRange = 0f..100f,
+        steps = 19,  // 5-pt increments — fine enough for projection, coarse enough to feel intentional
+    )
+    val projection = projectFinal(
+        earnedPoints = state.earnedPoints,
+        gradedPoints = state.gradedPoints,
+        remainingPoints = state.remainingPoints,
+        assumedRemainingPercent = sliderValue,
+    )
+    Text(
+        text = "Projected final: ${"%.1f".format(projection)}%",
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.primary,
+    )
+}
+
+@Composable
+private fun SectionHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.padding(bottom = 4.dp),
+    )
+}
+
+private fun formatPoints(points: Double): String =
+    if (points % 1.0 == 0.0) points.toInt().toString() else "%.1f".format(points)
+
+private fun projectFinal(
+    earnedPoints: Double,
+    gradedPoints: Double,
+    remainingPoints: Double,
+    assumedRemainingPercent: Float,
+): Double {
+    val totalPoints = gradedPoints + remainingPoints
+    if (totalPoints == 0.0) return 0.0
+    val projectedRemaining = remainingPoints * (assumedRemainingPercent / 100.0)
+    return ((earnedPoints + projectedRemaining) / totalPoints) * 100.0
 }
 
 @Composable
@@ -250,6 +391,7 @@ private fun OpenInCanvasButton(url: String) {
 class CourseDetailViewModel @Inject constructor(
     @Suppress("unused") savedStateHandle: SavedStateHandle,
     private val courseRepository: CanvasCourseRepository,
+    private val plannerRepository: CanvasPlannerRepository,
 ) : ViewModel() {
 
     private val _courseId = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
@@ -261,7 +403,8 @@ class CourseDetailViewModel @Inject constructor(
     val uiState: StateFlow<CourseDetailUiState> = combine(
         _courseId,
         courseRepository.observeCourses(),
-    ) { id, courses ->
+        plannerRepository.observeAllItems(),
+    ) { id, courses, planners ->
         if (id == null) return@combine CourseDetailUiState.Loading
         val course = courses.firstOrNull { it.id == id }
             ?: return@combine CourseDetailUiState.NotFound
@@ -272,11 +415,78 @@ class CourseDetailViewModel @Inject constructor(
         val slots = CourseColorAssigner.assign(
             courses.map { CourseColorInput(id = it.id, code = it.code) },
         )
-        CourseDetailUiState.Loaded(course = course, paletteSlot = slots[id] ?: 0)
+        val courseItems = planners.filter { it.courseId == id }
+        CourseDetailUiState.Loaded(
+            course = course,
+            paletteSlot = slots[id] ?: 0,
+            upcoming = pickUpcoming(courseItems),
+            recentSubmissions = pickRecentSubmissions(courseItems),
+            whatIf = computeWhatIf(course = course, items = courseItems),
+        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = CourseDetailUiState.Loading,
+    )
+}
+
+/** Future, not-yet-engaged work for this course. Top 5 by ascending due date —
+ *  if the user has more than that we trust they'll go to the calendar for the
+ *  full picture; the per-class screen optimizes for "what's next" at a glance. */
+private fun pickUpcoming(items: List<PlannerItem>, now: java.time.Instant = java.time.Instant.now()): List<PlannerItem> =
+    items
+        .asSequence()
+        .filter {
+            val anchor = it.dueAt ?: it.plannableDate
+            anchor.isAfter(now) && !it.submission.engaged
+        }
+        .sortedBy { it.dueAt ?: it.plannableDate }
+        .take(5)
+        .toList()
+
+/** Anything submitted, graded, or excused — sorted most-recent first. Same
+ *  top-5 cap as upcoming; the future "Past assignments + grades" section in
+ *  A2.3 will surface the full graded history with per-item scores. */
+private fun pickRecentSubmissions(items: List<PlannerItem>): List<PlannerItem> =
+    items
+        .filter { it.submission.engaged }
+        .sortedByDescending { it.dueAt ?: it.plannableDate }
+        .take(5)
+
+/** True when the user has acted on (or been excused from) the assignment —
+ *  the submission row should land in "Recent submissions", not "Upcoming". */
+private val PlannerSubmissionStatus.engaged: Boolean
+    get() = submitted || graded || excused
+
+/**
+ * Builds the what-if calculator's underlying numbers from cached planner items.
+ *
+ * Uses an approximation because the planner endpoint we read from doesn't
+ * carry per-item submission scores — only boolean status flags. So we back-derive
+ * earned points from `course.currentScore` × points-of-graded-items. A2.3's
+ * assignments endpoint will bring real per-item scores; revisit then.
+ *
+ * Returns Unavailable when there's no current grade (instructor hasn't released
+ * any) OR no points possible so far (zero graded items) OR no remaining points
+ * (term is over) — projection has no signal in any of those cases.
+ */
+private fun computeWhatIf(course: CanvasCourse, items: List<PlannerItem>): WhatIfState {
+    val currentPercent = course.currentScore ?: return WhatIfState.Unavailable
+    val gradedPoints = items
+        .filter { it.submission.graded || it.submission.excused }
+        .sumOf { it.pointsPossible ?: 0.0 }
+    val remainingPoints = items
+        .filter { !it.submission.graded && !it.submission.excused }
+        .sumOf { it.pointsPossible ?: 0.0 }
+    if (gradedPoints == 0.0 || remainingPoints == 0.0) return WhatIfState.Unavailable
+
+    val earnedPoints = (currentPercent / 100.0) * gradedPoints
+    return WhatIfState.Available(
+        currentPercent = currentPercent,
+        earnedPoints = earnedPoints,
+        gradedPoints = gradedPoints,
+        remainingPoints = remainingPoints,
+        assumedRemainingPercent = currentPercent.toFloat(),
     )
 }
 
@@ -286,5 +496,20 @@ sealed interface CourseDetailUiState {
     data class Loaded(
         val course: CanvasCourse,
         val paletteSlot: Int,
+        val upcoming: List<PlannerItem>,
+        val recentSubmissions: List<PlannerItem>,
+        val whatIf: WhatIfState,
     ) : CourseDetailUiState
+}
+
+sealed interface WhatIfState {
+    data object Unavailable : WhatIfState
+    data class Available(
+        val currentPercent: Double,
+        val earnedPoints: Double,
+        val gradedPoints: Double,
+        val remainingPoints: Double,
+        /** Slider seed — defaults to "user maintains current grade." */
+        val assumedRemainingPercent: Float,
+    ) : WhatIfState
 }
