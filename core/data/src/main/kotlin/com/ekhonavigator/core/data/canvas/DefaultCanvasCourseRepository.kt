@@ -1,5 +1,6 @@
 package com.ekhonavigator.core.data.canvas
 
+import com.ekhonavigator.core.canvas.auth.CanvasAccountSource
 import com.ekhonavigator.core.canvas.model.CanvasCourse
 import com.ekhonavigator.core.canvas.model.TermNameParser
 import com.ekhonavigator.core.canvas.network.CanvasApiProvider
@@ -15,6 +16,7 @@ import javax.inject.Singleton
 @Singleton
 internal class DefaultCanvasCourseRepository @Inject constructor(
     private val apiProvider: CanvasApiProvider,
+    private val accountSource: CanvasAccountSource,
     private val courseDao: CanvasCourseDao,
 ) : CanvasCourseRepository {
 
@@ -53,7 +55,19 @@ internal class DefaultCanvasCourseRepository @Inject constructor(
     override suspend fun sync(): Result<Unit> = runCatching {
         val api = apiProvider.current() ?: throw NoCanvasAccountException
         val dtos = api.getCourses()
-        val entities = dtos.map { it.toEntity() }
+        // Same absolutize-on-persist treatment as planner items: Canvas returns
+        // `html_url` as a relative path that crashes startActivity if launched
+        // as-is. Falls back to the relative URL when no account (defensive —
+        // the api call above already required one to succeed).
+        val domain = accountSource.currentOrNull()?.domain
+        val entities = dtos.map { dto ->
+            dto.toEntity().let { entity ->
+                val raw = entity.htmlUrl
+                if (domain != null && !raw.isNullOrBlank()) {
+                    entity.copy(htmlUrl = absolutizeCanvasUrl(raw, domain))
+                } else entity
+            }
+        }
         courseDao.upsertAll(entities)
         courseDao.deleteOthers(entities.map { it.id })
     }

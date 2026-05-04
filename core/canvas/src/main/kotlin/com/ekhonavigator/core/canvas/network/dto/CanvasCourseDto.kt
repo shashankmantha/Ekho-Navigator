@@ -10,6 +10,7 @@ data class CanvasCourseDto(
     @SerialName("course_code") val courseCode: String,
     @SerialName("is_favorite") val isFavorite: Boolean = false,
     @SerialName("image_download_url") val imageDownloadUrl: String? = null,
+    @SerialName("html_url") val htmlUrl: String? = null,
     val term: CanvasTermDto? = null,
     val enrollments: List<CanvasEnrollmentDto> = emptyList(),
 )

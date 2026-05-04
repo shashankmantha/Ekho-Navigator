@@ -16,8 +16,17 @@ class DefaultCanvasCourseRepositoryTest {
 
     private val api = FakeCanvasApi()
     private val provider = FakeCanvasApiProvider(api = api)
+    private val accountSource = StubAccountSource(
+        com.ekhonavigator.core.canvas.auth.CanvasAccount("uid-1", "csuci.instructure.com"),
+    )
     private val dao = FakeCanvasCourseDao()
-    private val repo = DefaultCanvasCourseRepository(provider, dao)
+    private val repo = DefaultCanvasCourseRepository(provider, accountSource, dao)
+
+    private class StubAccountSource(
+        var account: com.ekhonavigator.core.canvas.auth.CanvasAccount?,
+    ) : com.ekhonavigator.core.canvas.auth.CanvasAccountSource {
+        override fun currentOrNull(): com.ekhonavigator.core.canvas.auth.CanvasAccount? = account
+    }
 
     @Test
     fun `sync without a Canvas account fails with NoCanvasAccountException and leaves dao untouched`() = runTest {

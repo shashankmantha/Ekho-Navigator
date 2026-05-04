@@ -18,4 +18,9 @@ data class CanvasCourseEntity(
     val currentGrade: String?,
     val isFavorite: Boolean,
     val lastSyncedAt: Instant,
+    /** Absolute Canvas web URL for the course landing page (e.g.
+     *  `https://csuci.instructure.com/courses/12345`). Absolutized at sync
+     *  time via `absolutizeCanvasUrl` so any "Open in Canvas" launch is
+     *  startActivity-launchable. Null when Canvas didn't supply one. */
+    val htmlUrl: String? = null,
 )

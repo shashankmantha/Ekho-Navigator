@@ -20,6 +20,9 @@ internal fun CanvasCourseDto.toEntity(now: Instant = Instant.now()): CanvasCours
         currentGrade = student?.currentGrade,
         isFavorite = isFavorite,
         lastSyncedAt = now,
+        // htmlUrl absolutized in DefaultCanvasCourseRepository.sync() against
+        // the institution domain (Canvas returns it as a relative path).
+        htmlUrl = htmlUrl,
     )
 }
 
@@ -33,4 +36,5 @@ internal fun CanvasCourseEntity.toDomainModel(): CanvasCourse = CanvasCourse(
     currentScore = currentScore,
     currentGrade = currentGrade,
     isFavorite = isFavorite,
+    htmlUrl = htmlUrl,
 )

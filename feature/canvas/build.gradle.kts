@@ -44,6 +44,8 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
+    // Custom Tabs for "Open in Canvas" deep links on the per-class detail screen.
+    implementation(libs.androidx.browser)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

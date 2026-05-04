@@ -13,4 +13,7 @@ data class CanvasCourse(
     val currentScore: Double?,
     val currentGrade: String?,
     val isFavorite: Boolean,
+    /** Absolute Canvas web URL for the course landing page. Used by the
+     *  "Open in Canvas" deep link on the per-class detail screen. */
+    val htmlUrl: String? = null,
 )

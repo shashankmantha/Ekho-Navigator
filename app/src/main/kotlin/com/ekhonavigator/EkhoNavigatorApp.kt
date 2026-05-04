@@ -43,10 +43,13 @@ import com.ekhonavigator.feature.account.AccountScreen
 import com.ekhonavigator.feature.account.navigation.AccountNavKey
 import com.ekhonavigator.feature.account.navigation.navigateToAccount
 import com.ekhonavigator.feature.canvas.settings.ConnectCanvasScreen
+import com.ekhonavigator.feature.canvas.courses.CourseDetailScreen
 import com.ekhonavigator.feature.canvas.courses.MyCoursesScreen
 import com.ekhonavigator.feature.canvas.navigation.ConnectCanvasNavKey
+import com.ekhonavigator.feature.canvas.navigation.CourseDetailNavKey
 import com.ekhonavigator.feature.canvas.navigation.MyCoursesNavKey
 import com.ekhonavigator.feature.canvas.navigation.navigateToConnectCanvas
+import com.ekhonavigator.feature.canvas.navigation.navigateToCourseDetail
 import com.ekhonavigator.feature.canvas.navigation.navigateToMyCourses
 import com.ekhonavigator.feature.calendar.CalendarScreen
 import com.ekhonavigator.feature.calendar.DayScreen
@@ -302,11 +305,8 @@ fun EkhoNavigatorApp(
                                             ),
                                         )
                                     },
-                                    // Per-class detail screen lands in Phase 7.A2; until then,
-                                    // tap routes to the existing My Courses list view so the
-                                    // grid card click is at least useful (shows that course in
-                                    // a fuller-context list rather than nothing).
-                                    onCourseClick = { _ -> navigator.navigateToMyCourses() },
+                                    // Phase 7.A2 per-class detail screen.
+                                    onCourseClick = { courseId -> navigator.navigateToCourseDetail(courseId) },
                                     focusPlaceId = key.focusPlaceId,
                                     initialTab = key.initialTab,
                                 )
@@ -540,6 +540,12 @@ fun EkhoNavigatorApp(
                                 MyCoursesScreen(
                                     onConnectClick = navigator::navigateToConnectCanvas,
                                 )
+                            }
+                        }
+
+                        is CourseDetailNavKey -> {
+                            NavEntry(key) {
+                                CourseDetailScreen(courseId = key.courseId)
                             }
                         }
 
