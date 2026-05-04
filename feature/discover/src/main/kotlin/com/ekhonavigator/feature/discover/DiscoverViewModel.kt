@@ -13,10 +13,12 @@ import com.ekhonavigator.core.model.Place
 import com.ekhonavigator.core.model.matchesCategories
 import com.ekhonavigator.core.model.matchesSourceTypes
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -32,22 +34,16 @@ class DiscoverViewModel @Inject constructor(
     private val placeRepository: PlaceRepository,
 ) : ViewModel() {
 
-    val isSignedIn: Boolean
-        get() = authRepository.getCurrentUserUid() != null
+    private var customEventSyncJob: Job? = null
 
-    init {
-        if (isSignedIn) {
-            customEventRepository.startSync(viewModelScope)
-        }
-    }
+    private val _isSignedIn = MutableStateFlow(authRepository.getCurrentUserUid() != null)
+    val isSignedIn: StateFlow<Boolean> = _isSignedIn.asStateFlow()
 
-    // SCHEDULE excluded until class schedule import is implemented
     private val _activeSourceTypes = MutableStateFlow(
         EventSourceType.entries.toSet() - EventSourceType.SCHEDULE,
     )
     val activeSourceTypes: StateFlow<Set<EventSourceType>> = _activeSourceTypes.asStateFlow()
 
-    /** Multi-select category filter: empty = show all categories. */
     private val _selectedCategories = MutableStateFlow<Set<EventCategory>>(emptySet())
     val selectedCategories: StateFlow<Set<EventCategory>> = _selectedCategories.asStateFlow()
 
@@ -56,15 +52,45 @@ class DiscoverViewModel @Inject constructor(
 
     private val _focusedPlaceId = MutableStateFlow<String?>(null)
 
+    init {
+        viewModelScope.launch {
+            authRepository.userFlow().collect { userId ->
+                val signedIn = userId != null
+                _isSignedIn.value = signedIn
+
+                if (signedIn) {
+                    startCustomEventSync()
+                } else {
+                    stopCustomEventSync()
+                    clearUserState()
+                }
+            }
+        }
+    }
+
     val focusedPlace: StateFlow<Place?> = combine(
         _focusedPlaceId,
-        placeRepository.observePlaces(),
+        placeRepository.observePlaces()
+            .catch {
+                emit(emptyList())
+            },
     ) { id, places ->
-        id?.let { targetId -> places.firstOrNull { it.id == targetId } }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+        id?.let { targetId ->
+            places.firstOrNull { place ->
+                place.id == targetId
+            }
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = null,
+    )
 
     val discoverEvents: StateFlow<List<CalendarEvent>> = combine(
-        repository.observeEvents(),
+        repository.observeEvents()
+            .catch {
+                emit(emptyList())
+            },
         _searchQuery,
         _activeSourceTypes,
         _selectedCategories,
@@ -84,10 +110,17 @@ class DiscoverViewModel @Inject constructor(
 
             val matchesPlace = focusedPid == null || event.placeId == focusedPid
 
-            notPast && event.matchesSourceTypes(activeTypes) &&
-                    event.matchesCategories(categories) && matchesQuery && matchesPlace
+            notPast &&
+                    event.matchesSourceTypes(activeTypes) &&
+                    event.matchesCategories(categories) &&
+                    matchesQuery &&
+                    matchesPlace
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList(),
+    )
 
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
@@ -99,6 +132,7 @@ class DiscoverViewModel @Inject constructor(
 
     fun toggleCategory(category: EventCategory) {
         val current = _selectedCategories.value
+
         _selectedCategories.value = if (category in current) {
             current - category
         } else {
@@ -112,7 +146,7 @@ class DiscoverViewModel @Inject constructor(
 
     fun toggleSourceType(type: EventSourceType) {
         val current = _activeSourceTypes.value
-        // Don't allow deselecting all — at least one must stay active
+
         if (type in current && current.size > 1) {
             _activeSourceTypes.value = current - type
         } else if (type !in current) {
@@ -122,7 +156,36 @@ class DiscoverViewModel @Inject constructor(
 
     fun toggleBookmark(eventId: String) {
         viewModelScope.launch {
-            repository.toggleBookmark(eventId)
+            runCatching {
+                repository.toggleBookmark(eventId)
+            }
         }
+    }
+
+    private fun startCustomEventSync() {
+        if (customEventSyncJob?.isActive == true) return
+
+        customEventSyncJob = viewModelScope.launch {
+            runCatching {
+                customEventRepository.startSync(this)
+            }
+        }
+    }
+
+    private fun stopCustomEventSync() {
+        customEventSyncJob?.cancel()
+        customEventSyncJob = null
+    }
+
+    private fun clearUserState() {
+        _searchQuery.value = ""
+        _selectedCategories.value = emptySet()
+        _focusedPlaceId.value = null
+        _activeSourceTypes.value = EventSourceType.entries.toSet() - EventSourceType.SCHEDULE
+    }
+
+    override fun onCleared() {
+        stopCustomEventSync()
+        super.onCleared()
     }
 }
