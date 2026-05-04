@@ -9,8 +9,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.ekhonavigator.core.data.canvas.CanvasCourseRepository
+import com.ekhonavigator.core.data.canvas.CanvasPlannerRepository
 import com.ekhonavigator.core.data.repository.CalendarRepository
-import com.ekhonavigator.core.database.dao.CanvasPlannerItemDao
 import com.ekhonavigator.core.designsystem.theme.AssignmentDecorator
 import com.ekhonavigator.core.designsystem.theme.CourseColorAssigner
 import com.ekhonavigator.core.designsystem.theme.CourseColorInput
@@ -45,13 +45,13 @@ fun AssignmentDecoratorProvider(
 class AssignmentDecoratorViewModel @Inject constructor(
     @Suppress("unused") savedStateHandle: SavedStateHandle,
     courseRepository: CanvasCourseRepository,
-    plannerItemDao: CanvasPlannerItemDao,
+    plannerRepository: CanvasPlannerRepository,
     calendarRepository: CalendarRepository,
 ) : ViewModel() {
 
     val decorator: StateFlow<AssignmentDecorator> = combine(
         courseRepository.observeCourses(),
-        plannerItemDao.observeAll(),
+        plannerRepository.observeAllItems(),
         // Personal events whose user toggled isCompleted — folded into the same
         // completedEventIds set as Canvas's submitted/graded/excused so the
         // strikethrough render sites stay source-agnostic.
@@ -80,7 +80,7 @@ class AssignmentDecoratorViewModel @Inject constructor(
         val courseIdByEventId = itemsWithCourse.associate { (item, courseId) -> item.id to courseId }
 
         val canvasCompletedIds = plannerItems
-            .filter { it.submitted || it.graded || it.excused }
+            .filter { it.submission.submitted || it.submission.graded || it.submission.excused }
             .map { it.id }
         val personalCompletedIds = allEvents
             .filter { it.isCompleted }
