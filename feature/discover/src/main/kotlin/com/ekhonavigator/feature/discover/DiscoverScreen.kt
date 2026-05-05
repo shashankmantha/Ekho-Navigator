@@ -26,9 +26,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -47,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ekhonavigator.core.designsystem.component.EkhoSegmentedTabs
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.designsystem.theme.LocalCanvasConnected
 import com.ekhonavigator.core.designsystem.theme.LocalSignedIn
@@ -240,35 +238,13 @@ private fun DiscoverTabStrip(
     onSelect: (DiscoverTab) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    SingleChoiceSegmentedButtonRow(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(48.dp),
-    ) {
-        tabs.forEachIndexed { index, tab ->
-            SegmentedButton(
-                selected = selected == tab,
-                onClick = { onSelect(tab) },
-                shape = SegmentedButtonDefaults.itemShape(
-                    index = index,
-                    count = tabs.size,
-                ),
-                icon = {},
-                colors = SegmentedButtonDefaults.colors(
-                    activeContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    activeContentColor = MaterialTheme.colorScheme.onSurface,
-                    inactiveContainerColor = MaterialTheme.colorScheme.surface,
-                    inactiveContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                ),
-                label = {
-                    Text(
-                        text = tab.title,
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                },
-            )
-        }
-    }
+    EkhoSegmentedTabs(
+        items = tabs,
+        selected = selected,
+        onSelect = onSelect,
+        labelOf = { it.title },
+        modifier = modifier,
+    )
 }
 
 @Composable

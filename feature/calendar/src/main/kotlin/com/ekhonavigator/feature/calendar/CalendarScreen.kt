@@ -23,9 +23,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -41,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ekhonavigator.core.designsystem.component.EkhoSegmentedTabs
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.designsystem.theme.LocalSignedIn
 import com.ekhonavigator.core.model.EventCategory
@@ -167,37 +165,16 @@ fun CalendarScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                SingleChoiceSegmentedButtonRow(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp), // Match SearchBar height
-                ) {
-                    tabs.forEachIndexed { index, tab ->
-                        SegmentedButton(
-                            selected = pagerState.currentPage == index,
-                            onClick = {
-                                scope.launch { pagerState.animateScrollToPage(index) }
-                            },
-                            shape = SegmentedButtonDefaults.itemShape(
-                                index = index,
-                                count = tabs.size,
-                            ),
-                            icon = { /* no checkmark */ },
-                            colors = SegmentedButtonDefaults.colors(
-                                activeContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                activeContentColor = MaterialTheme.colorScheme.onSurface,
-                                inactiveContainerColor = MaterialTheme.colorScheme.surface,
-                                inactiveContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            ),
-                            label = {
-                                Text(
-                                    text = tab.title,
-                                    style = MaterialTheme.typography.labelMedium,
-                                )
-                            },
-                        )
-                    }
-                }
+                EkhoSegmentedTabs(
+                    items = tabs,
+                    selected = tabs[pagerState.currentPage.coerceIn(tabs.indices)],
+                    onSelect = { tab ->
+                        val index = tabs.indexOf(tab)
+                        scope.launch { pagerState.animateScrollToPage(index) }
+                    },
+                    labelOf = { it.title },
+                    modifier = Modifier.weight(1f),
+                )
 
                 Spacer(modifier = Modifier.width(8.dp))
 
