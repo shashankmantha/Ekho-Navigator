@@ -2,6 +2,7 @@ package com.ekhonavigator.feature.canvas.settings
 
 import com.ekhonavigator.core.canvas.auth.CanvasAccount
 import com.ekhonavigator.core.testing.MainDispatcherRule
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -11,6 +12,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class ConnectCanvasViewModelTest {
 
     @get:Rule
