@@ -34,6 +34,8 @@ import com.ekhonavigator.core.designsystem.component.EkhoEventRow
 import com.ekhonavigator.core.designsystem.component.EkhoEventRowState
 import com.ekhonavigator.core.designsystem.component.EkhoSectionHeader
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import com.ekhonavigator.core.designsystem.theme.LocalCanvasConnected
+import com.ekhonavigator.core.designsystem.theme.LocalSignedIn
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventSource
 import com.ekhonavigator.core.model.EventType
@@ -49,11 +51,16 @@ import java.util.Locale
 @Composable
 fun HomeScreen(
     onEventClick: (String) -> Unit,
+    onConnectCanvasClick: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val allEvents by viewModel.events.collectAsStateWithLifecycle()
     val importantOnly by viewModel.importantOnly.collectAsStateWithLifecycle()
+    val canvasNudgeDismissed by viewModel.canvasNudgeDismissed.collectAsStateWithLifecycle()
+    val isSignedIn = LocalSignedIn.current
+    val canvasConnected = LocalCanvasConnected.current
+    val showCanvasNudge = isSignedIn && !canvasConnected && !canvasNudgeDismissed
 
     val zone = remember { ZoneId.of("America/Los_Angeles") }
     val today = remember { LocalDate.now(zone) }
@@ -98,6 +105,14 @@ fun HomeScreen(
             viewModel = viewModel,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         )
+
+        if (showCanvasNudge) {
+            CanvasNudgeCard(
+                onConnectClick = onConnectCanvasClick,
+                onDismissClick = viewModel::dismissCanvasNudge,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
+        }
 
         Row(
             modifier = Modifier

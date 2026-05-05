@@ -33,6 +33,7 @@ import kotlin.math.roundToInt
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val repository: CalendarRepository,
+    private val nudgeStore: HomeNudgeStore,
 ) : ViewModel() {
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -40,6 +41,14 @@ class HomeViewModel @Inject constructor(
     // customEventRepository.startSync() removed when AuthLifecycleObserver took
     // over the boot lifecycle — observer fires startSync on every uid != null
     // transition, so VMs no longer need to.
+
+    private val _canvasNudgeDismissed = MutableStateFlow(nudgeStore.isCanvasNudgeDismissed())
+    val canvasNudgeDismissed: StateFlow<Boolean> = _canvasNudgeDismissed.asStateFlow()
+
+    fun dismissCanvasNudge() {
+        nudgeStore.dismissCanvasNudge()
+        _canvasNudgeDismissed.value = true
+    }
 
     /**
      * When true, hides "noisy" non-bookmarked campus iCal events so Home shows

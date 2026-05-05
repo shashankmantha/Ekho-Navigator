@@ -274,6 +274,7 @@ fun EkhoNavigatorApp(
                             NavEntry(key) {
                                 HomeScreen(
                                     onEventClick = navigator::navigateToEvent,
+                                    onConnectCanvasClick = navigator::navigateToConnectCanvas,
                                 )
                             }
                         }
