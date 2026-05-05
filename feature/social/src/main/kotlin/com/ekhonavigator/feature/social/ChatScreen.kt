@@ -680,10 +680,17 @@ private fun getMessageStatusText(
             }
             .distinct()
 
-        return if (readByOtherNames.isEmpty()) {
-            "Sent"
+        if (readByOtherNames.isEmpty()) {
+            return "Sent"
+        }
+
+        val namesToShow = readByOtherNames.take(2)
+        val remainingCount = readByOtherNames.size - namesToShow.size
+
+        return if (remainingCount > 0) {
+            "Read by ${namesToShow.joinToString(", ")} ...+$remainingCount"
         } else {
-            "Read by ${readByOtherNames.joinToString(", ")}"
+            "Read by ${namesToShow.joinToString(", ")}"
         }
     }
 
