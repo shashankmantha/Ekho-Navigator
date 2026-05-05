@@ -44,8 +44,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ekhonavigator.core.canvas.model.CanvasAnnouncement
 import com.ekhonavigator.core.data.social.FriendRequest
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import com.ekhonavigator.core.designsystem.theme.CourseColorAssigner
+import com.ekhonavigator.core.designsystem.theme.LocalCanvasConnected
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.RsvpStatus
 import com.ekhonavigator.core.model.isPast
@@ -62,8 +65,16 @@ fun InvitesScreen(
     val declined by viewModel.declinedInvites.collectAsStateWithLifecycle()
     val friendRequests by viewModel.friendRequests.collectAsStateWithLifecycle()
     val showPast by viewModel.showPast.collectAsStateWithLifecycle()
+    val announcements by viewModel.announcements.collectAsStateWithLifecycle()
+    val courseCodeById by viewModel.courseCodeById.collectAsStateWithLifecycle()
+    val canvasConnected = LocalCanvasConnected.current
 
     var showDeclined by rememberSaveable { mutableStateOf(false) }
+    // Section collapse state — keyed per section so each remembers
+    // independently across recomposition + process death.
+    var friendRequestsExpanded by rememberSaveable { mutableStateOf(true) }
+    var eventInvitesExpanded by rememberSaveable { mutableStateOf(true) }
+    var announcementsExpanded by rememberSaveable { mutableStateOf(true) }
 
     LazyColumn(
         modifier = modifier
@@ -77,23 +88,27 @@ fun InvitesScreen(
                 icon = EkhoIcons.Person,
                 title = "Friend Requests",
                 subtitle = "People who want to connect",
+                expanded = friendRequestsExpanded,
+                onToggleExpanded = { friendRequestsExpanded = !friendRequestsExpanded },
             )
         }
 
-        if (friendRequests.isEmpty()) {
-            item(key = "friend-requests-empty") {
-                CategoryEmptyState(message = "No friend requests right now")
-            }
-        } else {
-            item(key = "friend-requests-sub") {
-                SubsectionLabel(title = "Pending", count = friendRequests.size)
-            }
-            items(friendRequests, key = { "friend-req-${it.uid}" }) { request ->
-                FriendRequestRow(
-                    request = request,
-                    onAccept = { viewModel.acceptFriendRequest(request.uid) },
-                    onDeny = { viewModel.denyFriendRequest(request.uid) },
-                )
+        if (friendRequestsExpanded) {
+            if (friendRequests.isEmpty()) {
+                item(key = "friend-requests-empty") {
+                    CategoryEmptyState(message = "No friend requests right now")
+                }
+            } else {
+                item(key = "friend-requests-sub") {
+                    SubsectionLabel(title = "Pending", count = friendRequests.size)
+                }
+                items(friendRequests, key = { "friend-req-${it.uid}" }) { request ->
+                    FriendRequestRow(
+                        request = request,
+                        onAccept = { viewModel.acceptFriendRequest(request.uid) },
+                        onDeny = { viewModel.denyFriendRequest(request.uid) },
+                    )
+                }
             }
         }
 
@@ -102,6 +117,8 @@ fun InvitesScreen(
                 icon = EkhoIcons.Notifications,
                 title = "Event Invites",
                 subtitle = "Invitations from friends",
+                expanded = eventInvitesExpanded,
+                onToggleExpanded = { eventInvitesExpanded = !eventInvitesExpanded },
                 trailing = {
                     PastToggle(
                         checked = showPast,
@@ -111,93 +128,155 @@ fun InvitesScreen(
             )
         }
 
-        if (pending.isEmpty() && declined.isEmpty()) {
-            item(key = "event-invites-empty") {
-                CategoryEmptyState(
-                    message = if (showPast) {
-                        "No event invites — past or present"
-                    } else {
-                        "No event invites right now"
-                    },
-                )
-            }
-            return@LazyColumn
-        }
-
-        if (pending.isNotEmpty()) {
-            item(key = "pending-sub") {
-                SubsectionLabel(title = "Pending", count = pending.size)
-            }
-            items(pending, key = { "pending-${it.id}" }) { event ->
-                InviteRow(
-                    event = event,
-                    onClick = { onEventClick(event.id) },
-                    primaryAction = {
-                        Button(
-                            onClick = { viewModel.rsvp(event.id, RsvpStatus.GOING) },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp),
-                        ) {
-                            Icon(EkhoIcons.Check, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.size(6.dp))
-                            Text("Going")
-                        }
-                    },
-                    secondaryAction = {
-                        OutlinedButton(
-                            onClick = { viewModel.rsvp(event.id, RsvpStatus.NOT_GOING) },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp),
-                        ) {
-                            Icon(EkhoIcons.Close, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.size(6.dp))
-                            Text("Decline")
-                        }
-                    },
-                )
-            }
-        }
-
-        if (declined.isNotEmpty()) {
-            item(key = "declined-toggle") {
-                DeclinedToggle(
-                    count = declined.size,
-                    expanded = showDeclined,
-                    onToggle = { showDeclined = !showDeclined },
-                )
-            }
-            if (showDeclined) {
-                items(declined, key = { "declined-${it.id}" }) { event ->
-                    InviteRow(
-                        event = event,
-                        onClick = { onEventClick(event.id) },
-                        primaryAction = {
-                            Button(
-                                onClick = { viewModel.rsvp(event.id, RsvpStatus.GOING) },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                    contentColor = MaterialTheme.colorScheme.onSurface,
-                                ),
-                            ) {
-                                Icon(EkhoIcons.Check, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.size(6.dp))
-                                Text("Undo decline")
-                            }
+        if (eventInvitesExpanded) {
+            if (pending.isEmpty() && declined.isEmpty()) {
+                item(key = "event-invites-empty") {
+                    CategoryEmptyState(
+                        message = if (showPast) {
+                            "No event invites — past or present"
+                        } else {
+                            "No event invites right now"
                         },
                     )
+                }
+            } else {
+                renderEventInviteRows(
+                    pending = pending,
+                    declined = declined,
+                    showDeclined = showDeclined,
+                    onToggleShowDeclined = { showDeclined = !showDeclined },
+                    onEventClick = onEventClick,
+                    onRsvp = viewModel::rsvp,
+                )
+            }
+        }
+
+        if (canvasConnected) {
+            item(key = "announcements-category") {
+                CategoryHeader(
+                    icon = EkhoIcons.Notifications,
+                    title = "Announcements",
+                    subtitle = "From your Canvas courses",
+                    expanded = announcementsExpanded,
+                    onToggleExpanded = { announcementsExpanded = !announcementsExpanded },
+                )
+            }
+            if (announcementsExpanded) {
+                if (announcements.isEmpty()) {
+                    item(key = "announcements-empty") {
+                        CategoryEmptyState(message = "No course announcements right now")
+                    }
+                } else {
+                    items(announcements, key = { "announcement-${it.id}" }) { announcement ->
+                        BellAnnouncementRow(
+                            announcement = announcement,
+                            courseLabel = courseCodeById[announcement.courseId]
+                                ?.let(CourseColorAssigner::familyKey),
+                            onClick = {
+                                if (announcement.isUnread) viewModel.markAnnouncementRead(announcement.id)
+                            },
+                        )
+                    }
                 }
             }
         }
     }
 }
 
+/**
+ * Pending invites rendered in the LazyColumn — extracted so the section's
+ * expanded/collapsed branch in the screen body stays readable. Returns no
+ * value; emits items into the surrounding LazyListScope.
+ */
+private fun androidx.compose.foundation.lazy.LazyListScope.renderEventInviteRows(
+    pending: List<CalendarEvent>,
+    declined: List<CalendarEvent>,
+    showDeclined: Boolean,
+    onToggleShowDeclined: () -> Unit,
+    onEventClick: (String) -> Unit,
+    onRsvp: (eventId: String, status: RsvpStatus) -> Unit,
+) {
+    if (pending.isNotEmpty()) {
+        item(key = "pending-sub") {
+            SubsectionLabel(title = "Pending", count = pending.size)
+        }
+        items(pending, key = { "pending-${it.id}" }) { event ->
+            InviteRow(
+                event = event,
+                onClick = { onEventClick(event.id) },
+                primaryAction = {
+                    Button(
+                        onClick = { onRsvp(event.id, RsvpStatus.GOING) },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                    ) {
+                        Icon(EkhoIcons.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.size(6.dp))
+                        Text("Going")
+                    }
+                },
+                secondaryAction = {
+                    OutlinedButton(
+                        onClick = { onRsvp(event.id, RsvpStatus.NOT_GOING) },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                    ) {
+                        Icon(EkhoIcons.Close, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.size(6.dp))
+                        Text("Decline")
+                    }
+                },
+            )
+        }
+    }
+
+    if (declined.isNotEmpty()) {
+        item(key = "declined-toggle") {
+            DeclinedToggle(
+                count = declined.size,
+                expanded = showDeclined,
+                onToggle = onToggleShowDeclined,
+            )
+        }
+        if (showDeclined) {
+            items(declined, key = { "declined-${it.id}" }) { event ->
+                InviteRow(
+                    event = event,
+                    onClick = { onEventClick(event.id) },
+                    primaryAction = {
+                        Button(
+                            onClick = { onRsvp(event.id, RsvpStatus.GOING) },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                contentColor = MaterialTheme.colorScheme.onSurface,
+                            ),
+                        ) {
+                            Icon(EkhoIcons.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.size(6.dp))
+                            Text("Undo decline")
+                        }
+                    },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Now collapsible — chevron rotates 90° when expanded. Caller owns the state
+ * via `rememberSaveable` keyed on the section id, so collapse survives both
+ * recomposition and process-death. Trailing slot is hidden when collapsed
+ * (the toggle was usually only meaningful with the section visible).
+ */
 @Composable
 private fun CategoryHeader(
     icon: ImageVector,
     title: String,
     subtitle: String,
+    expanded: Boolean,
+    onToggleExpanded: () -> Unit,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     Column(
@@ -205,7 +284,14 @@ private fun CategoryHeader(
             .fillMaxWidth()
             .padding(bottom = 4.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(onClick = onToggleExpanded)
+                .padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
@@ -220,7 +306,16 @@ private fun CategoryHeader(
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f),
             )
-            if (trailing != null) trailing()
+            if (expanded && trailing != null) trailing()
+            Spacer(Modifier.size(4.dp))
+            Icon(
+                imageVector = EkhoIcons.ChevronRight,
+                contentDescription = if (expanded) "Collapse" else "Expand",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .size(20.dp)
+                    .rotate(if (expanded) 90f else 0f),
+            )
         }
         Text(
             text = subtitle,
@@ -230,6 +325,72 @@ private fun CategoryHeader(
         )
         Spacer(Modifier.height(8.dp))
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+    }
+}
+
+/**
+ * Bell-screen row for a Canvas announcement. Mirrors the per-class detail
+ * row's vocabulary (unread dot + course label + title + author·date caption)
+ * but stays compact — no inline body expansion here. First click marks read.
+ */
+@Composable
+private fun BellAnnouncementRow(
+    announcement: CanvasAnnouncement,
+    courseLabel: String?,
+    onClick: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    val zone = remember { ZoneId.systemDefault() }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(colors.surfaceContainerLow)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (announcement.isUnread) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(colors.primary),
+                )
+            }
+            if (!courseLabel.isNullOrBlank()) {
+                Text(
+                    text = courseLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.onSurfaceVariant,
+                )
+            }
+            Text(
+                text = announcement.title,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = if (announcement.isUnread) FontWeight.SemiBold else FontWeight.Medium,
+                color = colors.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        announcement.postedAt?.let { instant ->
+            val dateText = remember(instant) {
+                instant.atZone(zone).format(DateTimeFormatter.ofPattern("MMM d", java.util.Locale.US))
+            }
+            Text(
+                text = listOfNotNull(announcement.authorName, dateText).joinToString(" · "),
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.onSurfaceVariant,
+            )
+        }
     }
 }
 
