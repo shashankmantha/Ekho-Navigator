@@ -423,29 +423,67 @@ private fun PlannerItemSection(
     onItemClick: (eventId: String) -> Unit,
 ) {
     val zone = remember { java.time.ZoneId.systemDefault() }
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    // Group by due-date so each day gets a small sub-header above its rows —
+    // EkhoEventRow only renders the time (HH:mm), which made every row look
+    // like it was on the same day. Sort order respects the caller's input
+    // ordering (asc for upcoming, desc for recent submissions).
+    val grouped = remember(items) {
+        items.groupBy { (it.dueAt ?: it.plannableDate).atZone(zone).toLocalDate() }
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SectionHeader(title)
-        items.forEach { item ->
-            // Reuse EkhoEventRow so the row gets the same family-key palette,
-            // strikethrough wiring (LocalAssignmentDecorator), and pending-invite
-            // border behavior every other row in the app uses. The `eventId`
-            // matches the bridged calendar_events.uid so the decorator's
-            // courseColorFor() / isCompleted() lookups resolve.
-            val instant = item.dueAt ?: item.plannableDate
-            EkhoEventRow(
-                title = item.title,
-                startTime = instant,
-                endTime = instant,
-                zone = zone,
-                location = "",
-                monograms = emptyList(),
-                state = EkhoEventRowState.ASSIGNMENT,
-                onClick = { onItemClick(item.id) },
-                onBookmarkClick = { /* assignments aren't bookmarkable */ },
-                eventId = item.id,
-            )
+        grouped.forEach { (date, dayItems) ->
+            DateSubheader(date = date)
+            dayItems.forEach { item ->
+                // Reuse EkhoEventRow so the row gets the same family-key palette,
+                // strikethrough wiring (LocalAssignmentDecorator), and pending-invite
+                // border behavior every other row in the app uses. The `eventId`
+                // matches the bridged calendar_events.uid so the decorator's
+                // courseColorFor() / isCompleted() lookups resolve.
+                val instant = item.dueAt ?: item.plannableDate
+                EkhoEventRow(
+                    title = item.title,
+                    startTime = instant,
+                    endTime = instant,
+                    zone = zone,
+                    location = "",
+                    monograms = emptyList(),
+                    state = EkhoEventRowState.ASSIGNMENT,
+                    onClick = { onItemClick(item.id) },
+                    onBookmarkClick = { /* assignments aren't bookmarkable */ },
+                    eventId = item.id,
+                )
+            }
         }
     }
+}
+
+@Composable
+private fun DateSubheader(date: java.time.LocalDate) {
+    val today = remember { java.time.LocalDate.now() }
+    val tomorrow = remember { today.plusDays(1) }
+    val yesterday = remember { today.minusDays(1) }
+    // Anchor labels for the three nearby dates so the user doesn't have to
+    // compare numerals — matches the EventScreen DateEyebrow vocabulary.
+    val label = remember(date) {
+        val rel = when (date) {
+            today -> "TODAY"
+            tomorrow -> "TOMORROW"
+            yesterday -> "YESTERDAY"
+            else -> date.format(java.time.format.DateTimeFormatter.ofPattern("EEE", java.util.Locale.US))
+                .uppercase(java.util.Locale.US)
+        }
+        val absolute = date.format(java.time.format.DateTimeFormatter.ofPattern("MMM d", java.util.Locale.US))
+            .uppercase(java.util.Locale.US)
+        "$rel · $absolute"
+    }
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 4.dp, bottom = 2.dp),
+    )
 }
 
 @Composable
