@@ -1,6 +1,7 @@
 package com.ekhonavigator.core.canvas.auth
 
 import com.ekhonavigator.core.canvas.model.CanvasProfile
+import com.ekhonavigator.core.canvas.network.CanvasJson
 import com.ekhonavigator.core.canvas.network.CanvasOkHttp
 import com.ekhonavigator.core.canvas.network.dto.CanvasUserDto
 import com.ekhonavigator.core.canvas.network.dto.toDomain
@@ -16,7 +17,7 @@ import javax.inject.Inject
 
 internal class DefaultCanvasAuthValidator @Inject constructor(
     @CanvasOkHttp private val okHttpClient: OkHttpClient,
-    private val json: Json,
+    @CanvasJson private val json: Json,
 ) : CanvasAuthValidator {
 
     override suspend fun validate(domain: String, token: String): Result<CanvasProfile> =

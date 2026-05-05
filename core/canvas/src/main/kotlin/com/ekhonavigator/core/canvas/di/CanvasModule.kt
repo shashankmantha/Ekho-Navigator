@@ -11,6 +11,7 @@ import com.ekhonavigator.core.canvas.auth.DefaultCanvasTokenStore
 import com.ekhonavigator.core.canvas.network.BearerInterceptor
 import com.ekhonavigator.core.canvas.network.CanvasApiProvider
 import com.ekhonavigator.core.canvas.network.CanvasHeadersInterceptor
+import com.ekhonavigator.core.canvas.network.CanvasJson
 import com.ekhonavigator.core.canvas.network.CanvasOkHttp
 import com.ekhonavigator.core.canvas.network.DefaultCanvasApiProvider
 import com.ekhonavigator.core.canvas.network.RateLimitObserverInterceptor
@@ -48,6 +49,7 @@ internal abstract class CanvasModule {
 
         @Provides
         @Singleton
+        @CanvasJson
         internal fun provideCanvasJson(): Json = canvasJson
 
         @Provides

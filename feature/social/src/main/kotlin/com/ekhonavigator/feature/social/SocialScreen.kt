@@ -98,9 +98,6 @@ fun SocialScreen(
 
     if (!uiState.isSignedIn) {
         AccountScreen(
-            onSignIn = {
-                viewModel.loadSocialData()
-            },
             modifier = modifier,
             forceSignedOutUi = true,
         )

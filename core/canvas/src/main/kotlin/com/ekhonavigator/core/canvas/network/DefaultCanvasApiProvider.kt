@@ -12,7 +12,7 @@ import javax.inject.Singleton
 @Singleton
 internal class DefaultCanvasApiProvider @Inject constructor(
     @CanvasOkHttp private val okHttpClient: OkHttpClient,
-    private val json: Json,
+    @CanvasJson private val json: Json,
     private val accountSource: CanvasAccountSource,
 ) : CanvasApiProvider {
 
