@@ -32,9 +32,12 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 data class NotificationChatRequest(
-    val friendUserId: String,
-    val friendDisplayName: String,
-    val friendAvatarId: String,
+    val conversationId: String? = null,
+    val friendUserId: String = "",
+    val friendDisplayName: String = "",
+    val friendAvatarId: String = "",
+    val chatTitle: String = "",
+    val isGroup: Boolean = false,
 )
 
 @AndroidEntryPoint
@@ -64,7 +67,6 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
 
-        // Track presence globally while the user is signed in
         MainScope().launch {
             authRepository.userFlow().collectLatest { uid ->
                 if (uid != null) {
@@ -131,23 +133,46 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleNotificationIntent(intent: Intent?) {
-        android.util.Log.d(
-            "NOTIFICATION_NAV",
-            "openChat=${intent?.getBooleanExtra("openChat", false)}, " +
-                    "friendUserId=${intent?.getStringExtra("friendUserId")}, " +
-                    "friendDisplayName=${intent?.getStringExtra("friendDisplayName")}",
-        )
-
         if (intent?.getBooleanExtra("openChat", false) != true) return
 
-        val friendUserId = intent.getStringExtra("friendUserId") ?: return
-        val friendDisplayName = intent.getStringExtra("friendDisplayName") ?: "Chat"
-        val friendAvatarId = intent.getStringExtra("friendAvatarId") ?: ""
+        val conversationId = intent.getStringExtra("conversationId").orEmpty()
+        val isGroup = intent.getBooleanExtra("isGroup", false)
 
-        notificationChatRequest = NotificationChatRequest(
-            friendUserId = friendUserId,
-            friendDisplayName = friendDisplayName,
-            friendAvatarId = friendAvatarId,
+        val friendUserId = intent.getStringExtra("friendUserId").orEmpty()
+        val friendDisplayName = intent.getStringExtra("friendDisplayName").orEmpty()
+        val friendAvatarId = intent.getStringExtra("friendAvatarId").orEmpty()
+
+        val chatTitle = intent.getStringExtra("chatTitle").orEmpty()
+
+        android.util.Log.d(
+            "NOTIFICATION_NAV",
+            "openChat=true, " +
+                    "conversationId=$conversationId, " +
+                    "isGroup=$isGroup, " +
+                    "friendUserId=$friendUserId, " +
+                    "friendDisplayName=$friendDisplayName, " +
+                    "chatTitle=$chatTitle",
         )
+
+        notificationChatRequest = if (isGroup) {
+            if (conversationId.isBlank()) return
+
+            NotificationChatRequest(
+                conversationId = conversationId,
+                chatTitle = chatTitle.ifBlank { "Group Chat" },
+                isGroup = true,
+            )
+        } else {
+            if (conversationId.isBlank() && friendUserId.isBlank()) return
+
+            NotificationChatRequest(
+                conversationId = conversationId.ifBlank { null },
+                friendUserId = friendUserId,
+                friendDisplayName = friendDisplayName.ifBlank { chatTitle.ifBlank { "Chat" } },
+                friendAvatarId = friendAvatarId,
+                chatTitle = chatTitle.ifBlank { friendDisplayName.ifBlank { "Chat" } },
+                isGroup = false,
+            )
+        }
     }
 }

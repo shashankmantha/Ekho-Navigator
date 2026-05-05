@@ -16,7 +16,7 @@ class ChatRepository @Inject constructor() {
 
     private val firestore = FirebaseFirestore.getInstance()
 
-    private fun buildDirectConversationId(
+    fun buildDirectConversationId(
         userA: String,
         userB: String,
     ): String {
@@ -25,10 +25,45 @@ class ChatRepository @Inject constructor() {
             .joinToString("_")
     }
 
-    /**
-     * Keeps the old function name working for the rest of the app.
-     * This is a direct 1-on-1 conversation.
-     */
+    suspend fun findDirectConversationId(
+        currentUserId: String,
+        friendUserId: String,
+    ): String? {
+        val conversationId = buildDirectConversationId(
+            userA = currentUserId,
+            userB = friendUserId,
+        )
+
+        val snapshot = firestore
+            .collection(CONVERSATIONS_COLLECTION)
+            .document(conversationId)
+            .get()
+            .await()
+
+        return if (snapshot.exists()) {
+            conversationId
+        } else {
+            null
+        }
+    }
+
+    suspend fun findDirectConversation(
+        currentUserId: String,
+        friendUserId: String,
+    ): ChatConversation? {
+        val conversationId = buildDirectConversationId(
+            userA = currentUserId,
+            userB = friendUserId,
+        )
+
+        return firestore
+            .collection(CONVERSATIONS_COLLECTION)
+            .document(conversationId)
+            .get()
+            .await()
+            .toChatConversation()
+    }
+
     suspend fun getOrCreateConversation(
         currentUserId: String,
         currentUserName: String,
@@ -112,14 +147,43 @@ class ChatRepository @Inject constructor() {
             )
     }
 
-    /**
-     * Creates a group conversation.
-     *
-     * Important:
-     * - If the user did not type a group name, groupTitle should be blank.
-     * - Do NOT store generated display names like "Sam, Kobe" as title.
-     * - Each user should compute the fallback title locally by excluding their own UID.
-     */
+    suspend fun sendFirstDirectMessage(
+        currentUserId: String,
+        currentUserName: String,
+        friendUserId: String,
+        friendDisplayName: String,
+        text: String,
+        clientMessageId: String,
+        sharedLocation: SharedLocation? = null,
+    ): String {
+        val trimmedText = text.trim()
+
+        if (trimmedText.isBlank() && sharedLocation == null) {
+            return buildDirectConversationId(
+                userA = currentUserId,
+                userB = friendUserId,
+            )
+        }
+
+        val conversation = getOrCreateDirectConversation(
+            currentUserId = currentUserId,
+            currentUserName = currentUserName,
+            friendUserId = friendUserId,
+            friendDisplayName = friendDisplayName,
+        )
+
+        sendMessage(
+            conversationId = conversation.id,
+            senderId = currentUserId,
+            senderName = currentUserName,
+            text = trimmedText,
+            clientMessageId = clientMessageId,
+            sharedLocation = sharedLocation,
+        )
+
+        return conversation.id
+    }
+
     suspend fun createGroupConversation(
         currentUserId: String,
         currentUserName: String,
@@ -169,6 +233,40 @@ class ChatRepository @Inject constructor() {
                 createdBy = currentUserId,
                 createdAt = now,
             )
+    }
+
+    suspend fun sendFirstGroupMessage(
+        currentUserId: String,
+        currentUserName: String,
+        groupTitle: String,
+        participantNames: Map<String, String>,
+        text: String,
+        clientMessageId: String,
+        sharedLocation: SharedLocation? = null,
+    ): String {
+        val trimmedText = text.trim()
+
+        if (trimmedText.isBlank() && sharedLocation == null) {
+            return ""
+        }
+
+        val conversation = createGroupConversation(
+            currentUserId = currentUserId,
+            currentUserName = currentUserName,
+            groupTitle = groupTitle,
+            participantNames = participantNames,
+        )
+
+        sendMessage(
+            conversationId = conversation.id,
+            senderId = currentUserId,
+            senderName = currentUserName,
+            text = trimmedText,
+            clientMessageId = clientMessageId,
+            sharedLocation = sharedLocation,
+        )
+
+        return conversation.id
     }
 
     fun observeConversationById(

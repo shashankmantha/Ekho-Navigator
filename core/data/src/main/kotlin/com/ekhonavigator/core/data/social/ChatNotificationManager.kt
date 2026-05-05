@@ -28,10 +28,31 @@ class ChatNotificationManager @Inject constructor(
         senderId: String,
         senderName: String,
         messageText: String,
+        isGroup: Boolean,
+        chatTitle: String,
+        friendAvatarId: String = "",
     ) {
         if (!canPostNotifications()) return
 
         createNotificationChannel()
+
+        val notificationTitle = if (isGroup) {
+            chatTitle.ifBlank { "Group Chat" }
+        } else {
+            senderName.ifBlank { "New message" }
+        }
+
+        val notificationText = if (isGroup) {
+            "${senderName.ifBlank { "Someone" }}: ${messageText.ifBlank { "Sent a message" }}"
+        } else {
+            messageText.ifBlank { "Sent a message" }
+        }
+
+        val expandedText = if (isGroup) {
+            "${senderName.ifBlank { "Someone" }}\n${messageText.ifBlank { "Sent a message" }}"
+        } else {
+            messageText.ifBlank { "Sent a message" }
+        }
 
         val launchIntent = Intent().apply {
             setClassName(context.packageName, "com.ekhonavigator.MainActivity")
@@ -41,9 +62,14 @@ class ChatNotificationManager @Inject constructor(
 
             putExtra("openChat", true)
             putExtra("conversationId", conversationId)
-            putExtra("friendUserId", senderId)
-            putExtra("friendDisplayName", senderName)
-            putExtra("friendAvatarId", "")
+            putExtra("chatTitle", notificationTitle)
+            putExtra("isGroup", isGroup)
+
+            if (!isGroup) {
+                putExtra("friendUserId", senderId)
+                putExtra("friendDisplayName", senderName)
+                putExtra("friendAvatarId", friendAvatarId)
+            }
         }
 
         val notificationId = conversationId.hashCode().absoluteValue
@@ -57,8 +83,12 @@ class ChatNotificationManager @Inject constructor(
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_dialog_info)
-            .setContentTitle(senderName.ifBlank { "New message" })
-            .setContentText(messageText.ifBlank { "Sent a message" })
+            .setContentTitle(notificationTitle)
+            .setContentText(notificationText)
+            .setStyle(
+                NotificationCompat.BigTextStyle()
+                    .bigText(expandedText),
+            )
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setAutoCancel(true)
@@ -70,8 +100,7 @@ class ChatNotificationManager @Inject constructor(
                 notificationId,
                 notification,
             )
-        } catch (e: SecurityException) {
-            // Notification permission was revoked after our check.
+        } catch (_: SecurityException) {
         }
     }
 

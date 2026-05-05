@@ -5,13 +5,13 @@ import androidx.navigation3.runtime.NavKey
 import com.ekhonavigator.core.model.SharedLocation
 import com.ekhonavigator.core.navigation.Navigator
 import com.ekhonavigator.feature.social.ChatScreen
-import com.ekhonavigator.feature.social.NewGroupChatScreen
+import com.ekhonavigator.feature.social.NewChatScreen
 import com.ekhonavigator.feature.social.SocialScreen
 import com.ekhonavigator.feature.social.UserProfileScreen
 import kotlinx.serialization.Serializable
 
 @Serializable
-object NewGroupChatNavKey : NavKey
+object NewChatNavKey : NavKey
 
 @Serializable
 object SocialNavKey : NavKey
@@ -30,6 +30,7 @@ data class ChatNavKey(
     val chatTitle: String = "",
     val isGroup: Boolean = false,
     val groupParticipantNames: Map<String, String> = emptyMap(),
+    val groupParticipantAvatarIds: Map<String, String> = emptyMap(),
     val sharedLocation: SharedLocation? = null,
 ) : NavKey
 
@@ -40,11 +41,16 @@ fun EntryProviderScope<NavKey>.socialEntry(
     entry<SocialNavKey> {
         SocialScreen(
             onProfileClick = { userId ->
-                navigator.navigate(UserProfileNavKey(userId))
+                navigator.navigate(
+                    UserProfileNavKey(
+                        userId = userId,
+                    ),
+                )
             },
             onMessageClick = { friendUserId, friendDisplayName, friendAvatarId ->
                 navigator.navigate(
                     ChatNavKey(
+                        conversationId = null,
                         friendUserId = friendUserId,
                         friendDisplayName = friendDisplayName,
                         friendAvatarId = friendAvatarId,
@@ -66,7 +72,7 @@ fun EntryProviderScope<NavKey>.socialEntry(
                 )
             },
             onNewChatClick = {
-                navigator.navigate(NewGroupChatNavKey)
+                navigator.navigate(NewChatNavKey)
             },
         )
     }
@@ -89,23 +95,44 @@ fun EntryProviderScope<NavKey>.socialEntry(
             chatTitle = key.chatTitle,
             isGroup = key.isGroup,
             groupParticipantNames = key.groupParticipantNames,
+            groupParticipantAvatarIds = key.groupParticipantAvatarIds,
             sharedLocation = key.sharedLocation,
             onNavigateToMap = onNavigateToMap,
         )
     }
 
-    entry<NewGroupChatNavKey> {
-        NewGroupChatScreen(
+    entry<NewChatNavKey> {
+        NewChatScreen(
+            onDirectChatSelected = { friend ->
+                navigator.goBack()
+
+                navigator.navigate(
+                    ChatNavKey(
+                        conversationId = null,
+                        friendUserId = friend.uid,
+                        friendDisplayName = friend.displayName,
+                        friendAvatarId = friend.avatarId,
+                        chatTitle = friend.displayName,
+                        isGroup = false,
+                    ),
+                )
+            },
             onGroupDraftCreated = { groupTitle, selectedFriends ->
                 navigator.goBack()
 
                 navigator.navigate(
                     ChatNavKey(
                         conversationId = null,
+                        friendUserId = "",
+                        friendDisplayName = "",
+                        friendAvatarId = "",
                         chatTitle = groupTitle.trim(),
                         isGroup = true,
                         groupParticipantNames = selectedFriends.associate { friend ->
                             friend.uid to friend.displayName
+                        },
+                        groupParticipantAvatarIds = selectedFriends.associate { friend ->
+                            friend.uid to friend.avatarId
                         },
                     ),
                 )

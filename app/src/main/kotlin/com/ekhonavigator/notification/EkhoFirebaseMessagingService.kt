@@ -1,6 +1,7 @@
 package com.ekhonavigator.notification
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -27,15 +28,46 @@ class EkhoFirebaseMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
 
-        val title = message.data["title"] ?: "New message"
-        val body = message.data["body"] ?: "You received a new message"
-        val conversationId = message.data["conversationId"] ?: ""
+        val conversationId = message.data["conversationId"].orEmpty()
+        val isGroup = message.data["isGroup"] == "true"
 
-        showChatNotification(
-            title = title,
-            body = body,
-            conversationId = conversationId,
-        )
+        val senderName = message.data["senderName"]
+            ?: message.data["title"]
+            ?: "Someone"
+
+        val messageText = message.data["body"]
+            ?: message.data["messageText"]
+            ?: "You received a new message"
+
+        val rawChatTitle = message.data["chatTitle"]
+            ?: message.data["groupTitle"]
+            ?: ""
+
+        val groupFallbackTitle = message.data["groupFallbackTitle"]
+            ?: message.data["participantNames"]
+            ?: ""
+
+        val chatTitle = when {
+            rawChatTitle.isNotBlank() -> rawChatTitle
+            isGroup && groupFallbackTitle.isNotBlank() -> groupFallbackTitle
+            isGroup -> "Group Chat"
+            else -> message.data["title"] ?: "New message"
+        }
+
+        if (isGroup) {
+            showGroupChatNotification(
+                conversationId = conversationId,
+                chatTitle = chatTitle.ifBlank { "Group Chat" },
+                senderName = senderName,
+                messageText = messageText,
+            )
+        } else {
+            showDirectChatNotification(
+                conversationId = conversationId,
+                senderName = senderName,
+                messageText = messageText,
+            )
+        }
     }
 
     private fun saveTokenForCurrentUser(token: String) {
@@ -55,40 +87,112 @@ class EkhoFirebaseMessagingService : FirebaseMessagingService() {
             .set(tokenData)
     }
 
-    private fun showChatNotification(
-        title: String,
-        body: String,
+    private fun showDirectChatNotification(
         conversationId: String,
+        senderName: String,
+        messageText: String,
     ) {
         if (!canPostNotifications()) return
 
         createChatNotificationChannel()
 
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("conversationId", conversationId)
-        }
-
-        val pendingIntent = PendingIntent.getActivity(
-            this,
-            CHAT_NOTIFICATION_ID,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        val intent = buildChatIntent(
+            conversationId = conversationId,
+            chatTitle = senderName,
+            isGroup = false,
         )
+
+        val pendingIntent = buildPendingIntent(intent)
 
         val notification = NotificationCompat.Builder(this, CHAT_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_dialog_info)
-            .setContentTitle(title)
-            .setContentText(body)
+            .setContentTitle(senderName)
+            .setContentText(messageText)
+            .setStyle(
+                NotificationCompat.BigTextStyle()
+                    .bigText(messageText),
+            )
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .build()
 
-        NotificationManagerCompat.from(this).notify(
+        postNotification(notification)
+    }
+
+    private fun showGroupChatNotification(
+        conversationId: String,
+        chatTitle: String,
+        senderName: String,
+        messageText: String,
+    ) {
+        if (!canPostNotifications()) return
+
+        createChatNotificationChannel()
+
+        val intent = buildChatIntent(
+            conversationId = conversationId,
+            chatTitle = chatTitle,
+            isGroup = true,
+        )
+
+        val pendingIntent = buildPendingIntent(intent)
+
+        val notification = NotificationCompat.Builder(this, CHAT_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_dialog_info)
+            .setContentTitle(chatTitle)
+            .setContentText("$senderName: $messageText")
+            .setStyle(
+                NotificationCompat.BigTextStyle()
+                    .bigText("$senderName\n$messageText"),
+            )
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .build()
+
+        postNotification(notification)
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun postNotification(
+        notification: android.app.Notification,
+    ) {
+        if (!canPostNotifications()) return
+
+        try {
+            NotificationManagerCompat.from(this).notify(
+                System.currentTimeMillis().toInt(),
+                notification,
+            )
+        } catch (_: SecurityException) {
+        }
+    }
+
+    private fun buildChatIntent(
+        conversationId: String,
+        chatTitle: String,
+        isGroup: Boolean,
+    ): Intent {
+        return Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("openChat", true)
+            putExtra("conversationId", conversationId)
+            putExtra("chatTitle", chatTitle)
+            putExtra("isGroup", isGroup)
+        }
+    }
+
+    private fun buildPendingIntent(
+        intent: Intent,
+    ): PendingIntent {
+        return PendingIntent.getActivity(
+            this,
             System.currentTimeMillis().toInt(),
-            notification,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
     }
 
@@ -118,6 +222,5 @@ class EkhoFirebaseMessagingService : FirebaseMessagingService() {
 
     companion object {
         private const val CHAT_CHANNEL_ID = "chat_messages"
-        private const val CHAT_NOTIFICATION_ID = 2001
     }
 }

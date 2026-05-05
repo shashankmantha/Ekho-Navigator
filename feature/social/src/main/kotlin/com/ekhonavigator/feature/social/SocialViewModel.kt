@@ -49,6 +49,7 @@ data class ConversationUiModel(
     val isGroup: Boolean = false,
     val participantIds: List<String> = emptyList(),
     val participantNames: Map<String, String> = emptyMap(),
+    val groupParticipantAvatarIds: Map<String, String> = emptyMap(),
     val directFriendUserId: String = "",
     val directFriendDisplayName: String = "",
     val directFriendAvatarId: String = "",
@@ -502,6 +503,20 @@ class SocialViewModel @Inject constructor(
             else -> "Chat"
         }
 
+        val groupParticipantAvatarIds = if (isGroup) {
+            participantIds
+                .filter { participantId ->
+                    participantId != currentUserId
+                }
+                .mapNotNull { participantId ->
+                    val avatarId = friendsById[participantId]?.avatarId ?: return@mapNotNull null
+                    participantId to avatarId
+                }
+                .toMap()
+        } else {
+            emptyMap()
+        }
+
         val isUnread = isUnreadFor(currentUserId)
 
         return ConversationUiModel(
@@ -511,6 +526,7 @@ class SocialViewModel @Inject constructor(
             isGroup = isGroup,
             participantIds = participantIds,
             participantNames = participantNames,
+            groupParticipantAvatarIds = groupParticipantAvatarIds,
             directFriendUserId = directFriendUserId,
             directFriendDisplayName = if (isGroup) "" else conversationTitle,
             directFriendAvatarId = if (isGroup) "" else directFriend?.avatarId.orEmpty(),

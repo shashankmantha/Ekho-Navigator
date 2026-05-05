@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -64,6 +65,7 @@ fun ChatScreen(
     chatTitle: String = friendDisplayName,
     isGroup: Boolean = false,
     groupParticipantNames: Map<String, String> = emptyMap(),
+    groupParticipantAvatarIds: Map<String, String> = emptyMap(),
     sharedLocation: SharedLocation? = null,
     onNavigateToMap: () -> Unit = {},
     viewModel: ChatViewModel = hiltViewModel(),
@@ -91,10 +93,17 @@ fun ChatScreen(
         else -> "Chat"
     }
 
-    val displayAvatarId = if (isGroup) {
-        ""
+    val groupAvatarIdsToShow = if (isGroup) {
+        groupParticipantNames
+            .filterKeys { participantId ->
+                participantId != currentUserId
+            }
+            .keys
+            .map { participantId ->
+                groupParticipantAvatarIds[participantId].orEmpty()
+            }
     } else {
-        friendAvatarId
+        emptyList()
     }
 
     LaunchedEffect(conversationId, friendUserId, isGroup, groupParticipantNames) {
@@ -153,8 +162,10 @@ fun ChatScreen(
     ) {
         ChatHeader(
             title = displayTitle,
-            avatarId = displayAvatarId,
+            avatarId = friendAvatarId,
             presenceStatus = if (isGroup) null else uiState.friendPresence,
+            isGroup = isGroup,
+            groupAvatarIds = groupAvatarIdsToShow,
         )
 
         ChatContent(
@@ -184,7 +195,10 @@ fun ChatScreen(
             draftMessage = uiState.draftMessage,
             onDraftMessageChange = viewModel::onDraftMessageChange,
             onSendClick = {
-                viewModel.sendMessage()
+                viewModel.sendMessage(
+                    friendUserId = friendUserId,
+                    friendDisplayName = friendDisplayName,
+                )
             },
         )
     }
@@ -204,6 +218,8 @@ private fun ChatHeader(
     title: String,
     avatarId: String,
     presenceStatus: PresenceStatus?,
+    isGroup: Boolean,
+    groupAvatarIds: List<String>,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -211,11 +227,17 @@ private fun ChatHeader(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        ChatAvatar(
-            avatarId = avatarId,
-            displayName = title,
-            presenceStatus = presenceStatus,
-        )
+        if (isGroup) {
+            GroupAvatarStack(
+                avatarIds = groupAvatarIds,
+            )
+        } else {
+            ChatAvatar(
+                avatarId = avatarId,
+                displayName = title,
+                presenceStatus = presenceStatus,
+            )
+        }
 
         Text(
             text = title,
@@ -232,13 +254,6 @@ private fun ChatAvatar(
     presenceStatus: PresenceStatus?,
     modifier: Modifier = Modifier,
 ) {
-    val avatarRes = when (avatarId) {
-        "avatar_dolphin" -> DesignR.drawable.avatar_dolphin
-        "avatar_whale" -> DesignR.drawable.avatar_whale
-        "avatar_turtle" -> DesignR.drawable.avatar_turtle
-        else -> DesignR.drawable.avatar_default
-    }
-
     val statusColor = presenceStatus?.state?.uppercase()?.let { state ->
         when (state) {
             "ONLINE" -> Color(0xFF4CAF50)
@@ -253,7 +268,7 @@ private fun ChatAvatar(
         contentAlignment = Alignment.BottomEnd,
     ) {
         Image(
-            painter = painterResource(id = avatarRes),
+            painter = painterResource(id = avatarResourceForId(avatarId)),
             contentDescription = "$displayName avatar",
             modifier = Modifier
                 .size(72.dp)
@@ -264,6 +279,59 @@ private fun ChatAvatar(
         if (statusColor != null) {
             PresenceDot(statusColor = statusColor)
         }
+    }
+}
+
+@Composable
+private fun GroupAvatarStack(
+    avatarIds: List<String>,
+    modifier: Modifier = Modifier,
+) {
+    val avatarsToShow = avatarIds
+        .ifEmpty { listOf("") }
+        .take(4)
+
+    val totalWidth = when (avatarsToShow.size) {
+        1 -> 72.dp
+        2 -> 104.dp
+        3 -> 132.dp
+        else -> 160.dp
+    }
+
+    Box(
+        modifier = modifier.size(width = totalWidth, height = 72.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        avatarsToShow.forEachIndexed { index, avatarId ->
+            val offsetX = ((index - (avatarsToShow.size - 1) / 2f) * 30).dp
+
+            Box(
+                modifier = Modifier
+                    .offset(x = offsetX)
+                    .size(66.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surface),
+                contentAlignment = Alignment.Center,
+            ) {
+                Image(
+                    painter = painterResource(id = avatarResourceForId(avatarId)),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop,
+                )
+            }
+        }
+    }
+}
+
+private fun avatarResourceForId(avatarId: String): Int {
+    return when (avatarId) {
+        "avatar_dolphin" -> DesignR.drawable.avatar_dolphin
+        "avatar_whale" -> DesignR.drawable.avatar_whale
+        "avatar_turtle" -> DesignR.drawable.avatar_turtle
+        else -> DesignR.drawable.avatar_default
     }
 }
 

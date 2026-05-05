@@ -70,12 +70,12 @@ import com.ekhonavigator.feature.map.CampusPlacesData
 import com.ekhonavigator.feature.map.MapScreen
 import com.ekhonavigator.feature.map.navigation.MapNavKey
 import com.ekhonavigator.feature.social.ChatScreen
-import com.ekhonavigator.feature.social.NewGroupChatScreen
+import com.ekhonavigator.feature.social.NewChatScreen
 import com.ekhonavigator.feature.social.SocialActionViewModel
 import com.ekhonavigator.feature.social.SocialScreen
 import com.ekhonavigator.feature.social.UserProfileScreen
 import com.ekhonavigator.feature.social.navigation.ChatNavKey
-import com.ekhonavigator.feature.social.navigation.NewGroupChatNavKey
+import com.ekhonavigator.feature.social.navigation.NewChatNavKey
 import com.ekhonavigator.feature.social.navigation.SocialNavKey
 import com.ekhonavigator.feature.social.navigation.UserProfileNavKey
 import com.ekhonavigator.navigation.TOP_LEVEL_NAV_ITEMS
@@ -100,15 +100,28 @@ fun EkhoNavigatorApp(
     LaunchedEffect(notificationChatRequest) {
         val request = notificationChatRequest ?: return@LaunchedEffect
 
-        navigator.navigate(
-            ChatNavKey(
-                friendUserId = request.friendUserId,
-                friendDisplayName = request.friendDisplayName,
-                friendAvatarId = request.friendAvatarId,
-                chatTitle = request.friendDisplayName,
-                isGroup = false,
-            ),
-        )
+        if (request.isGroup) {
+            navigator.navigate(
+                ChatNavKey(
+                    conversationId = request.conversationId,
+                    chatTitle = request.chatTitle,
+                    isGroup = true,
+                ),
+            )
+        } else {
+            navigator.navigate(
+                ChatNavKey(
+                    conversationId = request.conversationId,
+                    friendUserId = request.friendUserId,
+                    friendDisplayName = request.friendDisplayName,
+                    friendAvatarId = request.friendAvatarId,
+                    chatTitle = request.chatTitle.ifBlank {
+                        request.friendDisplayName
+                    },
+                    isGroup = false,
+                ),
+            )
+        }
 
         onNotificationChatRequestHandled()
     }
@@ -304,6 +317,7 @@ fun EkhoNavigatorApp(
                                     onShareLocationToChat = { friendId, friendName, location ->
                                         navigator.navigate(
                                             ChatNavKey(
+                                                conversationId = null,
                                                 friendUserId = friendId,
                                                 friendDisplayName = friendName,
                                                 friendAvatarId = "",
@@ -322,11 +336,16 @@ fun EkhoNavigatorApp(
                             NavEntry(key) {
                                 SocialScreen(
                                     onProfileClick = { userId ->
-                                        navigator.navigate(UserProfileNavKey(userId))
+                                        navigator.navigate(
+                                            UserProfileNavKey(
+                                                userId = userId,
+                                            ),
+                                        )
                                     },
                                     onMessageClick = { friendUserId, friendDisplayName, friendAvatarId ->
                                         navigator.navigate(
                                             ChatNavKey(
+                                                conversationId = null,
                                                 friendUserId = friendUserId,
                                                 friendDisplayName = friendDisplayName,
                                                 friendAvatarId = friendAvatarId,
@@ -344,31 +363,53 @@ fun EkhoNavigatorApp(
                                                 friendAvatarId = conversation.directFriendAvatarId,
                                                 chatTitle = conversation.title,
                                                 isGroup = conversation.isGroup,
+                                                groupParticipantNames = conversation.participantNames,
+                                                groupParticipantAvatarIds = conversation.groupParticipantAvatarIds,
                                             ),
                                         )
                                     },
                                     onNewChatClick = {
-                                        navigator.navigate(NewGroupChatNavKey)
+                                        navigator.navigate(NewChatNavKey)
                                     },
                                 )
                             }
                         }
 
-                        is NewGroupChatNavKey -> {
+                        is NewChatNavKey -> {
                             NavEntry(key) {
-                                NewGroupChatScreen(
+                                NewChatScreen(
+                                    onDirectChatSelected = { friend ->
+                                        navigator.goBack()
+
+                                        navigator.navigate(
+                                            ChatNavKey(
+                                                conversationId = null,
+                                                friendUserId = friend.uid,
+                                                friendDisplayName = friend.displayName,
+                                                friendAvatarId = friend.avatarId,
+                                                chatTitle = friend.displayName,
+                                                isGroup = false,
+                                            ),
+                                        )
+                                    },
                                     onGroupDraftCreated = { groupTitle, selectedFriends ->
                                         navigator.goBack()
 
                                         navigator.navigate(
                                             ChatNavKey(
                                                 conversationId = null,
+                                                friendUserId = "",
+                                                friendDisplayName = "",
+                                                friendAvatarId = "",
                                                 chatTitle = groupTitle.trim(),
                                                 isGroup = true,
                                                 groupParticipantNames = selectedFriends.associate { friend ->
                                                     friend.uid to friend.displayName
                                                 },
-                                            )
+                                                groupParticipantAvatarIds = selectedFriends.associate { friend ->
+                                                    friend.uid to friend.avatarId
+                                                },
+                                            ),
                                         )
                                     },
                                 )
@@ -394,6 +435,7 @@ fun EkhoNavigatorApp(
                                     chatTitle = key.chatTitle,
                                     isGroup = key.isGroup,
                                     groupParticipantNames = key.groupParticipantNames,
+                                    groupParticipantAvatarIds = key.groupParticipantAvatarIds,
                                     sharedLocation = key.sharedLocation,
                                     onNavigateToMap = {
                                         navigator.navigate(MapNavKey())
@@ -425,7 +467,9 @@ fun EkhoNavigatorApp(
                                     onBack = navigator::goBack,
                                     onLocationClick = { placeId ->
                                         navigator.navigateAsDetour(
-                                            MapNavKey(focusPlaceId = placeId),
+                                            MapNavKey(
+                                                focusPlaceId = placeId,
+                                            ),
                                         )
                                     },
                                 )

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -19,11 +20,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Chat
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -58,8 +61,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.ekhonavigator.core.designsystem.R as DesignR
 import com.ekhonavigator.core.model.OnlineStatus
 import com.ekhonavigator.feature.account.AccountScreen
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material3.FloatingActionButton
 
 private enum class SocialTab(
     val label: String,
@@ -107,27 +108,27 @@ fun SocialScreen(
         Column(
             modifier = Modifier.fillMaxSize(),
         ) {
-        SocialTabStrip(
-            selected = selectedTab,
-            onSelect = { tab ->
-                selectedTabIndex = tabs.indexOf(tab)
-            },
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-        )
+            SocialTabStrip(
+                selected = selectedTab,
+                onSelect = { tab ->
+                    selectedTabIndex = tabs.indexOf(tab)
+                },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
 
-        HorizontalDivider(
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-        )
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+            )
 
-        SearchBar(
-            searchQuery = uiState.searchQuery,
-            onSearchQueryChange = viewModel::onSearchQueryChange,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-        )
+            SearchBar(
+                searchQuery = uiState.searchQuery,
+                onSearchQueryChange = viewModel::onSearchQueryChange,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
 
-        HorizontalDivider(
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-        )
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+            )
 
             if (isSearching) {
                 SearchPeopleTab(
@@ -297,6 +298,8 @@ private fun ChatsTab(
                 ChatRow(
                     title = conversation.title,
                     avatarId = conversation.avatarId,
+                    isGroup = conversation.isGroup,
+                    groupParticipantAvatarIds = conversation.groupParticipantAvatarIds,
                     online = conversation.online,
                     onlineStatus = conversation.onlineStatus,
                     showOnlineStatus = conversation.showOnlineStatus && !conversation.isGroup,
@@ -642,6 +645,8 @@ private fun EmptyStateMessage(
 private fun ChatRow(
     title: String,
     avatarId: String,
+    isGroup: Boolean,
+    groupParticipantAvatarIds: Map<String, String>,
     online: Boolean,
     onlineStatus: OnlineStatus,
     showOnlineStatus: Boolean,
@@ -659,13 +664,19 @@ private fun ChatRow(
                 onChatClick()
             },
         leadingContent = {
-            ChatAvatar(
-                avatarId = avatarId,
-                online = online,
-                onlineStatus = onlineStatus,
-                showOnlineStatus = showOnlineStatus,
-                onClick = onProfileClick,
-            )
+            if (isGroup) {
+                GroupChatAvatarStack(
+                    avatarIds = groupParticipantAvatarIds.values.toList(),
+                )
+            } else {
+                ChatAvatar(
+                    avatarId = avatarId,
+                    online = online,
+                    onlineStatus = onlineStatus,
+                    showOnlineStatus = showOnlineStatus,
+                    onClick = onProfileClick,
+                )
+            }
         },
         headlineContent = {
             Text(
@@ -842,15 +853,8 @@ private fun ChatAvatar(
                 ),
             contentAlignment = Alignment.BottomEnd,
         ) {
-            val resId = when (avatarId) {
-                "avatar_dolphin" -> DesignR.drawable.avatar_dolphin
-                "avatar_whale" -> DesignR.drawable.avatar_whale
-                "avatar_turtle" -> DesignR.drawable.avatar_turtle
-                else -> DesignR.drawable.avatar_default
-            }
-
             Image(
-                painter = painterResource(resId),
+                painter = painterResource(id = avatarResourceForId(avatarId)),
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()
@@ -881,6 +885,58 @@ private fun ChatAvatar(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun GroupChatAvatarStack(
+    avatarIds: List<String>,
+    modifier: Modifier = Modifier,
+) {
+    val avatarsToShow = avatarIds
+        .ifEmpty { listOf("") }
+        .take(3)
+
+    val totalWidth = when (avatarsToShow.size) {
+        1 -> 44.dp
+        2 -> 58.dp
+        else -> 72.dp
+    }
+
+    Box(
+        modifier = modifier.size(width = totalWidth, height = 44.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        avatarsToShow.forEachIndexed { index, avatarId ->
+            val offsetX = ((index - (avatarsToShow.size - 1) / 2f) * 14).dp
+
+            Box(
+                modifier = Modifier
+                    .offset(x = offsetX)
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surface),
+                contentAlignment = Alignment.Center,
+            ) {
+                Image(
+                    painter = painterResource(id = avatarResourceForId(avatarId)),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop,
+                )
+            }
+        }
+    }
+}
+
+private fun avatarResourceForId(avatarId: String): Int {
+    return when (avatarId) {
+        "avatar_dolphin" -> DesignR.drawable.avatar_dolphin
+        "avatar_whale" -> DesignR.drawable.avatar_whale
+        "avatar_turtle" -> DesignR.drawable.avatar_turtle
+        else -> DesignR.drawable.avatar_default
     }
 }
 

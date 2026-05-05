@@ -5,7 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -47,7 +46,8 @@ import com.ekhonavigator.core.data.social.FriendUser
 import com.ekhonavigator.core.designsystem.R as DesignR
 
 @Composable
-fun NewGroupChatScreen(
+fun NewChatScreen(
+    onDirectChatSelected: (FriendUser) -> Unit,
     onGroupDraftCreated: (String, List<FriendUser>) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SocialViewModel = hiltViewModel(),
@@ -76,6 +76,12 @@ fun NewGroupChatScreen(
         friend.uid in selectedFriendIds
     }
 
+    val createButtonText = when (selectedFriendIds.size) {
+        0 -> "Select a Friend"
+        1 -> "Start Chat"
+        else -> "Create Group Chat"
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -83,22 +89,24 @@ fun NewGroupChatScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
-            text = "New Group Chat",
+            text = "New Chat",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
         )
 
-        OutlinedTextField(
-            value = groupName,
-            onValueChange = {
-                groupName = it
-            },
-            modifier = Modifier.fillMaxWidth(),
-            label = {
-                Text("Group name optional")
-            },
-            singleLine = true,
-        )
+        if (selectedFriendIds.size >= 2) {
+            OutlinedTextField(
+                value = groupName,
+                onValueChange = {
+                    groupName = it
+                },
+                modifier = Modifier.fillMaxWidth(),
+                label = {
+                    Text("Group Title (Optional)")
+                },
+                singleLine = true,
+            )
+        }
 
         OutlinedTextField(
             value = friendSearchQuery,
@@ -199,13 +207,21 @@ fun NewGroupChatScreen(
 
         Button(
             onClick = {
-                onGroupDraftCreated(
-                    groupName,
-                    selectedFriends,
-                )
+                when (selectedFriends.size) {
+                    1 -> {
+                        onDirectChatSelected(selectedFriends.first())
+                    }
+
+                    else -> {
+                        onGroupDraftCreated(
+                            groupName,
+                            selectedFriends,
+                        )
+                    }
+                }
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = selectedFriendIds.size >= 2 && !uiState.isLoading,
+            enabled = selectedFriendIds.isNotEmpty() && !uiState.isLoading,
         ) {
             Icon(
                 imageVector = Icons.Rounded.Check,
@@ -213,7 +229,7 @@ fun NewGroupChatScreen(
             )
 
             Text(
-                text = "Create Group",
+                text = createButtonText,
                 modifier = Modifier.padding(start = 8.dp),
             )
         }

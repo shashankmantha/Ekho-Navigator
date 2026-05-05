@@ -75,14 +75,48 @@ class ChatNotificationObserver @Inject constructor(
         val senderName = conversation.participantNames[conversation.lastSenderId]
             ?: "New message"
 
+        val notificationTitle = buildConversationNotificationTitle(
+            currentUserId = currentUserId,
+            conversation = conversation,
+        )
+
         chatNotificationManager.showMessageNotification(
             conversationId = conversation.id,
             senderId = conversation.lastSenderId,
             senderName = senderName,
             messageText = conversation.lastMessage,
+            isGroup = conversation.isGroup,
+            chatTitle = notificationTitle,
         )
 
         saveLastSeenTimestamp(conversation.id, currentTimestamp)
+    }
+
+    private fun buildConversationNotificationTitle(
+        currentUserId: String,
+        conversation: ChatConversation,
+    ): String {
+        if (!conversation.isGroup) {
+            return conversation.participantNames[conversation.lastSenderId]
+                ?: "New message"
+        }
+
+        if (conversation.title.isNotBlank()) {
+            return conversation.title
+        }
+
+        return conversation.participantNames
+            .filterKeys { participantId ->
+                participantId != currentUserId
+            }
+            .values
+            .filter { name ->
+                name.isNotBlank()
+            }
+            .joinToString(", ")
+            .ifBlank {
+                "Group Chat"
+            }
     }
 
     private fun saveLastSeenTimestamp(

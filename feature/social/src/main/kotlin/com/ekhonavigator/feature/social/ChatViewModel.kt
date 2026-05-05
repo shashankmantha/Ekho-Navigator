@@ -62,33 +62,45 @@ class ChatViewModel @Inject constructor(
         friendDisplayName: String,
     ) {
         val currentUserId = authRepository.getCurrentUserUid() ?: return
-        val currentUserName = authRepository.getCurrentUserDisplayName() ?: "Unknown"
 
+        activeConversationId = null
         activeFriendUserId = friendUserId
         activeFriendDisplayName = friendDisplayName
+        pendingGroupTitle = ""
+        pendingGroupParticipantNames = emptyMap()
 
+        observeMessagesJob?.cancel()
         observeFriendPresence(friendUserId)
 
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
                     isLoading = true,
+                    messages = emptyList(),
                     errorMessage = null,
                 )
             }
 
             runCatching {
-                chatRepository.getOrCreateConversation(
+                chatRepository.findDirectConversationId(
                     currentUserId = currentUserId,
-                    currentUserName = currentUserName,
                     friendUserId = friendUserId,
-                    friendDisplayName = friendDisplayName,
                 )
-            }.onSuccess { conversation ->
-                startObservingMessages(
-                    conversationId = conversation.id,
-                    currentUserId = currentUserId,
-                )
+            }.onSuccess { existingConversationId ->
+                if (existingConversationId != null) {
+                    startObservingMessages(
+                        conversationId = existingConversationId,
+                        currentUserId = currentUserId,
+                    )
+                } else {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            messages = emptyList(),
+                            errorMessage = null,
+                        )
+                    }
+                }
             }.onFailure { error ->
                 showOpenChatError(error)
             }
@@ -102,8 +114,11 @@ class ChatViewModel @Inject constructor(
 
         activeFriendUserId = ""
         activeFriendDisplayName = ""
+        pendingGroupTitle = ""
+        pendingGroupParticipantNames = emptyMap()
 
         observePresenceJob?.cancel()
+
         _uiState.update {
             it.copy(
                 friendPresence = null,
@@ -116,6 +131,30 @@ class ChatViewModel @Inject constructor(
             conversationId = conversationId,
             currentUserId = currentUserId,
         )
+    }
+
+    fun startPendingGroupConversation(
+        groupTitle: String,
+        participantNames: Map<String, String>,
+    ) {
+        activeConversationId = null
+        activeFriendUserId = ""
+        activeFriendDisplayName = ""
+
+        pendingGroupTitle = groupTitle.trim()
+        pendingGroupParticipantNames = participantNames
+
+        observeMessagesJob?.cancel()
+        observePresenceJob?.cancel()
+
+        _uiState.update {
+            it.copy(
+                isLoading = false,
+                messages = emptyList(),
+                errorMessage = null,
+                friendPresence = null,
+            )
+        }
     }
 
     fun onDraftMessageChange(value: String) {
@@ -157,22 +196,70 @@ class ChatViewModel @Inject constructor(
 
         viewModelScope.launch {
             runCatching {
-                val conversationId = getActiveConversationId(
+                val messageText = draft.ifBlank {
+                    "Shared a location: ${pendingLocation?.title}"
+                }
+
+                val clientMessageId = UUID.randomUUID().toString()
+
+                if (activeConversationId != null) {
+                    chatRepository.sendMessage(
+                        conversationId = activeConversationId!!,
+                        senderId = currentUserId,
+                        senderName = currentUserName,
+                        text = messageText,
+                        clientMessageId = clientMessageId,
+                        sharedLocation = pendingLocation,
+                    )
+                    return@runCatching
+                }
+
+                if (friendUserId.isBlank()) {
+                    if (pendingGroupParticipantNames.isEmpty()) {
+                        error("No active conversation selected")
+                    }
+
+                    val conversationId = chatRepository.sendFirstGroupMessage(
+                        currentUserId = currentUserId,
+                        currentUserName = currentUserName,
+                        groupTitle = pendingGroupTitle,
+                        participantNames = pendingGroupParticipantNames,
+                        text = messageText,
+                        clientMessageId = clientMessageId,
+                        sharedLocation = pendingLocation,
+                    )
+
+                    if (conversationId.isBlank()) {
+                        error("Failed to create group conversation")
+                    }
+
+                    activeConversationId = conversationId
+                    pendingGroupTitle = ""
+                    pendingGroupParticipantNames = emptyMap()
+
+                    startObservingMessages(
+                        conversationId = conversationId,
+                        currentUserId = currentUserId,
+                    )
+
+                    return@runCatching
+                }
+
+                val conversationId = chatRepository.sendFirstDirectMessage(
                     currentUserId = currentUserId,
                     currentUserName = currentUserName,
                     friendUserId = friendUserId,
                     friendDisplayName = friendDisplayName,
+                    text = messageText,
+                    clientMessageId = clientMessageId,
+                    sharedLocation = pendingLocation,
                 )
 
-                chatRepository.sendMessage(
+                activeConversationId = conversationId
+
+                startObservingMessages(
                     conversationId = conversationId,
-                    senderId = currentUserId,
-                    senderName = currentUserName,
-                    text = draft.ifBlank {
-                        "Shared a location: ${pendingLocation?.title}"
-                    },
-                    clientMessageId = UUID.randomUUID().toString(),
-                    sharedLocation = pendingLocation,
+                    currentUserId = currentUserId,
                 )
             }.onSuccess {
                 _uiState.update {
@@ -247,7 +334,6 @@ class ChatViewModel @Inject constructor(
         observePresenceJob = viewModelScope.launch {
             presenceRepository.observePresence(friendUserId)
                 .catch {
-                    // Presence is optional for chat, so ignore presence errors.
                 }
                 .collect { presence ->
                     _uiState.update {
@@ -313,52 +399,6 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    private suspend fun getActiveConversationId(
-        currentUserId: String,
-        currentUserName: String,
-        friendUserId: String,
-        friendDisplayName: String,
-    ): String {
-        activeConversationId?.let {
-            return it
-        }
-
-        if (friendUserId.isBlank()) {
-            if (pendingGroupParticipantNames.isEmpty()) {
-                error("No active conversation selected")
-            }
-
-            val conversation = chatRepository.createGroupConversation(
-                currentUserId = currentUserId,
-                currentUserName = currentUserName,
-                groupTitle = pendingGroupTitle,
-                participantNames = pendingGroupParticipantNames,
-            )
-
-            activeConversationId = conversation.id
-
-            pendingGroupTitle = ""
-            pendingGroupParticipantNames = emptyMap()
-
-            startObservingMessages(
-                conversationId = conversation.id,
-                currentUserId = currentUserId,
-            )
-
-            return conversation.id
-        }
-
-        val conversation = chatRepository.getOrCreateConversation(
-            currentUserId = currentUserId,
-            currentUserName = currentUserName,
-            friendUserId = friendUserId,
-            friendDisplayName = friendDisplayName,
-        )
-
-        activeConversationId = conversation.id
-        return conversation.id
-    }
-
     private fun stopCurrentConversation() {
         observeMessagesJob?.cancel()
         observePresenceJob?.cancel()
@@ -366,6 +406,8 @@ class ChatViewModel @Inject constructor(
         activeConversationId = null
         activeFriendUserId = ""
         activeFriendDisplayName = ""
+        pendingGroupTitle = ""
+        pendingGroupParticipantNames = emptyMap()
 
         _uiState.update {
             it.copy(
@@ -401,29 +443,5 @@ class ChatViewModel @Inject constructor(
 
     companion object {
         private const val INFO_MESSAGE_DURATION_MS = 5_000L
-    }
-
-    fun startPendingGroupConversation(
-        groupTitle: String,
-        participantNames: Map<String, String>,
-    ) {
-        activeConversationId = null
-        activeFriendUserId = ""
-        activeFriendDisplayName = ""
-
-        pendingGroupTitle = groupTitle.trim()
-        pendingGroupParticipantNames = participantNames
-
-        observeMessagesJob?.cancel()
-        observePresenceJob?.cancel()
-
-        _uiState.update {
-            it.copy(
-                isLoading = false,
-                messages = emptyList(),
-                errorMessage = null,
-                friendPresence = null,
-            )
-        }
     }
 }
