@@ -199,6 +199,8 @@ fun ChatScreen(
             currentUserId = currentUserId,
             friendUserId = friendUserId,
             isGroup = isLiveGroup,
+            groupParticipantNames = groupParticipantNames,
+            groupParticipantAvatarIds = groupParticipantAvatarIds,
             imeBottom = imeBottom,
             onNavigateToMap = onNavigateToMap,
             onFocusedMessageHandled = viewModel::clearFocusedMessage,
@@ -403,6 +405,8 @@ private fun ChatContent(
     currentUserId: String?,
     friendUserId: String,
     isGroup: Boolean,
+    groupParticipantNames: Map<String, String>,
+    groupParticipantAvatarIds: Map<String, String>,
     imeBottom: Int,
     onNavigateToMap: () -> Unit,
     onFocusedMessageHandled: () -> Unit,
@@ -427,6 +431,8 @@ private fun ChatContent(
                 currentUserId = currentUserId,
                 friendUserId = friendUserId,
                 isGroup = isGroup,
+                groupParticipantNames = groupParticipantNames,
+                groupParticipantAvatarIds = groupParticipantAvatarIds,
                 imeBottom = imeBottom,
                 onNavigateToMap = onNavigateToMap,
                 onFocusedMessageHandled = onFocusedMessageHandled,
@@ -472,6 +478,8 @@ private fun MessageList(
     currentUserId: String?,
     friendUserId: String,
     isGroup: Boolean,
+    groupParticipantNames: Map<String, String>,
+    groupParticipantAvatarIds: Map<String, String>,
     imeBottom: Int,
     onNavigateToMap: () -> Unit,
     onFocusedMessageHandled: () -> Unit,
@@ -488,6 +496,17 @@ private fun MessageList(
 
     var previousMessageCount by remember(conversationKey) {
         mutableIntStateOf(0)
+    }
+
+    val participantNames = remember(
+        uiState.conversation,
+        groupParticipantNames,
+    ) {
+        uiState.conversation?.participantNames
+            ?.takeIf { names ->
+                names.isNotEmpty()
+            }
+            ?: groupParticipantNames
     }
 
     LaunchedEffect(
@@ -582,17 +601,32 @@ private fun MessageList(
             key = { it.id },
         ) { message ->
             val isMine = message.senderId == currentUserId
+
             val statusText = getMessageStatusText(
                 isMine = isMine,
                 isGroup = isGroup,
+                currentUserId = currentUserId,
                 friendUserId = friendUserId,
                 readBy = message.readBy,
+                participantNames = participantNames,
             )
+
+            val shouldShowSenderInfo = isGroup && !isMine
+
+            val senderDisplayName = participantNames[message.senderId]
+                ?: message.senderName.ifBlank {
+                    "Unknown"
+                }
+
+            val senderAvatarId = groupParticipantAvatarIds[message.senderId].orEmpty()
 
             MessageBubble(
                 text = message.text,
                 sharedLocation = message.sharedLocation,
                 isMine = isMine,
+                showSenderInfo = shouldShowSenderInfo,
+                senderDisplayName = senderDisplayName,
+                senderAvatarId = senderAvatarId,
                 statusText = statusText,
                 onLocationClick = {
                     message.sharedLocation?.let { location ->
@@ -610,14 +644,53 @@ private fun MessageList(
 private fun getMessageStatusText(
     isMine: Boolean,
     isGroup: Boolean,
+    currentUserId: String?,
     friendUserId: String,
     readBy: List<String>,
+    participantNames: Map<String, String>,
 ): String {
-    return when {
-        !isMine -> ""
-        isGroup -> "Sent"
-        friendUserId in readBy -> "Read"
-        else -> "Sent"
+    if (!isMine) {
+        return ""
+    }
+
+    if (isGroup) {
+        val otherParticipantIds = participantNames.keys
+            .filter { participantId ->
+                participantId != currentUserId
+            }
+
+        val readByOtherIds = readBy
+            .filter { participantId ->
+                participantId != currentUserId
+            }
+            .distinct()
+
+        val wasReadByEveryone = otherParticipantIds.isNotEmpty() &&
+                otherParticipantIds.all { participantId ->
+                    participantId in readByOtherIds
+                }
+
+        if (wasReadByEveryone) {
+            return "Read by all"
+        }
+
+        val readByOtherNames = readByOtherIds
+            .mapNotNull { participantId ->
+                participantNames[participantId]
+            }
+            .distinct()
+
+        return if (readByOtherNames.isEmpty()) {
+            "Sent"
+        } else {
+            "Read by ${readByOtherNames.joinToString(", ")}"
+        }
+    }
+
+    return if (friendUserId in readBy) {
+        "Read"
+    } else {
+        "Sent"
     }
 }
 
@@ -626,6 +699,9 @@ private fun MessageBubble(
     text: String,
     sharedLocation: SharedLocation?,
     isMine: Boolean,
+    showSenderInfo: Boolean,
+    senderDisplayName: String,
+    senderAvatarId: String,
     statusText: String,
     onLocationClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -645,6 +721,32 @@ private fun MessageBubble(
                 Alignment.Start
             },
         ) {
+            if (showSenderInfo) {
+                Row(
+                    modifier = Modifier.padding(
+                        start = 4.dp,
+                        bottom = 4.dp,
+                    ),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Image(
+                        painter = painterResource(id = avatarResourceForId(senderAvatarId)),
+                        contentDescription = "$senderDisplayName avatar",
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop,
+                    )
+
+                    Text(
+                        text = senderDisplayName,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
             Box(
                 modifier = Modifier
                     .background(
