@@ -108,7 +108,7 @@ fun TimelineGrid(
     modifier: Modifier = Modifier,
     onDayClick: ((Long) -> Unit)? = null,
     maxVisibleOverlaps: Int = 0,
-    scrollToHour: Int = 7,
+    snapToTodayTrigger: Int = 0,
 ) {
     val zone = remember { ZoneId.systemDefault() }
 
@@ -140,12 +140,6 @@ fun TimelineGrid(
     val nowZoned = nowInstant.atZone(zone)
     val today = nowZoned.toLocalDate()
     val nowHourFraction = nowZoned.hour + nowZoned.minute / 60f
-
-    // Scroll to initial hour on first composition
-    LaunchedEffect(Unit) {
-        val offsetPx = with(density) { (HourHeight * scrollToHour).toPx().toInt() }
-        scrollState.scrollTo(offsetPx)
-    }
 
     val totalHeight = HourHeight * HourCount
 
@@ -179,6 +173,33 @@ fun TimelineGrid(
         val columnWidth = availableWidth / columnCount
         val viewportHeightPx = with(density) { maxHeight.toPx() }
         val hourHeightPx = with(density) { HourHeight.toPx() }
+
+        // Initial scroll and trigger logic
+        LaunchedEffect(snapToTodayTrigger) {
+            val isTodayVisible = columnDates.contains(today)
+
+            // If the user clicked "Jump to Today" OR this grid contains Today, center "Now".
+            // Otherwise, for other days (swipes), default to centering 7:00 AM so the 
+            // user lands on the start of the morning instead of a random evening hour.
+            val targetHourFraction = if (isTodayVisible || snapToTodayTrigger > 0) {
+                nowZoned.hour + nowZoned.minute / 60f
+            } else {
+                7f
+            }
+
+            val targetCenterPx = targetHourFraction * hourHeightPx
+            val targetScrollPx = (targetCenterPx - (viewportHeightPx / 2)).toInt()
+
+            // Pre-calculate max scroll to avoid clamping to 0 before first layout.
+            val maxScrollPx = (hourHeightPx * HourCount) + with(density) { ScrollBottomPadding.toPx() } - viewportHeightPx
+            val finalTarget = targetScrollPx.coerceIn(0, maxScrollPx.toInt())
+
+            if (snapToTodayTrigger > 0) {
+                scrollState.animateScrollTo(finalTarget)
+            } else {
+                scrollState.scrollTo(finalTarget)
+            }
+        }
 
         // Hours currently visible in the scrollport — drives the hint chips.
         // derivedStateOf throttles recomputation to actual visibility flips.
@@ -373,7 +394,7 @@ fun TimelineGrid(
             exit = fadeOut() + slideOutVertically { it },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = ScrollBottomPadding + 8.dp)
+                .padding(bottom = 16.dp)
                 .zIndex(3f),
         ) {
             OffscreenHintChip(
@@ -382,11 +403,12 @@ fun TimelineGrid(
                 onClick = {
                     val target = latestEventHour ?: return@OffscreenHintChip
                     coroutineScope.launch {
-                        // Land scroll so the event sits ~1 hour above the bottom edge
-                        // — keeps the next slot below visible for context. Clamp to
-                        // grid limits in case the event is already near 11 PM.
-                        val targetBottomPx = ((target + 1f) * hourHeightPx).toInt()
-                        val targetTopPx = targetBottomPx - viewportHeightPx.toInt()
+                        val scrollBottomPaddingPx = with(density) { ScrollBottomPadding.toPx() }
+                        // Land scroll so the event sits ~1 hour above the FAB stack
+                        // rather than just the viewport bottom — ensures the pill
+                        // clears the navigation/FAB area.
+                        val targetBottomPx = (target + 1f) * hourHeightPx
+                        val targetTopPx = (targetBottomPx - (viewportHeightPx - scrollBottomPaddingPx)).toInt()
                         scrollState.animateScrollTo(
                             targetTopPx.coerceIn(0, scrollState.maxValue),
                         )

@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -61,6 +62,7 @@ fun DayScreen(
 ) {
     val initialDate = remember(epochDay) { LocalDate.ofEpochDay(epochDay) }
     val selectedDate by viewModel.selectedDate.collectAsStateWithLifecycle()
+    var snapToTodayTrigger by remember { mutableIntStateOf(0) }
 
     // Initialize filters from the parent calendar screen's active selections (one-shot)
     LaunchedEffect(Unit) {
@@ -81,7 +83,10 @@ fun DayScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 SmallFloatingActionButton(
-                    onClick = { viewModel.selectDate(LocalDate.now()) },
+                    onClick = {
+                        viewModel.selectDate(LocalDate.now())
+                        snapToTodayTrigger++
+                    },
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 ) {
@@ -124,6 +129,7 @@ fun DayScreen(
             initialDate = initialDate,
             viewModel = viewModel,
             onEventClick = onEventClick,
+            snapToTodayTrigger = snapToTodayTrigger,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
@@ -252,6 +258,7 @@ fun DayTimelineContent(
                     columnDates = listOf(pageDate),
                     events = eventsForDay,
                     onEventClick = onEventClick,
+                    snapToTodayTrigger = snapToTodayTrigger,
                     modifier = Modifier.fillMaxSize(),
                 )
             } else {

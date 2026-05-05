@@ -230,6 +230,7 @@ internal fun WeekTab(
                     onEventClick = onEventClick,
                     onDayClick = onDayClick,
                     maxVisibleOverlaps = 2,
+                    snapToTodayTrigger = snapToTodayTrigger,
                     modifier = Modifier.fillMaxSize(),
                 )
             } else {
