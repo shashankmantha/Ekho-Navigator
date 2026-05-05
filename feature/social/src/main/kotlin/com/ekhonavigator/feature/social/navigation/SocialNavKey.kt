@@ -4,6 +4,7 @@ import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import com.ekhonavigator.core.model.SharedLocation
 import com.ekhonavigator.core.navigation.Navigator
+import com.ekhonavigator.feature.social.ChatOptionsScreen
 import com.ekhonavigator.feature.social.ChatScreen
 import com.ekhonavigator.feature.social.NewChatScreen
 import com.ekhonavigator.feature.social.SocialScreen
@@ -19,6 +20,11 @@ object SocialNavKey : NavKey
 @Serializable
 data class UserProfileNavKey(
     val userId: String,
+) : NavKey
+
+@Serializable
+data class ChatOptionsNavKey(
+    val conversationId: String,
 ) : NavKey
 
 @Serializable
@@ -68,6 +74,15 @@ fun EntryProviderScope<NavKey>.socialEntry(
                         friendAvatarId = conversation.directFriendAvatarId,
                         chatTitle = conversation.title,
                         isGroup = conversation.isGroup,
+                        groupParticipantNames = conversation.participantNames,
+                        groupParticipantAvatarIds = conversation.groupParticipantAvatarIds,
+                    ),
+                )
+            },
+            onChatOptionsClick = { conversationId ->
+                navigator.navigate(
+                    ChatOptionsNavKey(
+                        conversationId = conversationId,
                     ),
                 )
             },
@@ -86,6 +101,26 @@ fun EntryProviderScope<NavKey>.socialEntry(
         )
     }
 
+    entry<ChatOptionsNavKey> { key ->
+        ChatOptionsScreen(
+            conversationId = key.conversationId,
+            onBack = {
+                navigator.goBack()
+            },
+            onParticipantClick = { userId ->
+                navigator.navigate(
+                    UserProfileNavKey(
+                        userId = userId,
+                    ),
+                )
+            },
+            onLeaveConversation = {
+                navigator.goBack()
+                navigator.goBack()
+            },
+        )
+    }
+
     entry<ChatNavKey> { key ->
         ChatScreen(
             conversationId = key.conversationId,
@@ -98,6 +133,13 @@ fun EntryProviderScope<NavKey>.socialEntry(
             groupParticipantAvatarIds = key.groupParticipantAvatarIds,
             sharedLocation = key.sharedLocation,
             onNavigateToMap = onNavigateToMap,
+            onOpenChatOptions = { conversationId ->
+                navigator.navigate(
+                    ChatOptionsNavKey(
+                        conversationId = conversationId,
+                    ),
+                )
+            },
         )
     }
 

@@ -74,6 +74,7 @@ fun SocialScreen(
     onProfileClick: (String) -> Unit,
     onMessageClick: (String, String, String) -> Unit,
     onConversationClick: (ConversationUiModel) -> Unit,
+    onChatOptionsClick: (String) -> Unit,
     onNewChatClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: SocialViewModel = hiltViewModel(),
@@ -143,7 +144,7 @@ fun SocialScreen(
                         ChatsTab(
                             uiState = uiState,
                             onConversationClick = onConversationClick,
-                            onProfileClick = onProfileClick,
+                            onChatOptionsClick = onChatOptionsClick,
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
@@ -260,7 +261,7 @@ private fun SocialTabStrip(
 private fun ChatsTab(
     uiState: SocialUiState,
     onConversationClick: (ConversationUiModel) -> Unit,
-    onProfileClick: (String) -> Unit,
+    onChatOptionsClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val conversations = uiState.conversations
@@ -309,12 +310,8 @@ private fun ChatsTab(
                     onChatClick = {
                         onConversationClick(conversation)
                     },
-                    onProfileClick = if (!conversation.isGroup && conversation.directFriendUserId.isNotBlank()) {
-                        {
-                            onProfileClick(conversation.directFriendUserId)
-                        }
-                    } else {
-                        null
+                    onAvatarClick = {
+                        onChatOptionsClick(conversation.conversationId)
                     },
                 )
 
@@ -654,7 +651,7 @@ private fun ChatRow(
     hasUnreadMessages: Boolean,
     unreadCount: Int,
     onChatClick: () -> Unit,
-    onProfileClick: (() -> Unit)?,
+    onAvatarClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     ListItem(
@@ -667,6 +664,7 @@ private fun ChatRow(
             if (isGroup) {
                 GroupChatAvatarStack(
                     avatarIds = groupParticipantAvatarIds.values.toList(),
+                    onClick = onAvatarClick,
                 )
             } else {
                 ChatAvatar(
@@ -674,7 +672,7 @@ private fun ChatRow(
                     online = online,
                     onlineStatus = onlineStatus,
                     showOnlineStatus = showOnlineStatus,
-                    onClick = onProfileClick,
+                    onClick = onAvatarClick,
                 )
             }
         },
@@ -891,6 +889,7 @@ private fun ChatAvatar(
 @Composable
 private fun GroupChatAvatarStack(
     avatarIds: List<String>,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val avatarsToShow = avatarIds
@@ -904,7 +903,11 @@ private fun GroupChatAvatarStack(
     }
 
     Box(
-        modifier = modifier.size(width = totalWidth, height = 44.dp),
+        modifier = modifier
+            .size(width = totalWidth, height = 44.dp)
+            .clickable {
+                onClick()
+            },
         contentAlignment = Alignment.Center,
     ) {
         avatarsToShow.forEachIndexed { index, avatarId ->

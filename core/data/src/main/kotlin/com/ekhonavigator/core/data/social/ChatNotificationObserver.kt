@@ -17,6 +17,7 @@ class ChatNotificationObserver @Inject constructor(
     @ApplicationContext private val context: Context,
     private val authRepository: AuthRepository,
     private val chatRepository: ChatRepository,
+    private val chatMuteRepository: ChatMuteRepository,
     private val chatNotificationManager: ChatNotificationManager,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -48,7 +49,7 @@ class ChatNotificationObserver @Inject constructor(
         }
     }
 
-    private fun handleConversation(
+    private suspend fun handleConversation(
         currentUserId: String,
         conversation: ChatConversation,
     ) {
@@ -71,6 +72,16 @@ class ChatNotificationObserver @Inject constructor(
         }
 
         if (currentTimestamp <= lastSeenTimestamp) return
+
+        val isMuted = chatMuteRepository.isConversationMuted(
+            userId = currentUserId,
+            conversationId = conversation.id,
+        )
+
+        if (isMuted) {
+            saveLastSeenTimestamp(conversation.id, currentTimestamp)
+            return
+        }
 
         val senderName = conversation.participantNames[conversation.lastSenderId]
             ?: "New message"

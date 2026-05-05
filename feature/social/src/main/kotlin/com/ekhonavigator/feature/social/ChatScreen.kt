@@ -68,37 +68,65 @@ fun ChatScreen(
     groupParticipantAvatarIds: Map<String, String> = emptyMap(),
     sharedLocation: SharedLocation? = null,
     onNavigateToMap: () -> Unit = {},
+    onOpenChatOptions: (String) -> Unit = {},
     viewModel: ChatViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val listState = rememberLazyListState()
     val currentUserId = viewModel.getCurrentUserId()
 
     val density = LocalDensity.current
     val imeBottom = WindowInsets.ime.getBottom(density)
 
+    val optionsConversationId = conversationId ?: uiState.conversationId
+    val liveConversation = uiState.conversation
+    val isLiveGroup = liveConversation?.isGroup ?: isGroup
+
     val displayTitle = when {
-        chatTitle.isNotBlank() -> chatTitle
+        liveConversation?.title?.isNotBlank() == true -> {
+            liveConversation.title
+        }
 
-        isGroup -> groupParticipantNames
-            .filterKeys { participantId ->
-                participantId != currentUserId
-            }
-            .values
-            .joinToString(", ")
-            .ifBlank { "Group Chat" }
+        liveConversation?.isGroup == true -> {
+            liveConversation.participantNames
+                .filterKeys { participantId ->
+                    participantId != currentUserId
+                }
+                .values
+                .joinToString(", ")
+                .ifBlank { "Group Chat" }
+        }
 
-        friendDisplayName.isNotBlank() -> friendDisplayName
+        chatTitle.isNotBlank() -> {
+            chatTitle
+        }
 
-        else -> "Chat"
+        isGroup -> {
+            groupParticipantNames
+                .filterKeys { participantId ->
+                    participantId != currentUserId
+                }
+                .values
+                .joinToString(", ")
+                .ifBlank { "Group Chat" }
+        }
+
+        friendDisplayName.isNotBlank() -> {
+            friendDisplayName
+        }
+
+        else -> {
+            "Chat"
+        }
     }
 
-    val groupAvatarIdsToShow = if (isGroup) {
-        groupParticipantNames
-            .filterKeys { participantId ->
+    val groupAvatarIdsToShow = if (isLiveGroup) {
+        val participantIds = liveConversation?.participantIds
+            ?: groupParticipantNames.keys.toList()
+
+        participantIds
+            .filter { participantId ->
                 participantId != currentUserId
             }
-            .keys
             .map { participantId ->
                 groupParticipantAvatarIds[participantId].orEmpty()
             }
@@ -134,26 +162,6 @@ fun ChatScreen(
         }
     }
 
-    LaunchedEffect(uiState.messages.size) {
-        scrollToLatestMessageIfPossible(
-            messageCount = uiState.messages.size,
-            scrollToIndex = { index ->
-                listState.animateScrollToItem(index)
-            },
-        )
-    }
-
-    LaunchedEffect(imeBottom, uiState.messages.size) {
-        if (imeBottom > 0) {
-            scrollToLatestMessageIfPossible(
-                messageCount = uiState.messages.size,
-                scrollToIndex = { index ->
-                    listState.animateScrollToItem(index)
-                },
-            )
-        }
-    }
-
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -163,17 +171,25 @@ fun ChatScreen(
         ChatHeader(
             title = displayTitle,
             avatarId = friendAvatarId,
-            presenceStatus = if (isGroup) null else uiState.friendPresence,
-            isGroup = isGroup,
+            presenceStatus = if (isLiveGroup) null else uiState.friendPresence,
+            isGroup = isLiveGroup,
             groupAvatarIds = groupAvatarIdsToShow,
+            canOpenOptions = optionsConversationId != null,
+            onOpenOptionsClick = {
+                optionsConversationId?.let { id ->
+                    onOpenChatOptions(id)
+                }
+            },
         )
 
         ChatContent(
             uiState = uiState,
             currentUserId = currentUserId,
             friendUserId = friendUserId,
-            isGroup = isGroup,
+            isGroup = isLiveGroup,
+            imeBottom = imeBottom,
             onNavigateToMap = onNavigateToMap,
+            onFocusedMessageHandled = viewModel::clearFocusedMessage,
             viewModel = viewModel,
             modifier = Modifier.weight(1f),
         )
@@ -220,6 +236,8 @@ private fun ChatHeader(
     presenceStatus: PresenceStatus?,
     isGroup: Boolean,
     groupAvatarIds: List<String>,
+    canOpenOptions: Boolean,
+    onOpenOptionsClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -227,16 +245,27 @@ private fun ChatHeader(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        if (isGroup) {
-            GroupAvatarStack(
-                avatarIds = groupAvatarIds,
-            )
-        } else {
-            ChatAvatar(
-                avatarId = avatarId,
-                displayName = title,
-                presenceStatus = presenceStatus,
-            )
+        Box(
+            modifier = if (canOpenOptions) {
+                Modifier.clickable {
+                    onOpenOptionsClick()
+                }
+            } else {
+                Modifier
+            },
+            contentAlignment = Alignment.Center,
+        ) {
+            if (isGroup) {
+                GroupAvatarStack(
+                    avatarIds = groupAvatarIds,
+                )
+            } else {
+                ChatAvatar(
+                    avatarId = avatarId,
+                    displayName = title,
+                    presenceStatus = presenceStatus,
+                )
+            }
         }
 
         Text(
@@ -362,7 +391,9 @@ private fun ChatContent(
     currentUserId: String?,
     friendUserId: String,
     isGroup: Boolean,
+    imeBottom: Int,
     onNavigateToMap: () -> Unit,
+    onFocusedMessageHandled: () -> Unit,
     viewModel: ChatViewModel,
     modifier: Modifier = Modifier,
 ) {
@@ -384,7 +415,9 @@ private fun ChatContent(
                 currentUserId = currentUserId,
                 friendUserId = friendUserId,
                 isGroup = isGroup,
+                imeBottom = imeBottom,
                 onNavigateToMap = onNavigateToMap,
+                onFocusedMessageHandled = onFocusedMessageHandled,
                 viewModel = viewModel,
                 modifier = modifier,
             )
@@ -427,19 +460,48 @@ private fun MessageList(
     currentUserId: String?,
     friendUserId: String,
     isGroup: Boolean,
+    imeBottom: Int,
     onNavigateToMap: () -> Unit,
+    onFocusedMessageHandled: () -> Unit,
     viewModel: ChatViewModel,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
 
-    LaunchedEffect(uiState.messages.size) {
+    LaunchedEffect(uiState.messages, uiState.focusedMessageId) {
+        if (uiState.messages.isEmpty()) return@LaunchedEffect
+
+        val focusedMessageId = uiState.focusedMessageId
+
+        if (focusedMessageId != null) {
+            val targetIndex = uiState.messages.indexOfFirst { message ->
+                message.id == focusedMessageId
+            }
+
+            if (targetIndex >= 0) {
+                listState.animateScrollToItem(targetIndex)
+                onFocusedMessageHandled()
+                return@LaunchedEffect
+            }
+        }
+
         scrollToLatestMessageIfPossible(
             messageCount = uiState.messages.size,
             scrollToIndex = { index ->
                 listState.animateScrollToItem(index)
             },
         )
+    }
+
+    LaunchedEffect(imeBottom, uiState.messages.size) {
+        if (imeBottom > 0 && uiState.focusedMessageId == null) {
+            scrollToLatestMessageIfPossible(
+                messageCount = uiState.messages.size,
+                scrollToIndex = { index ->
+                    listState.animateScrollToItem(index)
+                },
+            )
+        }
     }
 
     LazyColumn(

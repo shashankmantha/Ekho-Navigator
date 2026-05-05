@@ -69,12 +69,14 @@ import com.ekhonavigator.feature.home.navigation.HomeNavKey
 import com.ekhonavigator.feature.map.CampusPlacesData
 import com.ekhonavigator.feature.map.MapScreen
 import com.ekhonavigator.feature.map.navigation.MapNavKey
+import com.ekhonavigator.feature.social.ChatOptionsScreen
 import com.ekhonavigator.feature.social.ChatScreen
 import com.ekhonavigator.feature.social.NewChatScreen
 import com.ekhonavigator.feature.social.SocialActionViewModel
 import com.ekhonavigator.feature.social.SocialScreen
 import com.ekhonavigator.feature.social.UserProfileScreen
 import com.ekhonavigator.feature.social.navigation.ChatNavKey
+import com.ekhonavigator.feature.social.navigation.ChatOptionsNavKey
 import com.ekhonavigator.feature.social.navigation.NewChatNavKey
 import com.ekhonavigator.feature.social.navigation.SocialNavKey
 import com.ekhonavigator.feature.social.navigation.UserProfileNavKey
@@ -368,6 +370,13 @@ fun EkhoNavigatorApp(
                                             ),
                                         )
                                     },
+                                    onChatOptionsClick = { conversationId ->
+                                        navigator.navigate(
+                                            ChatOptionsNavKey(
+                                                conversationId = conversationId,
+                                            ),
+                                        )
+                                    },
                                     onNewChatClick = {
                                         navigator.navigate(NewChatNavKey)
                                     },
@@ -425,6 +434,28 @@ fun EkhoNavigatorApp(
                             }
                         }
 
+                        is ChatOptionsNavKey -> {
+                            NavEntry(key) {
+                                ChatOptionsScreen(
+                                    conversationId = key.conversationId,
+                                    onBack = {
+                                        navigator.goBack()
+                                    },
+                                    onParticipantClick = { userId ->
+                                        navigator.navigate(
+                                            UserProfileNavKey(
+                                                userId = userId,
+                                            ),
+                                        )
+                                    },
+                                    onLeaveConversation = {
+                                        navigator.goBack()
+                                        navigator.goBack()
+                                    },
+                                )
+                            }
+                        }
+
                         is ChatNavKey -> {
                             NavEntry(key) {
                                 ChatScreen(
@@ -439,6 +470,13 @@ fun EkhoNavigatorApp(
                                     sharedLocation = key.sharedLocation,
                                     onNavigateToMap = {
                                         navigator.navigate(MapNavKey())
+                                    },
+                                    onOpenChatOptions = { conversationId ->
+                                        navigator.navigate(
+                                            ChatOptionsNavKey(
+                                                conversationId = conversationId,
+                                            ),
+                                        )
                                     },
                                 )
                             }

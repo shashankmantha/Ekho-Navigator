@@ -269,6 +269,137 @@ class ChatRepository @Inject constructor() {
         return conversation.id
     }
 
+    suspend fun renameGroupConversation(
+        conversationId: String,
+        newTitle: String,
+    ) {
+        val conversationRef = firestore
+            .collection(CONVERSATIONS_COLLECTION)
+            .document(conversationId)
+
+        firestore.runTransaction { transaction ->
+            val snapshot = transaction.get(conversationRef)
+            val isGroup = snapshot.getBoolean("isGroup") ?: false
+
+            if (!isGroup) {
+                error("Cannot rename a direct conversation")
+            }
+
+            transaction.update(
+                conversationRef,
+                "title",
+                newTitle.trim(),
+            )
+        }.await()
+    }
+
+    suspend fun addParticipantsToGroupConversation(
+        conversationId: String,
+        newParticipantNames: Map<String, String>,
+    ) {
+        if (newParticipantNames.isEmpty()) return
+
+        val conversationRef = firestore
+            .collection(CONVERSATIONS_COLLECTION)
+            .document(conversationId)
+
+        firestore.runTransaction { transaction ->
+            val snapshot = transaction.get(conversationRef)
+            val isGroup = snapshot.getBoolean("isGroup") ?: false
+
+            if (!isGroup) {
+                error("Cannot add participants to a direct conversation")
+            }
+
+            val currentParticipantIds = snapshot.getStringList("participantIds")
+            val currentParticipantNames = snapshot.getStringMap("participantNames")
+
+            val updatedParticipantIds = (
+                    currentParticipantIds + newParticipantNames.keys
+                    )
+                .distinct()
+
+            val updatedParticipantNames = currentParticipantNames + newParticipantNames
+
+            transaction.update(
+                conversationRef,
+                mapOf(
+                    "participantIds" to updatedParticipantIds,
+                    "participantNames" to updatedParticipantNames,
+                ),
+            )
+        }.await()
+    }
+
+    suspend fun leaveGroupConversation(
+        conversationId: String,
+        currentUserId: String,
+    ) {
+        val conversationRef = firestore
+            .collection(CONVERSATIONS_COLLECTION)
+            .document(conversationId)
+
+        firestore.runTransaction { transaction ->
+            val snapshot = transaction.get(conversationRef)
+            val isGroup = snapshot.getBoolean("isGroup") ?: false
+
+            if (!isGroup) {
+                error("Cannot leave a direct conversation")
+            }
+
+            val updatedParticipantIds = snapshot
+                .getStringList("participantIds")
+                .filterNot { participantId ->
+                    participantId == currentUserId
+                }
+
+            val updatedParticipantNames = snapshot
+                .getStringMap("participantNames")
+                .filterKeys { participantId ->
+                    participantId != currentUserId
+                }
+
+            transaction.update(
+                conversationRef,
+                mapOf(
+                    "participantIds" to updatedParticipantIds,
+                    "participantNames" to updatedParticipantNames,
+                    "readBy" to FieldValue.arrayRemove(currentUserId),
+                ),
+            )
+        }.await()
+    }
+
+    suspend fun searchMessages(
+        conversationId: String,
+        query: String,
+    ): List<ChatMessage> {
+        val trimmedQuery = query.trim()
+
+        if (trimmedQuery.isBlank()) return emptyList()
+
+        val snapshot = firestore
+            .collection(CONVERSATIONS_COLLECTION)
+            .document(conversationId)
+            .collection(MESSAGES_COLLECTION)
+            .get()
+            .await()
+
+        return snapshot.documents
+            .map { document ->
+                document.toChatMessage()
+            }
+            .filter { message ->
+                message.text.contains(trimmedQuery, ignoreCase = true) ||
+                        message.senderName.contains(trimmedQuery, ignoreCase = true) ||
+                        message.sharedLocation?.title?.contains(trimmedQuery, ignoreCase = true) == true ||
+                        message.sharedLocation?.details?.contains(trimmedQuery, ignoreCase = true) == true
+            }
+            .sortedBy { message ->
+                message.timestamp
+            }
+    }
+
     fun observeConversationById(
         conversationId: String,
     ): Flow<ChatConversation?> = callbackFlow {

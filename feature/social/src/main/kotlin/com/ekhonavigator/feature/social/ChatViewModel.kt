@@ -6,6 +6,7 @@ import com.ekhonavigator.core.data.auth.AuthRepository
 import com.ekhonavigator.core.data.markers.MarkerRepository
 import com.ekhonavigator.core.data.markers.UserDroppedMarker
 import com.ekhonavigator.core.data.repository.PresenceRepository
+import com.ekhonavigator.core.data.social.ChatConversation
 import com.ekhonavigator.core.data.social.ChatMessage
 import com.ekhonavigator.core.data.social.ChatRepository
 import com.ekhonavigator.core.model.PresenceStatus
@@ -25,6 +26,9 @@ import kotlinx.coroutines.launch
 
 data class ChatUiState(
     val isLoading: Boolean = true,
+    val conversationId: String? = null,
+    val conversation: ChatConversation? = null,
+    val focusedMessageId: String? = null,
     val messages: List<ChatMessage> = emptyList(),
     val draftMessage: String = "",
     val pendingSharedLocation: SharedLocation? = null,
@@ -39,6 +43,7 @@ class ChatViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val markerRepository: MarkerRepository,
     private val presenceRepository: PresenceRepository,
+    private val chatFocusRepository: ChatFocusRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChatUiState())
@@ -46,6 +51,7 @@ class ChatViewModel @Inject constructor(
 
     private var observeMessagesJob: Job? = null
     private var observePresenceJob: Job? = null
+    private var observeConversationJob: Job? = null
 
     private var activeConversationId: String? = null
     private var activeFriendUserId: String = ""
@@ -55,6 +61,7 @@ class ChatViewModel @Inject constructor(
 
     init {
         observeSignedInUser()
+        observeFocusRequests()
     }
 
     fun startConversation(
@@ -63,6 +70,21 @@ class ChatViewModel @Inject constructor(
     ) {
         val currentUserId = authRepository.getCurrentUserUid() ?: return
 
+        if (
+            activeFriendUserId == friendUserId &&
+            activeConversationId != null &&
+            observeMessagesJob?.isActive == true
+        ) {
+            _uiState.update {
+                it.copy(
+                    conversationId = activeConversationId,
+                    isLoading = false,
+                    errorMessage = null,
+                )
+            }
+            return
+        }
+
         activeConversationId = null
         activeFriendUserId = friendUserId
         activeFriendDisplayName = friendDisplayName
@@ -70,12 +92,16 @@ class ChatViewModel @Inject constructor(
         pendingGroupParticipantNames = emptyMap()
 
         observeMessagesJob?.cancel()
+        observeConversationJob?.cancel()
         observeFriendPresence(friendUserId)
 
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
                     isLoading = true,
+                    conversationId = null,
+                    conversation = null,
+                    focusedMessageId = null,
                     messages = emptyList(),
                     errorMessage = null,
                 )
@@ -96,6 +122,9 @@ class ChatViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
+                            conversationId = null,
+                            conversation = null,
+                            focusedMessageId = null,
                             messages = emptyList(),
                             errorMessage = null,
                         )
@@ -112,6 +141,22 @@ class ChatViewModel @Inject constructor(
     ) {
         val currentUserId = authRepository.getCurrentUserUid() ?: return
 
+        if (
+            activeConversationId == conversationId &&
+            observeMessagesJob?.isActive == true
+        ) {
+            observeConversationMetadata(conversationId)
+
+            _uiState.update {
+                it.copy(
+                    conversationId = conversationId,
+                    isLoading = false,
+                    errorMessage = null,
+                )
+            }
+            return
+        }
+
         activeFriendUserId = ""
         activeFriendDisplayName = ""
         pendingGroupTitle = ""
@@ -122,6 +167,7 @@ class ChatViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 friendPresence = null,
+                conversationId = conversationId,
                 isLoading = true,
                 errorMessage = null,
             )
@@ -145,11 +191,15 @@ class ChatViewModel @Inject constructor(
         pendingGroupParticipantNames = participantNames
 
         observeMessagesJob?.cancel()
+        observeConversationJob?.cancel()
         observePresenceJob?.cancel()
 
         _uiState.update {
             it.copy(
                 isLoading = false,
+                conversationId = null,
+                conversation = null,
+                focusedMessageId = null,
                 messages = emptyList(),
                 errorMessage = null,
                 friendPresence = null,
@@ -181,6 +231,12 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    fun clearFocusedMessage() {
+        _uiState.update {
+            it.copy(focusedMessageId = null)
+        }
+    }
+
     fun sendMessage(
         friendUserId: String = activeFriendUserId,
         friendDisplayName: String = activeFriendDisplayName,
@@ -202,15 +258,27 @@ class ChatViewModel @Inject constructor(
 
                 val clientMessageId = UUID.randomUUID().toString()
 
-                if (activeConversationId != null) {
+                val existingConversationId = activeConversationId
+                    ?: currentState.conversationId
+
+                if (existingConversationId != null) {
                     chatRepository.sendMessage(
-                        conversationId = activeConversationId!!,
+                        conversationId = existingConversationId,
                         senderId = currentUserId,
                         senderName = currentUserName,
                         text = messageText,
                         clientMessageId = clientMessageId,
                         sharedLocation = pendingLocation,
                     )
+
+                    activeConversationId = existingConversationId
+
+                    _uiState.update {
+                        it.copy(conversationId = existingConversationId)
+                    }
+
+                    observeConversationMetadata(existingConversationId)
+
                     return@runCatching
                 }
 
@@ -219,7 +287,7 @@ class ChatViewModel @Inject constructor(
                         error("No active conversation selected")
                     }
 
-                    val conversationId = chatRepository.sendFirstGroupMessage(
+                    val newConversationId = chatRepository.sendFirstGroupMessage(
                         currentUserId = currentUserId,
                         currentUserName = currentUserName,
                         groupTitle = pendingGroupTitle,
@@ -229,23 +297,27 @@ class ChatViewModel @Inject constructor(
                         sharedLocation = pendingLocation,
                     )
 
-                    if (conversationId.isBlank()) {
+                    if (newConversationId.isBlank()) {
                         error("Failed to create group conversation")
                     }
 
-                    activeConversationId = conversationId
+                    activeConversationId = newConversationId
                     pendingGroupTitle = ""
                     pendingGroupParticipantNames = emptyMap()
 
+                    _uiState.update {
+                        it.copy(conversationId = newConversationId)
+                    }
+
                     startObservingMessages(
-                        conversationId = conversationId,
+                        conversationId = newConversationId,
                         currentUserId = currentUserId,
                     )
 
                     return@runCatching
                 }
 
-                val conversationId = chatRepository.sendFirstDirectMessage(
+                val newConversationId = chatRepository.sendFirstDirectMessage(
                     currentUserId = currentUserId,
                     currentUserName = currentUserName,
                     friendUserId = friendUserId,
@@ -255,10 +327,14 @@ class ChatViewModel @Inject constructor(
                     sharedLocation = pendingLocation,
                 )
 
-                activeConversationId = conversationId
+                activeConversationId = newConversationId
+
+                _uiState.update {
+                    it.copy(conversationId = newConversationId)
+                }
 
                 startObservingMessages(
-                    conversationId = conversationId,
+                    conversationId = newConversationId,
                     currentUserId = currentUserId,
                 )
             }.onSuccess {
@@ -328,6 +404,21 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    private fun observeFocusRequests() {
+        viewModelScope.launch {
+            chatFocusRepository.focusRequests.collect { request ->
+                val currentConversationId = activeConversationId
+                    ?: uiState.value.conversationId
+
+                if (request.conversationId == currentConversationId) {
+                    _uiState.update {
+                        it.copy(focusedMessageId = request.messageId)
+                    }
+                }
+            }
+        }
+    }
+
     private fun observeFriendPresence(friendUserId: String) {
         observePresenceJob?.cancel()
 
@@ -348,10 +439,27 @@ class ChatViewModel @Inject constructor(
         currentUserId: String,
     ) {
         if (activeConversationId == conversationId && observeMessagesJob?.isActive == true) {
+            observeConversationMetadata(conversationId)
+
+            _uiState.update {
+                it.copy(
+                    conversationId = conversationId,
+                    isLoading = false,
+                    errorMessage = null,
+                )
+            }
             return
         }
 
         activeConversationId = conversationId
+        observeConversationMetadata(conversationId)
+
+        _uiState.update {
+            it.copy(
+                conversationId = conversationId,
+                errorMessage = null,
+            )
+        }
 
         observeMessagesJob?.cancel()
         observeMessagesJob = viewModelScope.launch {
@@ -360,6 +468,7 @@ class ChatViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
+                            conversationId = conversationId,
                             errorMessage = error.message ?: "Chat unavailable",
                         )
                     }
@@ -368,6 +477,7 @@ class ChatViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
+                            conversationId = conversationId,
                             messages = messages,
                             errorMessage = null,
                         )
@@ -378,6 +488,30 @@ class ChatViewModel @Inject constructor(
                         currentUserId = currentUserId,
                         messages = messages,
                     )
+                }
+        }
+    }
+
+    private fun observeConversationMetadata(
+        conversationId: String,
+    ) {
+        if (
+            uiState.value.conversationId == conversationId &&
+            observeConversationJob?.isActive == true
+        ) {
+            return
+        }
+
+        observeConversationJob?.cancel()
+
+        observeConversationJob = viewModelScope.launch {
+            chatRepository.observeConversationById(conversationId)
+                .catch {
+                }
+                .collect { conversation ->
+                    _uiState.update {
+                        it.copy(conversation = conversation)
+                    }
                 }
         }
     }
@@ -402,6 +536,7 @@ class ChatViewModel @Inject constructor(
     private fun stopCurrentConversation() {
         observeMessagesJob?.cancel()
         observePresenceJob?.cancel()
+        observeConversationJob?.cancel()
 
         activeConversationId = null
         activeFriendUserId = ""
@@ -412,6 +547,9 @@ class ChatViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 isLoading = false,
+                conversationId = null,
+                conversation = null,
+                focusedMessageId = null,
                 messages = emptyList(),
                 errorMessage = null,
                 friendPresence = null,
@@ -423,6 +561,9 @@ class ChatViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 isLoading = false,
+                conversationId = null,
+                conversation = null,
+                focusedMessageId = null,
                 errorMessage = error.message ?: "Failed to open chat",
             )
         }
