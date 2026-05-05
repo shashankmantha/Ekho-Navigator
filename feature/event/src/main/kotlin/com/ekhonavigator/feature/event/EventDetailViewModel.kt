@@ -73,19 +73,26 @@ class EventDetailViewModel @Inject constructor(
         .flatMapLatest { id -> canvasPlannerRepository.observeById(id) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    /** Read-time join from the planner item to its full assignment record. The
-     *  assignments table is populated lazily — only courses the user has opened
-     *  the per-class detail screen for will have entries — so this stays null
-     *  for assignment events the user navigated to via calendar tap without
-     *  ever drilling into the course. That's intentional: showing a numeric
-     *  grade is a bonus, not a requirement, and the planner item already
-     *  carries enough for the status/points chips. */
+    /** Read-time join from the planner item to its full assignment record.
+     *  Also opportunistically triggers a per-course assignment sync the first
+     *  time a calendar→event tap lands on an ASSIGNMENT — that's how the
+     *  description (which the planner DTO doesn't carry) gets populated
+     *  without requiring the user to drill into the per-class detail screen
+     *  first. Tracked per-courseId so we don't hammer Canvas on repeated taps. */
+    private val syncedCourseIds = mutableSetOf<String>()
+
     @OptIn(ExperimentalCoroutinesApi::class)
     val assignmentContext: StateFlow<CanvasAssignment?> = canvasContext
         .flatMapLatest { item ->
             if (item == null || item.kind != PlannerKind.ASSIGNMENT) {
                 kotlinx.coroutines.flow.flowOf<CanvasAssignment?>(null)
             } else {
+                val courseId = item.courseId
+                if (courseId != null && syncedCourseIds.add(courseId)) {
+                    viewModelScope.launch {
+                        runCatching { canvasAssignmentRepository.sync(courseId) }
+                    }
+                }
                 canvasAssignmentRepository.observeById(item.plannableId)
             }
         }

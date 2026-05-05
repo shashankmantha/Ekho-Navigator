@@ -248,8 +248,15 @@ private fun EventDetailContent(
 ) {
     val zone = remember { ZoneId.systemDefault() }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
-    val cleanedDescription = remember(event.description) {
-        stripTrumbaHeaderLines(event.description)
+    // For Canvas assignments the live read-time join via `assignmentContext`
+    // is the source of truth — the previously-used `calendar_events` backfill
+    // got wiped on the next planner sync (planner DTO carries no body), which
+    // made descriptions disappear after the user navigated calendar→back→tap.
+    // Falling back to `event.description` keeps non-assignment events working.
+    val rawDescription = assignmentContext?.description?.takeIf { it.isNotBlank() }
+        ?: event.description
+    val cleanedDescription = remember(rawDescription) {
+        stripTrumbaHeaderLines(rawDescription)
     }
 
     Column(
