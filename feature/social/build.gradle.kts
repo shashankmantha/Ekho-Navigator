@@ -37,6 +37,7 @@ android {
 dependencies {
     api(projects.core.navigation)
     api(projects.feature.event)
+    implementation(projects.feature.account)
     implementation(projects.core.model)
     implementation(projects.core.designsystem)
     implementation(projects.core.data)
