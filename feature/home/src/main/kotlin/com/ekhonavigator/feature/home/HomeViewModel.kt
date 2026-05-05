@@ -47,7 +47,7 @@ class HomeViewModel @Inject constructor(
      * user-created events, and shared invites always show in both states —
      * they're never campus noise. Default off (show everything).
      */
-    private val _importantOnly = MutableStateFlow(false)
+    private val _importantOnly = MutableStateFlow(true)
     val importantOnly: StateFlow<Boolean> = _importantOnly.asStateFlow()
 
     /**
