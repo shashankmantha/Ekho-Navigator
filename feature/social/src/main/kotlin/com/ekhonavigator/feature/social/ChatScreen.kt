@@ -40,6 +40,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -67,6 +71,7 @@ fun ChatScreen(
     groupParticipantNames: Map<String, String> = emptyMap(),
     groupParticipantAvatarIds: Map<String, String> = emptyMap(),
     sharedLocation: SharedLocation? = null,
+    initialFocusedMessageId: String? = null,
     onNavigateToMap: () -> Unit = {},
     onOpenChatOptions: (String) -> Unit = {},
     viewModel: ChatViewModel = hiltViewModel(),
@@ -134,11 +139,18 @@ fun ChatScreen(
         emptyList()
     }
 
-    LaunchedEffect(conversationId, friendUserId, isGroup, groupParticipantNames) {
+    LaunchedEffect(
+        conversationId,
+        friendUserId,
+        isGroup,
+        groupParticipantNames,
+        initialFocusedMessageId,
+    ) {
         when {
             conversationId != null -> {
                 viewModel.startExistingConversation(
                     conversationId = conversationId,
+                    initialFocusedMessageId = initialFocusedMessageId,
                 )
             }
 
@@ -468,39 +480,94 @@ private fun MessageList(
 ) {
     val listState = rememberLazyListState()
 
-    LaunchedEffect(uiState.messages, uiState.focusedMessageId) {
-        if (uiState.messages.isEmpty()) return@LaunchedEffect
+    val conversationKey = uiState.conversationId ?: "pending_chat"
+
+    var hasHandledInitialScroll by remember(conversationKey) {
+        mutableStateOf(false)
+    }
+
+    var previousMessageCount by remember(conversationKey) {
+        mutableIntStateOf(0)
+    }
+
+    LaunchedEffect(
+        conversationKey,
+        uiState.messages.size,
+        uiState.focusedMessageId,
+    ) {
+        val messages = uiState.messages
+
+        if (messages.isEmpty()) {
+            previousMessageCount = 0
+            return@LaunchedEffect
+        }
 
         val focusedMessageId = uiState.focusedMessageId
 
         if (focusedMessageId != null) {
-            val targetIndex = uiState.messages.indexOfFirst { message ->
+            val targetIndex = messages.indexOfFirst { message ->
                 message.id == focusedMessageId
             }
 
             if (targetIndex >= 0) {
+                hasHandledInitialScroll = true
+                previousMessageCount = messages.size
+
                 listState.animateScrollToItem(targetIndex)
+
                 onFocusedMessageHandled()
                 return@LaunchedEffect
             }
         }
 
-        scrollToLatestMessageIfPossible(
-            messageCount = uiState.messages.size,
-            scrollToIndex = { index ->
-                listState.animateScrollToItem(index)
-            },
-        )
-    }
+        if (!hasHandledInitialScroll) {
+            hasHandledInitialScroll = true
+            previousMessageCount = messages.size
 
-    LaunchedEffect(imeBottom, uiState.messages.size) {
-        if (imeBottom > 0 && uiState.focusedMessageId == null) {
             scrollToLatestMessageIfPossible(
-                messageCount = uiState.messages.size,
+                messageCount = messages.size,
+                scrollToIndex = { index ->
+                    listState.scrollToItem(index)
+                },
+            )
+
+            return@LaunchedEffect
+        }
+
+        if (messages.size > previousMessageCount && focusedMessageId == null) {
+            previousMessageCount = messages.size
+
+            scrollToLatestMessageIfPossible(
+                messageCount = messages.size,
                 scrollToIndex = { index ->
                     listState.animateScrollToItem(index)
                 },
             )
+        } else {
+            previousMessageCount = messages.size
+        }
+    }
+
+    LaunchedEffect(imeBottom) {
+        if (
+            imeBottom > 0 &&
+            uiState.messages.isNotEmpty() &&
+            uiState.focusedMessageId == null &&
+            !listState.isScrollInProgress
+        ) {
+            val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+            val lastMessageIndex = uiState.messages.lastIndex
+            val isNearBottom = lastVisibleIndex == null ||
+                    lastVisibleIndex >= lastMessageIndex - 1
+
+            if (isNearBottom) {
+                scrollToLatestMessageIfPossible(
+                    messageCount = uiState.messages.size,
+                    scrollToIndex = { index ->
+                        listState.animateScrollToItem(index)
+                    },
+                )
+            }
         }
     }
 

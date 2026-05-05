@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -54,12 +55,25 @@ import com.ekhonavigator.core.data.social.ChatMessage
 import com.ekhonavigator.core.data.social.FriendUser
 import com.ekhonavigator.core.designsystem.R as DesignR
 
+data class ChatOptionsFocusTarget(
+    val conversationId: String,
+    val messageId: String,
+    val chatTitle: String,
+    val isGroup: Boolean,
+    val friendUserId: String = "",
+    val friendDisplayName: String = "",
+    val friendAvatarId: String = "",
+    val groupParticipantNames: Map<String, String> = emptyMap(),
+    val groupParticipantAvatarIds: Map<String, String> = emptyMap(),
+)
+
 @Composable
 fun ChatOptionsScreen(
     conversationId: String,
     onBack: () -> Unit,
     onParticipantClick: (String) -> Unit,
     onLeaveConversation: () -> Unit,
+    onFocusedMessageRequested: (ChatOptionsFocusTarget) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ChatOptionsViewModel = hiltViewModel(),
     socialViewModel: SocialViewModel = hiltViewModel(),
@@ -124,9 +138,19 @@ fun ChatOptionsScreen(
                     onMuteChange = viewModel::setMuted,
                     onSearchQueryChange = viewModel::onSearchQueryChange,
                     onSearchResultClick = { messageId ->
+                        val focusTarget = buildChatOptionsFocusTarget(
+                            conversationId = conversationId,
+                            messageId = messageId,
+                            conversation = conversation,
+                            currentUserId = currentUserId,
+                            friends = socialUiState.friends,
+                        )
+
                         viewModel.focusMessage(
                             messageId = messageId,
-                            onFocused = onBack,
+                            onFocused = {
+                                onFocusedMessageRequested(focusTarget)
+                            },
                         )
                     },
                     onRenameClick = {
@@ -248,12 +272,8 @@ private fun ChatOptionsContent(
         }
 
         item {
-            SectionTitle("Notifications")
-
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
@@ -372,18 +392,10 @@ private fun ChatOptionsContent(
         }
 
         item {
-            SectionTitle("Search Messages")
-
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = onSearchQueryChange,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-                label = {
-                    Text("Search this chat")
-                },
-                singleLine = true,
+            SearchBar(
+                searchQuery = searchQuery,
+                onSearchQueryChange = onSearchQueryChange,
+                label = "Search this chat",
             )
         }
 
@@ -427,6 +439,43 @@ private fun ChatOptionsContent(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SearchBar(
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = onSearchQueryChange,
+            modifier = Modifier.weight(1f),
+            label = {
+                Text(label)
+            },
+            singleLine = true,
+            trailingIcon = {
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(
+                        onClick = {
+                            onSearchQueryChange("")
+                        },
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Close,
+                            contentDescription = "Clear search",
+                        )
+                    }
+                }
+            },
+        )
     }
 }
 
@@ -630,16 +679,12 @@ private fun InviteParticipantsDialog(
                 modifier = Modifier.heightIn(max = 420.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = {
+                SearchBar(
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = {
                         searchQuery = it
                     },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = {
-                        Text("Search friends")
-                    },
-                    singleLine = true,
+                    label = "Search friends",
                 )
 
                 when {
@@ -788,6 +833,60 @@ private fun avatarResourceForId(
         "avatar_turtle" -> DesignR.drawable.avatar_turtle
         else -> DesignR.drawable.avatar_default
     }
+}
+
+private fun buildChatOptionsFocusTarget(
+    conversationId: String,
+    messageId: String,
+    conversation: ChatConversation,
+    currentUserId: String?,
+    friends: List<FriendUser>,
+): ChatOptionsFocusTarget {
+    val chatTitle = buildConversationTitle(
+        conversation = conversation,
+        currentUserId = currentUserId,
+    )
+
+    if (conversation.isGroup) {
+        return ChatOptionsFocusTarget(
+            conversationId = conversationId,
+            messageId = messageId,
+            chatTitle = chatTitle,
+            isGroup = true,
+            groupParticipantNames = conversation.participantNames,
+            groupParticipantAvatarIds = friends
+                .filter { friend ->
+                    friend.uid in conversation.participantIds
+                }
+                .associate { friend ->
+                    friend.uid to friend.avatarId
+                },
+        )
+    }
+
+    val friendUserId = conversation.participantIds
+        .firstOrNull { participantId ->
+            participantId != currentUserId
+        }
+        .orEmpty()
+
+    val friend = friends.firstOrNull { friend ->
+        friend.uid == friendUserId
+    }
+
+    val friendDisplayName = conversation.participantNames[friendUserId]
+        ?: friend?.displayName
+        ?: chatTitle
+
+    return ChatOptionsFocusTarget(
+        conversationId = conversationId,
+        messageId = messageId,
+        chatTitle = chatTitle,
+        isGroup = false,
+        friendUserId = friendUserId,
+        friendDisplayName = friendDisplayName,
+        friendAvatarId = friend?.avatarId.orEmpty(),
+    )
 }
 
 private fun buildConversationTitle(

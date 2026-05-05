@@ -4,6 +4,7 @@ import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import com.ekhonavigator.core.model.SharedLocation
 import com.ekhonavigator.core.navigation.Navigator
+import com.ekhonavigator.feature.social.ChatOptionsFocusTarget
 import com.ekhonavigator.feature.social.ChatOptionsScreen
 import com.ekhonavigator.feature.social.ChatScreen
 import com.ekhonavigator.feature.social.NewChatScreen
@@ -38,12 +39,30 @@ data class ChatNavKey(
     val groupParticipantNames: Map<String, String> = emptyMap(),
     val groupParticipantAvatarIds: Map<String, String> = emptyMap(),
     val sharedLocation: SharedLocation? = null,
+    val initialFocusedMessageId: String? = null,
 ) : NavKey
 
 fun EntryProviderScope<NavKey>.socialEntry(
     navigator: Navigator,
     onNavigateToMap: () -> Unit,
 ) {
+    fun openFocusedChatFromOptions(target: ChatOptionsFocusTarget) {
+        val chatKey = ChatNavKey(
+            conversationId = target.conversationId,
+            friendUserId = target.friendUserId,
+            friendDisplayName = target.friendDisplayName,
+            friendAvatarId = target.friendAvatarId,
+            chatTitle = target.chatTitle,
+            isGroup = target.isGroup,
+            groupParticipantNames = target.groupParticipantNames,
+            groupParticipantAvatarIds = target.groupParticipantAvatarIds,
+            initialFocusedMessageId = target.messageId,
+        )
+
+        navigator.goBack()
+        navigator.navigate(chatKey)
+    }
+
     entry<SocialNavKey> {
         SocialScreen(
             onProfileClick = { userId ->
@@ -118,6 +137,9 @@ fun EntryProviderScope<NavKey>.socialEntry(
                 navigator.goBack()
                 navigator.goBack()
             },
+            onFocusedMessageRequested = { target ->
+                openFocusedChatFromOptions(target)
+            },
         )
     }
 
@@ -132,6 +154,7 @@ fun EntryProviderScope<NavKey>.socialEntry(
             groupParticipantNames = key.groupParticipantNames,
             groupParticipantAvatarIds = key.groupParticipantAvatarIds,
             sharedLocation = key.sharedLocation,
+            initialFocusedMessageId = key.initialFocusedMessageId,
             onNavigateToMap = onNavigateToMap,
             onOpenChatOptions = { conversationId ->
                 navigator.navigate(

@@ -31,7 +31,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavEntry
-import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.ui.NavDisplay
 import com.ekhonavigator.core.designsystem.component.EkhoAppBarIcon
 import com.ekhonavigator.core.designsystem.component.EkhoNavigationSuiteScaffold
@@ -69,6 +68,7 @@ import com.ekhonavigator.feature.home.navigation.HomeNavKey
 import com.ekhonavigator.feature.map.CampusPlacesData
 import com.ekhonavigator.feature.map.MapScreen
 import com.ekhonavigator.feature.map.navigation.MapNavKey
+import com.ekhonavigator.feature.social.ChatOptionsFocusTarget
 import com.ekhonavigator.feature.social.ChatOptionsScreen
 import com.ekhonavigator.feature.social.ChatScreen
 import com.ekhonavigator.feature.social.NewChatScreen
@@ -129,6 +129,7 @@ fun EkhoNavigatorApp(
     }
 
     val currentKey = navigationState.currentKey
+
     val topLevelDestination = TOP_LEVEL_NAV_ITEMS.entries
         .find { (key, _) ->
             key::class == currentKey::class
@@ -143,6 +144,30 @@ fun EkhoNavigatorApp(
     LaunchedEffect(currentKey) {
         topAppBarState.heightOffset = 0f
         topAppBarState.contentOffset = 0f
+    }
+
+    fun openFocusedChatFromOptions(target: ChatOptionsFocusTarget) {
+        val chatKey = ChatNavKey(
+            conversationId = target.conversationId,
+            friendUserId = target.friendUserId,
+            friendDisplayName = target.friendDisplayName,
+            friendAvatarId = target.friendAvatarId,
+            chatTitle = target.chatTitle,
+            isGroup = target.isGroup,
+            groupParticipantNames = target.groupParticipantNames,
+            groupParticipantAvatarIds = target.groupParticipantAvatarIds,
+            initialFocusedMessageId = target.messageId,
+        )
+
+        navigator.goBack()
+
+        val currentAfterBack = navigationState.currentKey
+        val alreadyOnTargetChat = currentAfterBack is ChatNavKey &&
+                currentAfterBack.conversationId == target.conversationId
+
+        if (!alreadyOnTargetChat) {
+            navigator.navigate(chatKey)
+        }
     }
 
     EkhoNavigationSuiteScaffold(
@@ -452,6 +477,9 @@ fun EkhoNavigatorApp(
                                         navigator.goBack()
                                         navigator.goBack()
                                     },
+                                    onFocusedMessageRequested = { target ->
+                                        openFocusedChatFromOptions(target)
+                                    },
                                 )
                             }
                         }
@@ -468,6 +496,7 @@ fun EkhoNavigatorApp(
                                     groupParticipantNames = key.groupParticipantNames,
                                     groupParticipantAvatarIds = key.groupParticipantAvatarIds,
                                     sharedLocation = key.sharedLocation,
+                                    initialFocusedMessageId = key.initialFocusedMessageId,
                                     onNavigateToMap = {
                                         navigator.navigate(MapNavKey())
                                     },

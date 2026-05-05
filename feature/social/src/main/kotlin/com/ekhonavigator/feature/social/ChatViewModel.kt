@@ -138,6 +138,7 @@ class ChatViewModel @Inject constructor(
 
     fun startExistingConversation(
         conversationId: String,
+        initialFocusedMessageId: String? = null,
     ) {
         val currentUserId = authRepository.getCurrentUserUid() ?: return
 
@@ -147,9 +148,10 @@ class ChatViewModel @Inject constructor(
         ) {
             observeConversationMetadata(conversationId)
 
-            _uiState.update {
-                it.copy(
+            _uiState.update { currentState ->
+                currentState.copy(
                     conversationId = conversationId,
+                    focusedMessageId = initialFocusedMessageId ?: currentState.focusedMessageId,
                     isLoading = false,
                     errorMessage = null,
                 )
@@ -168,6 +170,7 @@ class ChatViewModel @Inject constructor(
             it.copy(
                 friendPresence = null,
                 conversationId = conversationId,
+                focusedMessageId = initialFocusedMessageId,
                 isLoading = true,
                 errorMessage = null,
             )
