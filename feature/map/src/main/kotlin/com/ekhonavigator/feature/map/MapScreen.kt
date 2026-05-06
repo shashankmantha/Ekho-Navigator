@@ -33,6 +33,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -511,7 +512,11 @@ fun MapScreen(
                                 FilterChip(
                                     selected = (selectedCategory == category),
                                     onClick = { selectedCategory = category },
-                                    label = { Text(category.label) }
+                                    label = { Text(category.label) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    ),
                                 )
                             }
                         }
@@ -529,7 +534,7 @@ fun MapScreen(
                 Surface(
                     modifier = Modifier.clickable { showFilterTip = false },
                     shape = MaterialTheme.shapes.extraLarge,
-                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     tonalElevation = 6.dp,
                     shadowElevation = 4.dp
                 ) {
@@ -544,7 +549,7 @@ fun MapScreen(
                             Text(
                                 text = "Zoom in to see points of interest. Click filters to see even more.",
                                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.5.sp),
-                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center
                             )
                             Text(

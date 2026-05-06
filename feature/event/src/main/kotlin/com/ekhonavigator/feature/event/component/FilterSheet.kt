@@ -123,7 +123,11 @@ fun FilterSheetContent(
                                     imageVector = EkhoIcons.Bookmark,
                                     contentDescription = "Bookmarked",
                                     modifier = Modifier.size(16.dp),
-                                    tint = if (isActive) accentColor else colors.onSurfaceVariant,
+                                    tint = if (isActive) {
+                                        colors.onPrimaryContainer
+                                    } else {
+                                        colors.onSurfaceVariant
+                                    },
                                 )
                             } else {
                                 Text(
@@ -140,8 +144,8 @@ fun FilterSheetContent(
                             .height(36.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = accentColor.copy(alpha = 0.12f),
-                            selectedLabelColor = accentColor,
+                            selectedContainerColor = colors.primaryContainer,
+                            selectedLabelColor = colors.onPrimaryContainer,
                             containerColor = colors.surfaceContainerHigh,
                             labelColor = colors.onSurfaceVariant,
                         ),
@@ -149,9 +153,9 @@ fun FilterSheetContent(
                             enabled = true,
                             selected = isActive,
                             borderColor = Color.Transparent,
-                            selectedBorderColor = accentColor.copy(alpha = 0.3f),
+                            selectedBorderColor = Color.Transparent,
                             borderWidth = 1.dp,
-                            selectedBorderWidth = 1.dp,
+                            selectedBorderWidth = 0.dp,
                         ),
                     )
                 }
