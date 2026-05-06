@@ -6,40 +6,31 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.graphics.Color
 
 /**
- * 6-color rotation used to color-code course-tagged assignments on calendar surfaces.
+ * 6-color course rotation, redrawn for the CSUCI Channel Islands palette.
  *
- * Light/dark variants are paired by index — `lightPalette[i]` and `darkPalette[i]`
- * always represent the same conceptual color slot. Index assignment is by
- * [CourseColorAssigner.assign], not a hash, so the same family always lands in the
- * same slot for a given active course set.
- *
- * Palette dropped from 8 → 6 slots in 2026-05 to fix a sage-vs-teal collision (CUSTOM
- * source chip and COMP-courses both reading as "green") and a latent garnet-vs-coral
- * collision (CANVAS source chip and any 15° course slot reading as "red"). Cuts:
- *   - CourseTeal (175°) — too close to sage Custom (140°)
- *   - CourseCoral (15°) — too close to garnet Canvas (5°)
- * Family clustering means a typical student carries 4-5 active families per term, so
- * 6 slots covers the realistic load. If users with 7+ cross-department course loads
- * report color collisions, revisit the size.
+ * All six slots live in the cyan→blue→purple→green-teal arc (`145°–290°`),
+ * deliberately off the warm wedge (`340°–40°`) and yellow-green wedge (`70°–120°`)
+ * claimed by the foundation roles (Clay 14°, Cardinal 345°, Horizon 25°, Sage 95°).
+ * This gives courses their own coherent zone of the wheel with zero foundation
+ * collisions. Order is locked — assignment uses sort-position indexing, so reordering
+ * would shuffle every existing user's course colors.
  */
-// Slot order alternates cool/warm so adjacent family-key sort positions
-// (e.g. ASL-101 in slot 0, BIO-110 in slot 1) get maximum hue separation.
 internal val CoursePaletteLight: List<Color> = listOf(
-    CourseSlateBlue,  // 210°
-    CourseEarth,      //  30° — dark coffee brown, distinct from garnet via luminance
-    CourseLavender,   // 250°
-    CourseRose,       // 335° — magenta-pink, 30° from garnet
-    CourseOlive,      //  75° — yellow-green, distinct from amber via hue lean
-    CoursePlum,       // 290°
+    Color(0xFF28556B), // 1 — Islands Blue   200° (CSUCI brand)
+    Color(0xFFA07AB0), // 2 — Charoite       290° (CSUCI brand)
+    Color(0xFF3F6B4A), // 3 — Sycamore       145° (CSUCI brand)
+    Color(0xFF4D6FB8), // 4 — Mariner        220°
+    Color(0xFF3D8C8A), // 5 — Tidepool       178°
+    Color(0xFF6B4A78), // 6 — Plum           280°
 )
 
 internal val CoursePaletteDark: List<Color> = listOf(
-    CourseSlateBlueDark,
-    CourseEarthDark,
-    CourseLavenderDark,
-    CourseRoseDark,
-    CourseOliveDark,
-    CoursePlumDark,
+    Color(0xFF7AA8C0), // 1 — Islands Blue   200°
+    Color(0xFFC4A8D0), // 2 — Charoite       290°
+    Color(0xFF86B095), // 3 — Sycamore       145°
+    Color(0xFF8FA8DD), // 4 — Mariner        220°
+    Color(0xFF7DBFBD), // 5 — Tidepool       178°
+    Color(0xFFA88BB5), // 6 — Plum           280°
 )
 
 @Composable

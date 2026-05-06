@@ -3,122 +3,93 @@ package com.ekhonavigator.core.designsystem.theme
 import androidx.compose.ui.graphics.Color
 
 /**
- * Ekho Navigator color palette — softened CSUCI garnet, single accent family.
+ * Ekho Navigator color palette — CSUCI Channel Islands rebrand.
  *
- * Replaces the prior "Kinetic Monolith" three-color setup (red + neon cyan + amber)
- * which over-saturated and clashed. The new palette derives from one seed (CSUCI
- * garnet ~#8B2D3A) and lets Material 3's tonal-palette pattern do the heavy lifting:
- * primary for brand chrome and key CTAs, surface tonal layers for depth without
- * shadow, secondary/tertiary as muted harmonics rather than competing accents.
+ * Replaces the prior garnet/salmon system. Foundation roles map to brand colors
+ * by what they *do* in the app (Material 3 role mapping), not by brand prominence:
+ *  - Clay = chrome (FAB, active tab, primary CTAs)
+ *  - Cardinal = Canvas event identity ONLY
+ *  - Sage = personal/user-created events
+ *  - Horizon = bookmarked / starred
+ *  - Shale = generic campus events with no other tag
+ *
+ * No pure white, no pure black — surfaces are warm in both modes (`#FAF6F1` /
+ * `#1A1410`). Foreground/background flip in dark mode: text/icon on a foundation
+ * color is `surface` (`#1A1410`), not `#FFFFFF`. See design.md §2.
  */
 
-// ── Brand: CSUCI Garnet (primary tonal palette) ────────────
-internal val GarnetTone10 = Color(0xFF3F0010)
-internal val GarnetTone20 = Color(0xFF5F1124)
-internal val GarnetTone30 = Color(0xFF7A1F30)
-internal val GarnetTone40 = Color(0xFF8B2D3A) // brand seed
-internal val GarnetTone80 = Color(0xFFFFB3B9)
-internal val GarnetTone90 = Color(0xFFFFD9DC)
-internal val GarnetTone95 = Color(0xFFFFEDED)
+// ── Channel Clay — chrome workhorse (FAB, active tab, primary CTAs, top-bar accents).
+// Same family used everywhere a soft active-state pill or button needs to read as brand.
+internal val ClayLight = Color(0xFFB0573A) // 14°
+internal val ClayDark = Color(0xFFD9846A)  // 14°, lifted to ~tone 70
+// Soft clay tonal echo for primaryContainer (FilledTonalButton et al.). The design
+// prefers direct Clay; this exists only so M3 components that key off
+// primaryContainer don't render as off-brand defaults.
+internal val ClaySoftLight = Color(0xFFF0D2C5)
+internal val ClaySoftDark = Color(0xFF4A2D1F)
+// Deep clay tone for `onPrimaryContainer` text — readable on the soft echo.
+internal val ClayDeepLight = Color(0xFF2D0F05)
+internal val ClayDeepDark = Color(0xFFFFE3D6)
 
-// ── Secondary: Sage Green — calendar-side palette saturation (GCal-leaning).
-// Distinct hue presence so CUSTOM chips read as "green" at a glance, not
-// "muted warm." Tone40 sits between gray-green and Christmas-green. ──
-internal val SageGreenTone10 = Color(0xFF002111)
-internal val SageGreenTone20 = Color(0xFF003820)
-internal val SageGreenTone30 = Color(0xFF1E5236)
-internal val SageGreenTone40 = Color(0xFF3F8C5F)
-internal val SageGreenTone80 = Color(0xFFA5D5B6)
-internal val SageGreenTone90 = Color(0xFFC1ECCF)
+// ── Cardinal — RESERVED for Canvas LMS event identity. Do not reuse for chrome.
+// Salience is earned by being the visual signal that an event came from Canvas.
+internal val CardinalLight = Color(0xFFC44060) // 345°
+internal val CardinalDark = Color(0xFFE5708C)
+internal val CardinalSoftLight = Color(0xFFF8D9DF)
+internal val CardinalSoftDark = Color(0xFF4A1A22)
 
-// ── Source-distinction: Slate Blue — boosted chroma so CANVAS chips read
-// as a real blue (GCal Peacock-leaning) rather than warm-leaning gray.
-// Public so feature modules can reference until EkhoSourceColors wrapper. ──
-val SlateBlueTone10 = Color(0xFF001B3C)
-val SlateBlueTone20 = Color(0xFF003063)
-val SlateBlueTone30 = Color(0xFF0A4A8E)
-val SlateBlueTone40 = Color(0xFF3B7FBF)
-val SlateBlueTone80 = Color(0xFFA8C8EE)
-val SlateBlueTone90 = Color(0xFFCFE0F8)
+// ── Sage — personal / user-created events.
+internal val SageLight = Color(0xFF7B9268) // 95°
+internal val SageDark = Color(0xFFA8BD96)
+internal val SageSoftLight = Color(0xFFDCE5D2)
+internal val SageSoftDark = Color(0xFF2D3A22)
 
-// ── Tertiary: Amber — warmer/saturated golden, away from the prior muddy
-// brown. Reads as "starred / important" the way GCal Banana does. ──
-internal val AmberTone10 = Color(0xFF2A1B00)
-internal val AmberTone20 = Color(0xFF4A3300)
-internal val AmberTone30 = Color(0xFF7A5810)
-internal val AmberTone40 = Color(0xFFC68729)
-internal val AmberTone80 = Color(0xFFF0CB85)
-internal val AmberTone90 = Color(0xFFF8E2B5)
+// ── Horizon — bookmarked / starred.
+internal val HorizonLight = Color(0xFFE37B26) // 25°
+internal val HorizonDark = Color(0xFFF4A763)
+internal val HorizonSoftLight = Color(0xFFFAE0CC)
+internal val HorizonSoftDark = Color(0xFF4A2A12)
 
-// ── Neutral (faintly warm-tinted greys for surfaces / text) ────────
-// Warmth dialed way back from the original "salmon" levels — R bias is now
-// 1-3 points over G/B (was 8-10), reading as off-white rather than pink.
-internal val NeutralTone0 = Color(0xFF000000)
-internal val NeutralTone10 = Color(0xFF1A1112)
-internal val NeutralTone20 = Color(0xFF221919)
-internal val NeutralTone30 = Color(0xFF382E2E)
-internal val NeutralTone90 = Color(0xFFE5E1E0)
-internal val NeutralTone95 = Color(0xFFF2EFEE)
-internal val NeutralTone98 = Color(0xFFFBFAF9)
-internal val NeutralTone100 = Color(0xFFFFFFFF)
+// ── Shale — generic campus events with no other role. Inverted in dark mode
+// (was dark neutral light → warm light gray dark).
+internal val ShaleLight = Color(0xFF3A3A3C)
+internal val ShaleDark = Color(0xFF9B958C)
 
-// ── Neutral Variant (subtly warm greys for surface variants / outlines) ──
-internal val NeutralVariantTone30 = Color(0xFF524345)
-internal val NeutralVariantTone50 = Color(0xFF847374)
-internal val NeutralVariantTone60 = Color(0xFF9F8C8D)
-internal val NeutralVariantTone80 = Color(0xFFC9C5C4)
-internal val NeutralVariantTone90 = Color(0xFFE5E2E1)
+// ── Warm surface ladder. NO pure white, NO pure black.
+internal val LightSurface = Color(0xFFFAF6F1)
+internal val LightSurfaceContainerLowest = Color(0xFFFCFAF6) // warmer than surface
+internal val LightSurfaceContainerLow = Color(0xFFF4EFE7)
+internal val LightSurfaceContainer = Color(0xFFEFE9DF)
+internal val LightSurfaceContainerHigh = Color(0xFFE9E2D6)
+internal val LightSurfaceContainerHighest = Color(0xFFE3DBCD)
 
-// ── Light surface ladder (M3 surfaceContainer* tonal stacking) ──
-internal val LightSurface = NeutralTone98
-internal val LightSurfaceContainerLowest = NeutralTone100
-internal val LightSurfaceContainerLow = Color(0xFFF7F6F5)
-internal val LightSurfaceContainer = Color(0xFFF2F1F0)
-internal val LightSurfaceContainerHigh = Color(0xFFEDECEB)
-internal val LightSurfaceContainerHighest = Color(0xFFE8E7E6)
+internal val DarkSurface = Color(0xFF1A1410)
+internal val DarkSurfaceContainerLowest = Color(0xFF14100C)
+internal val DarkSurfaceContainerLow = Color(0xFF221C16)
+internal val DarkSurfaceContainer = Color(0xFF2A2218)
+internal val DarkSurfaceContainerHigh = Color(0xFF322A1F)
+internal val DarkSurfaceContainerHighest = Color(0xFF3A3225)
 
-// ── Dark surface ladder ────────────────────────────────────
-internal val DarkSurface = NeutralTone10
-internal val DarkSurfaceContainerLowest = Color(0xFF140C0D)
-internal val DarkSurfaceContainerLow = NeutralTone20
-internal val DarkSurfaceContainer = Color(0xFF261D1D)
-internal val DarkSurfaceContainerHigh = Color(0xFF312727)
-internal val DarkSurfaceContainerHighest = Color(0xFF3C3232)
+// ── Outlines ──
+internal val OutlineLight = Color(0xFFCBC1B4)
+internal val OutlineSubtleLight = Color(0x142B2522) // rgba(43,37,34,0.08)
+internal val OutlineDark = Color(0xFF3A3028)
+internal val OutlineSubtleDark = Color(0x1AF4EFE7) // rgba(244,239,231,0.10)
 
-// ── Course palette (6-color rotation for course-tagged assignments) ──
-// Hues spaced ~50° around the color wheel, deliberately skipping the three
-// theme-accent zones so course pills never visually collide with bookmark
-// (amber tertiary ~50°), personal event (sage secondary ~140°), or brand
-// chrome (garnet primary ~5°).
-//
-// Slot count dropped from 8 → 6 in 2026-05 after CourseTeal (175°) read as
-// "the same green" as sage Custom in the filter sheet. Two slots were cut:
-//   - CourseTeal (175°) — only 35° from sage; HSL similarity overrode hue gap
-//   - CourseCoral (15°) — only 10° from garnet; latent collision with CANVAS
-// Family clustering (`COMP-3xx` codes share a slot via family-key match) means
-// a typical 4-5 course term never approaches the 6-slot ceiling. If 7+ distinct
-// course families becomes a real user pattern, expand the palette before
-// reverting these specific cuts (the hue zones are off-limits regardless).
-//
-// Tone40 = light mode; Tone80 = dark mode. Lights are saturated for
-// daylight legibility; darks lift toward tone 80 for contrast on dark surface.
-// No medium-green slot — sage secondary (#3F8C5F, ~140°) owns the green zone
-// for personal events. Forest and basil-type greens were tested; both ride too
-// close to sage on calendar pills regardless of hue gap.
-internal val CourseSlateBlue = SlateBlueTone40       // 210°
-internal val CourseSlateBlueDark = SlateBlueTone80
-internal val CourseEarth = Color(0xFF7A5230)         // 30° — dark coffee brown, separates from garnet via luminance
-internal val CourseEarthDark = Color(0xFFD9B690)
-internal val CourseOlive = Color(0xFF8AA02E)         // 75° — yellow-green, NOT amber
-internal val CourseOliveDark = Color(0xFFD2DD8F)
-internal val CourseRose = Color(0xFFBF4F8A)          // 335° — magenta-pink, distinct from garnet via violet lean
-internal val CourseRoseDark = Color(0xFFEFA8C9)
-internal val CoursePlum = Color(0xFF8E4FBF)          // 290° — saturated purple
-internal val CoursePlumDark = Color(0xFFD2B0EF)
-internal val CourseLavender = Color(0xFF7B6BBF)      // 250°
-internal val CourseLavenderDark = Color(0xFFC9BFEF)
+// ── Text ──
+internal val OnSurfaceLight = Color(0xFF2B2522)
+internal val OnSurfaceVarLight = Color(0xFF5A524C)
+internal val OnSurfaceDimLight = Color(0xFF8C8378)
+internal val OnSurfaceDark = Color(0xFFF4EFE7)
+internal val OnSurfaceVarDark = Color(0xFFB8AFA3)
+internal val OnSurfaceDimDark = Color(0xFF7E756B)
 
-// ── Error (standard M3 — stops looking like brand red) ─────
+// ── Foreground-on-foundation. The "flip": light mode uses warm-white on Clay etc.;
+// dark mode uses warm-dark surface on the lifted foundation colors.
+internal val OnFoundationLight = Color(0xFFFFFFFF)
+internal val OnFoundationDark = DarkSurface
+
+// ── Error (standard M3 — distinct from brand red) ──
 internal val ErrorLight = Color(0xFFBA1A1A)
 internal val ErrorDark = Color(0xFFFFB4AB)
 internal val ErrorContainerLight = Color(0xFFFFDAD6)
@@ -126,4 +97,3 @@ internal val ErrorContainerDark = Color(0xFF93000A)
 internal val OnErrorDark = Color(0xFF690005)
 internal val OnErrorContainerLight = Color(0xFF410002)
 internal val OnErrorContainerDark = Color(0xFFFFDAD6)
-

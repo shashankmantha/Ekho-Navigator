@@ -14,42 +14,48 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
 
 /**
- * Ekho Navigator light color scheme — derived from CSUCI garnet seed via Material 3
- * tonal palette mapping. Every slot fills explicitly so we control the surface
- * container ladder rather than letting M3 derive defaults that don't match our seed.
+ * Ekho Navigator light color scheme — CSUCI Channel Islands rebrand.
+ *
+ * Role mapping (see design.md §2):
+ *  - primary       = Clay         (chrome workhorse: FAB, active tab, primary CTAs)
+ *  - secondary     = Sage         (personal events / "yours" affordances)
+ *  - tertiary      = Horizon      (bookmarked / starred)
+ *  - cardinal/shale live in [EkhoExtendedColors] — they're event-taxonomy
+ *    tokens, not chrome, and don't fit M3 slots cleanly.
  */
 @VisibleForTesting
 val LightEkhoColorScheme = lightColorScheme(
-    primary = GarnetTone40,
-    onPrimary = NeutralTone100,
-    primaryContainer = GarnetTone90,
-    onPrimaryContainer = GarnetTone10,
-    secondary = SageGreenTone40,
-    onSecondary = NeutralTone100,
-    secondaryContainer = SageGreenTone90,
-    onSecondaryContainer = SageGreenTone10,
-    tertiary = AmberTone40,
-    onTertiary = NeutralTone100,
-    tertiaryContainer = AmberTone90,
-    onTertiaryContainer = AmberTone10,
+    primary = ClayLight,
+    onPrimary = OnFoundationLight,
+    primaryContainer = ClaySoftLight,
+    onPrimaryContainer = ClayDeepLight,
+    secondary = SageLight,
+    onSecondary = OnFoundationLight,
+    secondaryContainer = SageSoftLight,
+    onSecondaryContainer = Color(0xFF1F2D14),
+    tertiary = HorizonLight,
+    onTertiary = OnFoundationLight,
+    tertiaryContainer = HorizonSoftLight,
+    onTertiaryContainer = Color(0xFF3D1A02),
     error = ErrorLight,
-    onError = NeutralTone100,
+    onError = OnFoundationLight,
     errorContainer = ErrorContainerLight,
     onErrorContainer = OnErrorContainerLight,
     background = LightSurface,
-    onBackground = NeutralTone20,
+    onBackground = OnSurfaceLight,
     surface = LightSurface,
-    onSurface = NeutralTone20,
-    surfaceVariant = NeutralVariantTone90,
-    onSurfaceVariant = NeutralVariantTone30,
-    surfaceTint = GarnetTone40,
+    onSurface = OnSurfaceLight,
+    surfaceVariant = LightSurfaceContainer,
+    onSurfaceVariant = OnSurfaceVarLight,
+    surfaceTint = ClayLight,
     inverseSurface = DarkSurface,
-    inverseOnSurface = NeutralTone90,
-    inversePrimary = GarnetTone80,
-    outline = NeutralVariantTone50,
-    outlineVariant = NeutralVariantTone80,
+    inverseOnSurface = OnSurfaceDark,
+    inversePrimary = ClayDark,
+    outline = OutlineLight,
+    outlineVariant = Color(0xFFE0D5C5),
     surfaceContainerLowest = LightSurfaceContainerLowest,
     surfaceContainerLow = LightSurfaceContainerLow,
     surfaceContainer = LightSurfaceContainer,
@@ -58,40 +64,41 @@ val LightEkhoColorScheme = lightColorScheme(
 )
 
 /**
- * Ekho Navigator dark color scheme — paired with light via M3 tonal inversion.
- * Primary uses tone 80 (light pink) for legibility on dark surface; container uses
- * tone 30 (dim brick) so the brand still reads as garnet-warm rather than pastel.
+ * Ekho Navigator dark color scheme. Foreground/background flip in dark mode:
+ * `onPrimary`/`onSecondary`/`onTertiary` resolve to the warm-dark surface
+ * (`#1A1410`), NOT white. The lifted foundation hues are bright enough that
+ * dark-on-color reads cleanly without vibrating. See design.md §2.
  */
 @VisibleForTesting
 val DarkEkhoColorScheme = darkColorScheme(
-    primary = GarnetTone80,
-    onPrimary = GarnetTone20,
-    primaryContainer = GarnetTone30,
-    onPrimaryContainer = GarnetTone90,
-    secondary = SageGreenTone80,
-    onSecondary = SageGreenTone20,
-    secondaryContainer = SageGreenTone30,
-    onSecondaryContainer = SageGreenTone90,
-    tertiary = AmberTone80,
-    onTertiary = AmberTone20,
-    tertiaryContainer = AmberTone30,
-    onTertiaryContainer = AmberTone90,
+    primary = ClayDark,
+    onPrimary = OnFoundationDark,
+    primaryContainer = ClaySoftDark,
+    onPrimaryContainer = ClayDeepDark,
+    secondary = SageDark,
+    onSecondary = OnFoundationDark,
+    secondaryContainer = SageSoftDark,
+    onSecondaryContainer = Color(0xFFD9E5CD),
+    tertiary = HorizonDark,
+    onTertiary = OnFoundationDark,
+    tertiaryContainer = HorizonSoftDark,
+    onTertiaryContainer = Color(0xFFFFE0CC),
     error = ErrorDark,
     onError = OnErrorDark,
     errorContainer = ErrorContainerDark,
     onErrorContainer = OnErrorContainerDark,
     background = DarkSurface,
-    onBackground = NeutralTone90,
+    onBackground = OnSurfaceDark,
     surface = DarkSurface,
-    onSurface = NeutralTone90,
-    surfaceVariant = NeutralVariantTone30,
-    onSurfaceVariant = NeutralVariantTone80,
-    surfaceTint = GarnetTone80,
-    inverseSurface = NeutralTone90,
-    inverseOnSurface = NeutralTone20,
-    inversePrimary = GarnetTone40,
-    outline = NeutralVariantTone60,
-    outlineVariant = NeutralVariantTone30,
+    onSurface = OnSurfaceDark,
+    surfaceVariant = DarkSurfaceContainer,
+    onSurfaceVariant = OnSurfaceVarDark,
+    surfaceTint = ClayDark,
+    inverseSurface = LightSurface,
+    inverseOnSurface = OnSurfaceLight,
+    inversePrimary = ClayLight,
+    outline = OutlineDark,
+    outlineVariant = Color(0xFF4D4035),
     surfaceContainerLowest = DarkSurfaceContainerLowest,
     surfaceContainerLow = DarkSurfaceContainerLow,
     surfaceContainer = DarkSurfaceContainer,
@@ -147,10 +154,13 @@ fun EkhoTheme(
         else -> TintTheme()
     }
 
+    val extendedColors = if (darkTheme) DarkEkhoExtendedColors else LightEkhoExtendedColors
+
     CompositionLocalProvider(
         LocalGradientColors provides gradientColors,
         LocalBackgroundTheme provides backgroundTheme,
         LocalTintTheme provides tintTheme,
+        LocalEkhoExtendedColors provides extendedColors,
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
