@@ -107,8 +107,8 @@ fun DiscoverScreen(
                                 listState.animateScrollToItem(0)
                             }
                         },
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
                     ) {
                         Icon(
                             imageVector = EkhoIcons.CalendarFilled,
@@ -127,12 +127,12 @@ fun DiscoverScreen(
                             onCreateEventClick(null)
                         },
                         containerColor = if (signedIn) {
-                            MaterialTheme.colorScheme.primaryContainer
+                            MaterialTheme.colorScheme.primary
                         } else {
                             MaterialTheme.colorScheme.surfaceContainerHighest
                         },
                         contentColor = if (signedIn) {
-                            MaterialTheme.colorScheme.onPrimaryContainer
+                            MaterialTheme.colorScheme.onPrimary
                         } else {
                             MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                         },

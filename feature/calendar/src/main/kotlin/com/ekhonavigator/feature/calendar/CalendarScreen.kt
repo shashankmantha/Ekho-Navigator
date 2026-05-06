@@ -105,8 +105,8 @@ fun CalendarScreen(
                             CalendarTab.MONTH.ordinal -> monthSnapTrigger++
                         }
                     },
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
                 ) {
                     Icon(
                         imageVector = EkhoIcons.CalendarFilled,
@@ -122,12 +122,12 @@ fun CalendarScreen(
                 // NotSignedInException if reached anyway — disable here so the
                 // user gets a visual hint instead of a silent no-op.
                 val fabContainer = if (signedIn) {
-                    MaterialTheme.colorScheme.primaryContainer
+                    MaterialTheme.colorScheme.primary
                 } else {
                     MaterialTheme.colorScheme.surfaceContainerHighest
                 }
                 val fabContent = if (signedIn) {
-                    MaterialTheme.colorScheme.onPrimaryContainer
+                    MaterialTheme.colorScheme.onPrimary
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                 }

@@ -35,13 +35,19 @@ import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSourceType
 
 /**
- * Maps a [EventSourceType] to its (accent, onAccent) color pair from the theme.
+ * Maps a [EventSourceType] to its (accent, onAccent) color pair. Mirrors the
+ * event-taxonomy mapping in [com.ekhonavigator.core.designsystem.component.EkhoEventRow]
+ * and [com.ekhonavigator.feature.calendar.component.CalendarDay] — Canvas uses
+ * Cardinal (not chrome primary) per design.md §5.
  */
+@androidx.compose.runtime.Composable
+@androidx.compose.runtime.ReadOnlyComposable
 internal fun sourceTypeThemeColors(
     type: EventSourceType,
     colors: androidx.compose.material3.ColorScheme,
 ): Pair<Color, Color> = when (type) {
-    EventSourceType.CANVAS -> colors.primary to colors.onPrimary
+    EventSourceType.CANVAS -> com.ekhonavigator.core.designsystem.theme.EkhoColors.current.cardinal to
+            com.ekhonavigator.core.designsystem.theme.EkhoColors.current.onFoundation
     EventSourceType.CUSTOM -> colors.secondary to colors.onSecondary
     EventSourceType.CAMPUS -> colors.onSurfaceVariant to colors.surface
     EventSourceType.BOOKMARKED -> colors.tertiary to colors.onTertiary

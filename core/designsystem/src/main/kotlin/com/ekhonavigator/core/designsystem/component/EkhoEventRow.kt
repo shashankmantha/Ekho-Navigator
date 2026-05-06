@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import com.ekhonavigator.core.designsystem.theme.EkhoColors
 import com.ekhonavigator.core.designsystem.theme.LocalAssignmentDecorator
 import java.time.Instant
 import java.time.ZoneId
@@ -64,20 +65,25 @@ fun EkhoEventRow(
     organization: String = "",
     eventId: String? = null,
 ) {
-    // ASSIGNMENT defaults to primary garnet; LocalAssignmentDecorator overrides
-    // per-course when the event is a Canvas-bridged row with a known courseId.
-    // Slate blue lives in the rotation palette, not as the default, so course-less
-    // assignments (e.g. personal study tasks) still read as brand garnet.
+    // Event taxonomy → divider color (design.md §5):
+    //   NONE       = generic campus event (no other tag)        → outline
+    //   BOOKMARKED = saved/starred                              → tertiary (Horizon)
+    //   PERSONAL   = user-created CUSTOM event                  → secondary (Sage)
+    //   ASSIGNMENT = course-tagged → course color (§6).
+    //                Fallback = Cardinal — Canvas is the dominant assignment
+    //                source, so untagged ASSIGNMENT reads as Canvas-LMS identity
+    //                rather than brand chrome.
     val courseAccent = if (state == EkhoEventRowState.ASSIGNMENT && eventId != null) {
         LocalAssignmentDecorator.current.courseColorFor(eventId)
     } else {
         null
     }
+    val cardinal = EkhoColors.current.cardinal
     val accent = when (state) {
-        EkhoEventRowState.NONE -> MaterialTheme.colorScheme.outlineVariant
+        EkhoEventRowState.NONE -> MaterialTheme.colorScheme.outline
         EkhoEventRowState.BOOKMARKED -> MaterialTheme.colorScheme.tertiary
         EkhoEventRowState.PERSONAL -> MaterialTheme.colorScheme.secondary
-        EkhoEventRowState.ASSIGNMENT -> courseAccent ?: MaterialTheme.colorScheme.primary
+        EkhoEventRowState.ASSIGNMENT -> courseAccent ?: cardinal
     }
 
     Row(

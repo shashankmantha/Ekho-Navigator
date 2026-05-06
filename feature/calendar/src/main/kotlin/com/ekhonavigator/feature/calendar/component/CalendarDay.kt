@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ekhonavigator.core.designsystem.theme.EkhoColors
 import com.ekhonavigator.core.designsystem.theme.LocalAssignmentDecorator
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventSource
@@ -69,13 +70,21 @@ fun DayContent(
         else -> MaterialTheme.colorScheme.onSurface
     }
 
-    // Source-type pill colors from the theme
-    val calendarPillColor = MaterialTheme.colorScheme.primary
+    // Event taxonomy → pill colors (design.md §5):
+    //   Canvas / assignment fallback → Cardinal (Canvas-LMS identity).
+    //                                  Course-tagged rows override per-course
+    //                                  via LocalAssignmentDecorator (§6 palette).
+    //   USER_CREATED / SHARED         → Sage (secondary).
+    //   ICAL_FEED                     → muted neutral (no other tag).
+    //   ICAL_FEED + bookmarked        → Horizon (tertiary).
+    val cardinal = EkhoColors.current.cardinal
+    val onFoundation = EkhoColors.current.onFoundation
+    val calendarPillColor = cardinal
     val customPillColor = MaterialTheme.colorScheme.secondary
     val campusMutedPillColor = MaterialTheme.colorScheme.surfaceContainerHighest
     val campusBookmarkedPillColor = MaterialTheme.colorScheme.tertiary
 
-    val onCalendarPillColor = MaterialTheme.colorScheme.onPrimary
+    val onCalendarPillColor = onFoundation
     val onCustomPillColor = MaterialTheme.colorScheme.onSecondary
     val onCampusMutedPillColor = MaterialTheme.colorScheme.onSurfaceVariant
     val onCampusBookmarkedPillColor = MaterialTheme.colorScheme.onTertiary

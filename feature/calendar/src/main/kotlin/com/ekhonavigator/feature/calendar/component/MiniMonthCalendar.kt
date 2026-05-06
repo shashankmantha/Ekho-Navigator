@@ -26,6 +26,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.ekhonavigator.core.designsystem.theme.EkhoColors
 import com.ekhonavigator.core.designsystem.theme.coursePalette
 import com.ekhonavigator.core.model.EventSourceType
 import com.kizitonwose.calendar.compose.HorizontalCalendar
@@ -150,7 +151,8 @@ private fun dotColorFor(dot: DayDot): Color = when (dot) {
         EventSourceType.CUSTOM -> MaterialTheme.colorScheme.secondary
         EventSourceType.CAMPUS -> MaterialTheme.colorScheme.onSurfaceVariant
         EventSourceType.BOOKMARKED -> MaterialTheme.colorScheme.tertiary
-        EventSourceType.CANVAS -> MaterialTheme.colorScheme.primary
+        // Canvas LMS identity, NOT brand chrome — design.md §5.
+        EventSourceType.CANVAS -> EkhoColors.current.cardinal
     }
     is DayDot.CourseSlot -> {
         val palette = coursePalette()
