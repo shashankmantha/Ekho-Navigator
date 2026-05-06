@@ -129,8 +129,12 @@ fun FilterSheetContent(
                                     imageVector = EkhoIcons.Bookmark,
                                     contentDescription = "Bookmarked",
                                     modifier = Modifier.size(16.dp),
+                                    // Horizon (tertiary) is the bookmark identity
+                                    // color (design.md §5) — applied when active so
+                                    // the icon "glows" the same color the bookmark
+                                    // accent uses on calendar pills + event rows.
                                     tint = if (isActive) {
-                                        colors.onPrimaryContainer
+                                        colors.tertiary
                                     } else {
                                         colors.onSurfaceVariant
                                     },

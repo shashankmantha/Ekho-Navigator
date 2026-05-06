@@ -18,19 +18,29 @@ import androidx.compose.ui.graphics.Color
 internal val CoursePaletteLight: List<Color> = listOf(
     Color(0xFF28556B), // 1 — Islands Blue   200° (CSUCI brand)
     Color(0xFFA07AB0), // 2 — Charoite       290° (CSUCI brand)
-    Color(0xFF3F6B4A), // 3 — Sycamore       145° (CSUCI brand)
+    Color(0xFF8C7325), // 3 — Citrine         46° — replaces Sycamore (145°),
+                       //                            too close to Sage CUSTOM (95°).
+                       //                            Darkened from #A88B2C to clear
+                       //                            AA contrast against white text
+                       //                            once past-event fade is applied.
     Color(0xFF4D6FB8), // 4 — Mariner        220°
     Color(0xFF3D8C8A), // 5 — Tidepool       178°
-    Color(0xFF6B4A78), // 6 — Plum           280°
+    Color(0xFF5C4A78), // 6 — Plum           265° — shifted from 280° to widen the
+                       //                            10° gap to Charoite (290°). Now
+                       //                            25° apart; reads as violet vs
+                       //                            lavender instead of two purples.
 )
 
 internal val CoursePaletteDark: List<Color> = listOf(
     Color(0xFF7AA8C0), // 1 — Islands Blue   200°
     Color(0xFFC4A8D0), // 2 — Charoite       290°
-    Color(0xFF86B095), // 3 — Sycamore       145°
+    Color(0xFFE8D195), // 3 — Citrine         46° — lifted from #DBC176 to keep
+                       //                            dark-text legibility once
+                       //                            past-event fade lowers the pill
+                       //                            toward the dark surface.
     Color(0xFF8FA8DD), // 4 — Mariner        220°
     Color(0xFF7DBFBD), // 5 — Tidepool       178°
-    Color(0xFFA88BB5), // 6 — Plum           280°
+    Color(0xFF998BB5), // 6 — Plum           265°
 )
 
 @Composable
