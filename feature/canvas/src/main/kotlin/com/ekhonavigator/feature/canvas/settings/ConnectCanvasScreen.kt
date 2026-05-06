@@ -1,15 +1,18 @@
 package com.ekhonavigator.feature.canvas.settings
 
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -29,10 +32,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
@@ -104,10 +109,12 @@ private fun NotConnectedContent(
         )
 
         Text(
-            text = "Generate a personal access token at <institution>.instructure.com → Account → Settings → Approved Integrations → New Access Token. Your token stays on this device only.",
+            text = "Open Canvas Settings, scroll to Approved Integrations, and generate a New Access Token. Your token stays on this device only.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+
+        OpenCanvasSettingsButton()
 
         OutlinedTextField(
             value = state.domain,
@@ -203,5 +210,44 @@ private fun ConnectedContent(
         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
     ) {
         Text("Disconnect Canvas")
+    }
+}
+
+/**
+ * CSUCI students access Canvas at the vanity URL `cilearn.csuci.edu`, not at the
+ * Instructure subdomain we use for API calls. Sending them to `/profile/settings`
+ * directly skips the Account → Settings nav. Custom Tabs preserves their existing
+ * Canvas web session, so the page lands on Approved Integrations already signed in.
+ */
+private const val CANVAS_SETTINGS_URL = "https://cilearn.csuci.edu/profile/settings"
+
+@Composable
+private fun OpenCanvasSettingsButton() {
+    val context = LocalContext.current
+    OutlinedButton(
+        onClick = {
+            // runCatching defends against odd device configurations (no browser,
+            // no Custom Tabs provider). Same pattern as CourseDetailScreen's
+            // OpenInCanvasButton.
+            runCatching {
+                CustomTabsIntent.Builder()
+                    .setShowTitle(true)
+                    .build()
+                    .launchUrl(context, CANVAS_SETTINGS_URL.toUri())
+            }
+        },
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        Icon(
+            imageVector = EkhoIcons.OpenInNew,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = "Open Canvas Settings",
+            style = MaterialTheme.typography.labelLarge,
+        )
     }
 }
