@@ -3,7 +3,7 @@ package com.ekhonavigator.core.database.converter
 import androidx.room.TypeConverter
 import com.ekhonavigator.core.model.EventSource
 
-internal class EventSourceConverter {
+class EventSourceConverter {
 
     @TypeConverter
     fun fromEventSource(value: EventSource): String = value.name

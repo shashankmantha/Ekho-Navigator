@@ -45,7 +45,27 @@ class InvitesViewModelTest {
             customEventRepository,
             socialRepository,
             authRepository,
+            StubCanvasCourseRepository(),
+            StubCanvasAnnouncementRepository(),
         )
+    }
+
+    private class StubCanvasCourseRepository : com.ekhonavigator.core.data.canvas.CanvasCourseRepository {
+        override fun observeCourses() =
+            kotlinx.coroutines.flow.flowOf(emptyList<com.ekhonavigator.core.canvas.model.CanvasCourse>())
+        override suspend fun sync() = Result.success(Unit)
+        override suspend fun clearAll() {}
+    }
+
+    private class StubCanvasAnnouncementRepository : com.ekhonavigator.core.data.canvas.CanvasAnnouncementRepository {
+        override fun observeForCourse(courseId: String) =
+            kotlinx.coroutines.flow.flowOf(emptyList<com.ekhonavigator.core.canvas.model.CanvasAnnouncement>())
+        override fun observeAll() =
+            kotlinx.coroutines.flow.flowOf(emptyList<com.ekhonavigator.core.canvas.model.CanvasAnnouncement>())
+        override fun observeUnreadCount() = kotlinx.coroutines.flow.flowOf(0)
+        override suspend fun sync(courseId: String) = Result.success(Unit)
+        override suspend fun markRead(announcementId: String) {}
+        override suspend fun clearAll() {}
     }
 
     @Test

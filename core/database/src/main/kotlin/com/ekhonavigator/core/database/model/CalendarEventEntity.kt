@@ -5,7 +5,9 @@ import androidx.room.PrimaryKey
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSource
+import com.ekhonavigator.core.model.EventType
 import com.ekhonavigator.core.model.RsvpStatus
+import com.ekhonavigator.core.model.SharedLocation
 import java.time.Instant
 
 @Entity(tableName = "calendar_events")
@@ -33,6 +35,23 @@ data class CalendarEventEntity(
     val externalSourceId: String? = null,
     val externalSourceType: String? = null,
     val dueAt: Instant? = null,
+    // Flat columns rather than a TypeConverter — Room rejects nested @Embedded on
+    // optional values, and three nullable doubles round-trip to a SharedLocation cleanly.
+    val customLocationTitle: String? = null,
+    val customLocationLatitude: Double? = null,
+    val customLocationLongitude: Double? = null,
+    val type: EventType = EventType.EVENT,
+    /** User-supplied or autocompleted course code (e.g. "COMP-262"). The
+     *  family-key extracted from this string drives the per-course palette
+     *  color across calendar pills, mini-month dots, and event detail chips —
+     *  same family-key the Canvas course list uses, so personal events tagged
+     *  to a course visually match that course's identity. Null = no tag. */
+    val courseLabel: String? = null,
+    /** User-toggled completion state for personal ASSIGNMENT events. Canvas
+     *  assignments derive completion from `submitted/graded/excused` fields on
+     *  `canvas_planner_items` instead — this column is meaningful only for
+     *  USER_CREATED rows with `type = ASSIGNMENT`. Drives strikethrough render. */
+    val isCompleted: Boolean = false,
 )
 
 fun CalendarEventEntity.isPast(now: Instant = Instant.now()): Boolean = endTime <= now
@@ -63,4 +82,12 @@ fun CalendarEventEntity.toDomainModel(
     externalSourceId = externalSourceId,
     externalSourceType = externalSourceType,
     dueAt = dueAt,
+    customLocation = customLocationTitle?.let { title ->
+        val lat = customLocationLatitude
+        val lng = customLocationLongitude
+        if (lat != null && lng != null) SharedLocation(title, lat, lng) else null
+    },
+    type = type,
+    courseLabel = courseLabel,
+    isCompleted = isCompleted,
 )

@@ -3,111 +3,97 @@ package com.ekhonavigator.core.designsystem.theme
 import androidx.compose.ui.graphics.Color
 
 /**
- * Ekho Navigator "Kinetic Monolith" Color Palette
- * Refined for High Engagement & Youthful Energy (Red/Cyan/Cyber Lime)
+ * Ekho Navigator color palette — CSUCI Channel Islands rebrand.
+ *
+ * Replaces the prior garnet/salmon system. Foundation roles map to brand colors
+ * by what they *do* in the app (Material 3 role mapping), not by brand prominence:
+ *  - Clay = chrome (FAB, active tab, primary CTAs)
+ *  - Cardinal = Canvas event identity ONLY
+ *  - Sage = personal/user-created events
+ *  - Horizon = bookmarked / starred
+ *  - Shale = generic campus events with no other tag
+ *
+ * No pure white, no pure black — surfaces are warm in both modes (`#FAF6F1` /
+ * `#1A1410`). Foreground/background flip in dark mode: text/icon on a foundation
+ * color is `surface` (`#1A1410`), not `#FFFFFF`. See design.md §2.
  */
 
-// ── Dark Theme Foundation (Vibrant Noir) ───────────────────
-internal val DarkSurface = Color(0xFF0E0E0E)
-internal val DarkSurfaceContainerLow = Color(0xFF161616)
-internal val DarkSurfaceContainerHigh = Color(0xFF202020)
-internal val DarkSurfaceContainerHighest = Color(0xFF2A2A2A)
-internal val DarkSurfaceBright = Color(0xFF333333)
-internal val DarkOnSurface = Color(0xFFF0F0F0)
-internal val DarkOnSurfaceVariant = Color(0xFF9DA3A3)
+// ── Channel Clay — chrome workhorse (FAB, active tab, primary CTAs, top-bar accents).
+// Same family used everywhere a soft active-state pill or button needs to read as brand.
+internal val ClayLight = Color(0xFFB0573A) // 14°
+internal val ClayDark = Color(0xFFD9846A)  // 14°, lifted to ~tone 70
+// Soft clay tonal echo for primaryContainer (FilledTonalButton et al.). The design
+// prefers direct Clay; this exists only so M3 components that key off
+// primaryContainer don't render as off-brand defaults.
+internal val ClaySoftLight = Color(0xFFF0D2C5)
+internal val ClaySoftDark = Color(0xFF4A2D1F)
+// Deep clay tone for `onPrimaryContainer` text — readable on the soft echo.
+internal val ClayDeepLight = Color(0xFF2D0F05)
+internal val ClayDeepDark = Color(0xFFFFE3D6)
 
-// ── Light Theme Foundation ─────────────────────────────────
-internal val LightSurface = Color(0xFFF9FBFB)
-internal val LightSurfaceContainerLow = Color(0xFFF0F4F4)
-internal val LightSurfaceContainerHigh = Color(0xFFE5EBEB)
-internal val LightSurfaceContainerHighest = Color(0xFFD9E1E1)
-internal val LightOnSurface = Color(0xFF0E0E0E)
-internal val LightOnSurfaceVariant = Color(0xFF5D6666)
+// ── Cardinal — RESERVED for Canvas LMS event identity. Do not reuse for chrome.
+// Salience is earned by being the visual signal that an event came from Canvas.
+internal val CardinalLight = Color(0xFFC44060) // 345°
+internal val CardinalDark = Color(0xFFE5708C)
+internal val CardinalSoftLight = Color(0xFFF8D9DF)
+internal val CardinalSoftDark = Color(0xFF4A1A22)
 
-// ── Accent: School Red (The Core Pulse) ────────────────────
-internal val SchoolRed = Color(0xFFCB132A)
-internal val SchoolRedBright = Color(0xFFFF2B44)
-internal val SchoolRedDark = Color(0xFF68000E)
-internal val SchoolRedContainer = Color(0xFFCB132A)
+// ── Sage — personal / user-created events.
+internal val SageLight = Color(0xFF7B9268) // 95°
+internal val SageDark = Color(0xFFA8BD96)
+internal val SageSoftLight = Color(0xFFDCE5D2)
+internal val SageSoftDark = Color(0xFF2D3A22)
 
-// ── Accent: Dolphin Cyan (The Intelligence) ────────────────
-internal val DolphinCyan = Color(0xFF00E3FD)
-internal val DolphinCyanDark = Color(0xFF00363D)
-internal val DolphinCyanContainer = Color(0xFF00E3FD)
+// ── Horizon — bookmarked / starred.
+internal val HorizonLight = Color(0xFFE37B26) // 25°
+internal val HorizonDark = Color(0xFFF4A763)
+internal val HorizonSoftLight = Color(0xFFFAE0CC)
+internal val HorizonSoftDark = Color(0xFF4A2A12)
 
-// ── Accent: Campus Amber (The Campus Pulse) ────────────────
-internal val CampusAmber = Color(0xFFE8813D)
-internal val CampusAmberDark = Color(0xFF4A2200)
-internal val CampusAmberContainer = Color(0xFFE8813D)
+// ── Shale — generic campus events with no other role. Inverted in dark mode
+// (was dark neutral light → warm light gray dark).
+internal val ShaleLight = Color(0xFF3A3A3C)
+internal val ShaleDark = Color(0xFF9B958C)
 
-// ── Error & Validation ──────────────────────────────────────
-internal val ErrorRed = Color(0xFFFF4D4D)
-internal val OnErrorRed = Color(0xFF000000)
-internal val ErrorContainerRed = Color(0xFF4D0000)
+// ── Warm surface ladder. NO pure white, NO pure black.
+internal val LightSurface = Color(0xFFFAF6F1)
+internal val LightSurfaceContainerLowest = Color(0xFFFCFAF6) // warmer than surface
+internal val LightSurfaceContainerLow = Color(0xFFF4EFE7)
+internal val LightSurfaceContainer = Color(0xFFEFE9DF)
+internal val LightSurfaceContainerHigh = Color(0xFFE9E2D6)
+internal val LightSurfaceContainerHighest = Color(0xFFE3DBCD)
 
-// ── Outline & Ghost Border ──────────────────────────────────
-internal val GhostOutline = Color(0xFFFFFFFF)
+internal val DarkSurface = Color(0xFF1A1410)
+internal val DarkSurfaceContainerLowest = Color(0xFF14100C)
+internal val DarkSurfaceContainerLow = Color(0xFF221C16)
+internal val DarkSurfaceContainer = Color(0xFF2A2218)
+internal val DarkSurfaceContainerHigh = Color(0xFF322A1F)
+internal val DarkSurfaceContainerHighest = Color(0xFF3A3225)
 
-// ── Original M3 Default Colors (Internal fallback) ──────────
-internal val Purple10 = Color(0xFF410010)
-internal val Purple20 = Color(0xFF7A0020)
-internal val Purple30 = Color(0xFF9B0A24)
-internal val Purple40 = Color(0xFFC8102E)
-internal val Purple80 = Color(0xFFE8384F)
-internal val Purple90 = Color(0xFFFFDAD8)
-internal val Orange10 = Color(0xFF1C1B1E)
-internal val Orange20 = Color(0xFF313033)
-internal val Orange30 = Color(0xFF484649)
-internal val Orange40 = Color(0xFF605D62)
-internal val Orange80 = Color(0xFFCAC4CF)
-internal val Orange90 = Color(0xFFE6E0EB)
-internal val Blue10 = Color(0xFF001D36)
-internal val Blue20 = Color(0xFF003258)
-internal val Blue30 = Color(0xFF00497D)
-internal val Blue40 = Color(0xFF1565C0)
-internal val Blue80 = Color(0xFF9ECAFF)
-internal val Blue90 = Color(0xFFD1E4FF)
-internal val DarkPurpleGray10 = Color(0xFF1C1B1F)
-internal val DarkPurpleGray20 = Color(0xFF313033)
-internal val DarkPurpleGray90 = Color(0xFFE6E1E5)
-internal val DarkPurpleGray95 = Color(0xFFF4EFF4)
-internal val DarkPurpleGray99 = Color(0xFFFFFBFE)
-internal val PurpleGray30 = Color(0xFF49454F)
-internal val PurpleGray50 = Color(0xFF79747E)
-internal val PurpleGray60 = Color(0xFF938F99)
-internal val PurpleGray80 = Color(0xFFCAC4D0)
-internal val PurpleGray90 = Color(0xFFE7E0EC)
-internal val Green10 = Color(0xFF410010)
-internal val Green20 = Color(0xFF7A0020)
-internal val Green30 = Color(0xFF9B0A24)
-internal val Green40 = Color(0xFFC8102E)
-internal val Green80 = Color(0xFFE8384F)
-internal val Green90 = Color(0xFFFFDAD8)
-internal val DarkGreen10 = Color(0xFF1C1B1E)
-internal val DarkGreen20 = Color(0xFF313033)
-internal val DarkGreen30 = Color(0xFF484649)
-internal val DarkGreen40 = Color(0xFF605D62)
-internal val DarkGreen80 = Color(0xFFCAC4CF)
-internal val DarkGreen90 = Color(0xFFE6E0EB)
-internal val Teal10 = Color(0xFF001D36)
-internal val Teal20 = Color(0xFF003258)
-internal val Teal30 = Color(0xFF00497D)
-internal val Teal40 = Color(0xFF1565C0)
-internal val Teal80 = Color(0xFF9ECAFF)
-internal val Teal90 = Color(0xFFD1E4FF)
-internal val DarkGreenGray10 = Color(0xFF1C1B1F)
-internal val DarkGreenGray20 = Color(0xFF313033)
-internal val DarkGreenGray90 = Color(0xFFE6E1E5)
-internal val DarkGreenGray95 = Color(0xFFF4EFF4)
-internal val DarkGreenGray99 = Color(0xFFFFFBFE)
-internal val GreenGray30 = Color(0xFF49454F)
-internal val GreenGray50 = Color(0xFF79747E)
-internal val GreenGray60 = Color(0xFF938F99)
-internal val GreenGray80 = Color(0xFFCAC4D0)
-internal val GreenGray90 = Color(0xFFE7E0EC)
-internal val Red10 = Color(0xFF410002)
-internal val Red20 = Color(0xFF690005)
-internal val Red30 = Color(0xFF93000A)
-internal val Red40 = Color(0xFFBA1A1A)
-internal val Red80 = Color(0xFFFFB4AB)
-internal val Red90 = Color(0xFFFFDAD6)
+// ── Outlines ──
+internal val OutlineLight = Color(0xFFCBC1B4)
+internal val OutlineSubtleLight = Color(0x142B2522) // rgba(43,37,34,0.08)
+internal val OutlineDark = Color(0xFF3A3028)
+internal val OutlineSubtleDark = Color(0x1AF4EFE7) // rgba(244,239,231,0.10)
+
+// ── Text ──
+internal val OnSurfaceLight = Color(0xFF2B2522)
+internal val OnSurfaceVarLight = Color(0xFF5A524C)
+internal val OnSurfaceDimLight = Color(0xFF8C8378)
+internal val OnSurfaceDark = Color(0xFFF4EFE7)
+internal val OnSurfaceVarDark = Color(0xFFB8AFA3)
+internal val OnSurfaceDimDark = Color(0xFF7E756B)
+
+// ── Foreground-on-foundation. The "flip": light mode uses warm-white on Clay etc.;
+// dark mode uses warm-dark surface on the lifted foundation colors.
+internal val OnFoundationLight = Color(0xFFFFFFFF)
+internal val OnFoundationDark = DarkSurface
+
+// ── Error (standard M3 — distinct from brand red) ──
+internal val ErrorLight = Color(0xFFBA1A1A)
+internal val ErrorDark = Color(0xFFFFB4AB)
+internal val ErrorContainerLight = Color(0xFFFFDAD6)
+internal val ErrorContainerDark = Color(0xFF93000A)
+internal val OnErrorDark = Color(0xFF690005)
+internal val OnErrorContainerLight = Color(0xFF410002)
+internal val OnErrorContainerDark = Color(0xFFFFDAD6)

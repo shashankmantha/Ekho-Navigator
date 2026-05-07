@@ -1,6 +1,7 @@
 package com.ekhonavigator.core.data.repository
 
 import com.ekhonavigator.core.data.auth.AuthRepository
+import com.ekhonavigator.core.data.auth.NotSignedInException
 import com.ekhonavigator.core.data.model.toCustomEventEntity
 import com.ekhonavigator.core.data.sync.SharedEventSyncService
 import com.ekhonavigator.core.database.dao.CalendarEventDao
@@ -49,6 +50,11 @@ class DefaultCustomEventRepository @Inject constructor(
         event: CalendarEvent,
         sharedWith: Map<String, String>
     ): String {
+        // Refuse early when signed out: events are inherently user-owned, and a
+        // Room-only write here would create a zombie local event with no ownerUid
+        // that could never sync. UI gating (FAB grey when signed out) keeps this
+        // from firing in practice — this is the race-window safety net.
+        authRepository.getCurrentUserUid() ?: throw NotSignedInException()
         val eventId = "custom_${UUID.randomUUID()}"
         val entity = event.toCustomEventEntity(eventId)
         calendarEventDao.upsertEvent(entity)
@@ -90,11 +96,12 @@ class DefaultCustomEventRepository @Inject constructor(
     }
 
     override suspend fun updateEvent(event: CalendarEvent) {
+        authRepository.getCurrentUserUid() ?: throw NotSignedInException()
         val entity = event.toCustomEventEntity(event.id).copy(pendingSync = true)
         calendarEventDao.upsertEvent(entity)
 
         try {
-            pushEventToFirestore(event.id, event)
+            pushEventUpdateToFirestore(event.id, event)
             calendarEventDao.updatePendingSync(event.id, false)
         } catch (_: Exception) {
             // Stays pendingSync = true, will be retried by pushPendingEvents()
@@ -102,6 +109,7 @@ class DefaultCustomEventRepository @Inject constructor(
     }
 
     override suspend fun addAttendees(eventId: String, sharedWith: Map<String, String>) {
+        authRepository.getCurrentUserUid() ?: throw NotSignedInException()
         if (sharedWith.isEmpty()) return
 
         for ((uid, displayName) in sharedWith) {
@@ -141,7 +149,31 @@ class DefaultCustomEventRepository @Inject constructor(
         }
     }
 
+    override suspend fun removeAttendee(eventId: String, userId: String) {
+        authRepository.getCurrentUserUid() ?: throw NotSignedInException()
+        eventAttendeeDao.removeAttendee(eventId, userId)
+
+        try {
+            // arrayRemove is the symmetric counterpart to addAttendees' arrayUnion —
+            // safe whether or not the uid is currently in the participants list.
+            firestore.collection("events").document(eventId).update(
+                "participants",
+                FieldValue.arrayRemove(userId),
+            ).await()
+
+            firestore.collection("events")
+                .document(eventId)
+                .collection("attendees")
+                .document(userId)
+                .delete()
+                .await()
+        } catch (_: Exception) {
+            // Offline-first: Room reflects the removal, Firestore reconciles on reconnect.
+        }
+    }
+
     override suspend fun deleteEvent(eventId: String) {
+        authRepository.getCurrentUserUid() ?: throw NotSignedInException()
         // Track deletion so the listener doesn't re-add it during the race window
         sharedEventSyncService.pendingDeletes.add(eventId)
         try {
@@ -167,6 +199,7 @@ class DefaultCustomEventRepository @Inject constructor(
         displayName: String,
         status: RsvpStatus,
     ) {
+        authRepository.getCurrentUserUid() ?: throw NotSignedInException()
         eventAttendeeDao.upsertAttendee(
             EventAttendeeEntity(
                 eventId = eventId,
@@ -250,9 +283,40 @@ class DefaultCustomEventRepository @Inject constructor(
             "categories" to event.categories.map { it.name },
             "participants" to participants,
             "createdAt" to com.google.firebase.Timestamp.now(),
+            "placeId" to event.placeId,
+            "customLocation" to event.customLocation?.toFirestoreMap(),
+            "type" to event.type.name,
+            "courseLabel" to event.courseLabel,
+            "isCompleted" to event.isCompleted,
         )
         firestore.collection("events").document(eventId).set(data).await()
     }
+
+    /** Edits only the user-mutable fields. Critically excludes participants — that array
+     *  is mutated independently by addAttendees/removeAttendee, and a `set(...)` write
+     *  here would clobber the existing attendee membership. */
+    private suspend fun pushEventUpdateToFirestore(eventId: String, event: CalendarEvent) {
+        val data = mapOf(
+            "title" to event.title,
+            "description" to event.description,
+            "location" to event.location,
+            "startTime" to event.startTime.toEpochMilli(),
+            "endTime" to event.endTime.toEpochMilli(),
+            "categories" to event.categories.map { it.name },
+            "placeId" to event.placeId,
+            "customLocation" to event.customLocation?.toFirestoreMap(),
+            "type" to event.type.name,
+            "courseLabel" to event.courseLabel,
+            "isCompleted" to event.isCompleted,
+        )
+        firestore.collection("events").document(eventId).update(data).await()
+    }
+
+    private fun com.ekhonavigator.core.model.SharedLocation.toFirestoreMap(): Map<String, Any> = mapOf(
+        "title" to title,
+        "latitude" to latitude,
+        "longitude" to longitude,
+    )
 
     override fun startSync(scope: CoroutineScope) {
         sharedEventSyncService.startListening(scope)

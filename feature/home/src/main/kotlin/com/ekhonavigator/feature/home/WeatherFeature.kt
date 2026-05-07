@@ -232,7 +232,7 @@ private fun WeatherPill(
 ) {
     Row(
         modifier = Modifier
-            .background(Color.White.copy(alpha = 0.18f), RoundedCornerShape(20.dp))
+            .background(Color.White.copy(alpha = 0.18f), RoundedCornerShape(16.dp))
             .padding(horizontal = 10.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

@@ -2,12 +2,10 @@ package com.ekhonavigator.core.model
 
 /**
  * True if this event belongs to any of the [activeTypes].
- * [EventSourceType.SCHEDULE] never matches — class-schedule ingestion isn't implemented yet.
  */
 fun CalendarEvent.matchesSourceTypes(activeTypes: Set<EventSourceType>): Boolean {
     for (type in activeTypes) {
         when (type) {
-            EventSourceType.SCHEDULE -> Unit
             EventSourceType.CUSTOM -> {
                 if (source == EventSource.USER_CREATED || source == EventSource.SHARED) return true
             }
@@ -16,6 +14,9 @@ fun CalendarEvent.matchesSourceTypes(activeTypes: Set<EventSourceType>): Boolean
             }
             EventSourceType.BOOKMARKED -> {
                 if (source == EventSource.ICAL_FEED && isBookmarked) return true
+            }
+            EventSourceType.CANVAS -> {
+                if (source == EventSource.CANVAS) return true
             }
         }
     }

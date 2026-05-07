@@ -40,11 +40,17 @@ import com.ekhonavigator.core.navigation.Navigator
 import com.ekhonavigator.core.navigation.rememberNavigationState
 import com.ekhonavigator.core.navigation.toEntries
 import com.ekhonavigator.feature.account.AccountScreen
-import com.ekhonavigator.feature.account.SettingsScreen
 import com.ekhonavigator.feature.account.navigation.AccountNavKey
-import com.ekhonavigator.feature.account.navigation.SettingsNavKey
 import com.ekhonavigator.feature.account.navigation.navigateToAccount
-import com.ekhonavigator.feature.account.navigation.navigateToSettings
+import com.ekhonavigator.feature.canvas.settings.ConnectCanvasScreen
+import com.ekhonavigator.feature.canvas.courses.CourseDetailScreen
+import com.ekhonavigator.feature.canvas.courses.MyCoursesScreen
+import com.ekhonavigator.feature.canvas.navigation.ConnectCanvasNavKey
+import com.ekhonavigator.feature.canvas.navigation.CourseDetailNavKey
+import com.ekhonavigator.feature.canvas.navigation.MyCoursesNavKey
+import com.ekhonavigator.feature.canvas.navigation.navigateToConnectCanvas
+import com.ekhonavigator.feature.canvas.navigation.navigateToCourseDetail
+import com.ekhonavigator.feature.canvas.navigation.navigateToMyCourses
 import com.ekhonavigator.feature.calendar.CalendarScreen
 import com.ekhonavigator.feature.calendar.DayScreen
 import com.ekhonavigator.feature.calendar.navigation.CalendarNavKey
@@ -61,6 +67,7 @@ import com.ekhonavigator.feature.event.navigation.CreateEventNavKey
 import com.ekhonavigator.feature.event.navigation.EventNavKey
 import com.ekhonavigator.feature.event.navigation.InvitesNavKey
 import com.ekhonavigator.feature.event.navigation.navigateToCreateEvent
+import com.ekhonavigator.feature.event.navigation.navigateToEditEvent
 import com.ekhonavigator.feature.event.navigation.navigateToEvent
 import com.ekhonavigator.feature.event.navigation.navigateToInvites
 import com.ekhonavigator.feature.home.HomeScreen
@@ -84,8 +91,6 @@ import com.ekhonavigator.navigation.TOP_LEVEL_NAV_ITEMS
 
 @Composable
 fun EkhoNavigatorApp(
-    onSignIn: () -> Unit = {},
-    onSignOut: () -> Unit = {},
     notificationChatRequest: NotificationChatRequest? = null,
     onNotificationChatRequestHandled: () -> Unit = {},
     socialActionViewModel: SocialActionViewModel = hiltViewModel(),
@@ -269,6 +274,7 @@ fun EkhoNavigatorApp(
                             NavEntry(key) {
                                 HomeScreen(
                                     onEventClick = navigator::navigateToEvent,
+                                    onConnectCanvasClick = navigator::navigateToConnectCanvas,
                                 )
                             }
                         }
@@ -300,6 +306,8 @@ fun EkhoNavigatorApp(
                                             ),
                                         )
                                     },
+                                    // Phase 7.A2 per-class detail screen.
+                                    onCourseClick = { courseId -> navigator.navigateToCourseDetail(courseId) },
                                     focusPlaceId = key.focusPlaceId,
                                     initialTab = key.initialTab,
                                 )
@@ -325,6 +333,7 @@ fun EkhoNavigatorApp(
                                 CreateEventScreen(
                                     onBack = navigator::goBack,
                                     initialEpochDay = key.initialEpochDay,
+                                    eventId = key.eventId,
                                 )
                             }
                         }
@@ -514,16 +523,33 @@ fun EkhoNavigatorApp(
                         is AccountNavKey -> {
                             NavEntry(key) {
                                 AccountScreen(
-                                    onSignIn = onSignIn,
-                                    onSignOut = onSignOut,
-                                    onSettingsClick = navigator::navigateToSettings,
+                                    onConnectCanvasClick = navigator::navigateToConnectCanvas,
                                 )
                             }
                         }
 
-                        is SettingsNavKey -> {
+                        is ConnectCanvasNavKey -> {
                             NavEntry(key) {
-                                SettingsScreen()
+                                ConnectCanvasScreen(
+                                    onViewCoursesClick = navigator::navigateToMyCourses,
+                                )
+                            }
+                        }
+
+                        is MyCoursesNavKey -> {
+                            NavEntry(key) {
+                                MyCoursesScreen(
+                                    onConnectClick = navigator::navigateToConnectCanvas,
+                                )
+                            }
+                        }
+
+                        is CourseDetailNavKey -> {
+                            NavEntry(key) {
+                                CourseDetailScreen(
+                                    courseId = key.courseId,
+                                    onEventClick = navigator::navigateToEvent,
+                                )
                             }
                         }
 
@@ -539,6 +565,7 @@ fun EkhoNavigatorApp(
                                             ),
                                         )
                                     },
+                                    onEditClick = navigator::navigateToEditEvent,
                                 )
                             }
                         }

@@ -1,5 +1,7 @@
 package com.ekhonavigator.feature.event
 
+import com.ekhonavigator.core.data.markers.MarkerRepository
+import com.ekhonavigator.core.model.SharedLocation
 import com.ekhonavigator.core.testing.MainDispatcherRule
 import com.ekhonavigator.core.testing.TestAuthRepository
 import com.ekhonavigator.core.testing.TestCalendarRepository
@@ -44,6 +46,7 @@ class EventDetailViewModelTest {
     private lateinit var socialRepository: TestSocialRepository
     private lateinit var authRepository: TestAuthRepository
     private lateinit var placeRepository: TestPlaceRepository
+    private lateinit var markerRepository: MarkerRepository
     private lateinit var viewModel: EventDetailViewModel
 
     @Before
@@ -53,13 +56,41 @@ class EventDetailViewModelTest {
         socialRepository = TestSocialRepository()
         authRepository = TestAuthRepository()
         placeRepository = TestPlaceRepository()
+        // Real MarkerRepository is safe in JVM tests since its FirebaseFirestore handle is
+        // lazy — these tests never trigger a save path that would touch it.
+        markerRepository = MarkerRepository()
         viewModel = EventDetailViewModel(
             repository,
             customEventRepository,
             socialRepository,
             authRepository,
             placeRepository,
+            markerRepository,
+            StubPlannerRepository(),
+            StubAssignmentRepository(),
         )
+    }
+
+    private class StubPlannerRepository : com.ekhonavigator.core.data.canvas.CanvasPlannerRepository {
+        override fun observeItems(start: java.time.Instant, end: java.time.Instant) =
+            kotlinx.coroutines.flow.flowOf(emptyList<com.ekhonavigator.core.canvas.model.PlannerItem>())
+        override fun observeAllItems() =
+            kotlinx.coroutines.flow.flowOf(emptyList<com.ekhonavigator.core.canvas.model.PlannerItem>())
+        override fun observeById(id: String) =
+            kotlinx.coroutines.flow.flowOf<com.ekhonavigator.core.canvas.model.PlannerItem?>(null)
+        override suspend fun sync(start: java.time.Instant, end: java.time.Instant) = Result.success(Unit)
+        override suspend fun clearAll() {}
+    }
+
+    private class StubAssignmentRepository : com.ekhonavigator.core.data.canvas.CanvasAssignmentRepository {
+        override fun observeForCourse(courseId: String) =
+            kotlinx.coroutines.flow.flowOf(emptyList<com.ekhonavigator.core.canvas.model.CanvasAssignment>())
+        override fun observeById(assignmentId: String) =
+            kotlinx.coroutines.flow.flowOf<com.ekhonavigator.core.canvas.model.CanvasAssignment?>(null)
+        override fun observeGroupsForCourse(courseId: String) =
+            kotlinx.coroutines.flow.flowOf(emptyList<com.ekhonavigator.core.canvas.model.CanvasAssignmentGroup>())
+        override suspend fun sync(courseId: String) = Result.success(Unit)
+        override suspend fun clearAll() {}
     }
 
     @Test
@@ -119,6 +150,79 @@ class EventDetailViewModelTest {
         // The user deletes the underlying marker — the link must go dead.
         placeRepository.emit(emptyList())
         assertEquals(null, viewModel.effectivePlaceId.first { it == null })
+    }
+
+    @Test
+    fun `customLocationOffer is null when the event's marker still resolves`() = runTest {
+        val place = com.ekhonavigator.core.model.Place(
+            id = "marker_42",
+            name = "Coffee spot",
+            latitude = 34.16,
+            longitude = -119.04,
+            category = com.ekhonavigator.core.model.PlaceCategory.GENERAL,
+            isCustom = true,
+        )
+        placeRepository.emit(listOf(place))
+        repository.emit(
+            listOf(
+                testCalendarEvent(
+                    id = "e1",
+                    placeId = "marker_42",
+                    customLocation = SharedLocation("Coffee spot", 34.16, -119.04),
+                ),
+            ),
+        )
+
+        viewModel.setEventId("e1")
+        viewModel.event.first { it != null }
+        // The marker resolves, so no offer prompt is needed.
+        assertEquals(null, viewModel.customLocationOffer.value)
+    }
+
+    @Test
+    fun `customLocationOffer surfaces when the event's marker is unresolvable`() = runTest {
+        val event = testCalendarEvent(
+            id = "shared-1",
+            placeId = "marker_99",
+            customLocation = SharedLocation("Coffee spot", 34.16, -119.04),
+        )
+        placeRepository.emit(emptyList())
+        repository.emit(listOf(event))
+
+        viewModel.setEventId("shared-1")
+        val offer = viewModel.customLocationOffer.first { it != null }
+        assertEquals("Coffee spot", offer?.title)
+        assertEquals(34.16, offer?.latitude)
+    }
+
+    @Test
+    fun `effectivePlaceId coord-matches a saved marker when ids differ`() = runTest {
+        // Recipient already saved the shared customLocation as their own marker — same coords,
+        // different local id. The WHERE row must navigate straight to their copy and the offer
+        // prompt must stay suppressed instead of asking them to save again on every tap.
+        val recipientLocalMarker = com.ekhonavigator.core.model.Place(
+            id = "marker_99",
+            name = "Coffee spot",
+            latitude = 34.16,
+            longitude = -119.04,
+            category = com.ekhonavigator.core.model.PlaceCategory.GENERAL,
+            isCustom = true,
+        )
+        placeRepository.emit(listOf(recipientLocalMarker))
+        repository.emit(
+            listOf(
+                testCalendarEvent(
+                    id = "shared-1",
+                    placeId = "marker_42",
+                    customLocation = SharedLocation("Coffee spot", 34.16, -119.04),
+                ),
+            ),
+        )
+
+        viewModel.setEventId("shared-1")
+        viewModel.event.first { it != null }
+        assertEquals("marker_99", viewModel.effectivePlaceId.first { it != null })
+        assertEquals(null, viewModel.customLocationOffer.value)
     }
 
     @Test

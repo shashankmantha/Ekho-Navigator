@@ -26,23 +26,42 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.ekhonavigator.core.designsystem.component.CollapsibleMultiSelectSection
 import com.ekhonavigator.core.designsystem.component.EkhoMonogramBadge
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import com.ekhonavigator.core.designsystem.theme.LocalCanvasConnected
+import com.ekhonavigator.core.designsystem.theme.coursePalette
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSourceType
 
 /**
- * Maps a [EventSourceType] to its (accent, onAccent) color pair from the theme.
+ * Maps a [EventSourceType] to its (accent, onAccent) color pair. Mirrors the
+ * event-taxonomy mapping in [com.ekhonavigator.core.designsystem.component.EkhoEventRow]
+ * and [com.ekhonavigator.feature.calendar.component.CalendarDay] — Canvas uses
+ * Cardinal (not chrome primary) per design.md §5.
  */
+@androidx.compose.runtime.Composable
+@androidx.compose.runtime.ReadOnlyComposable
 internal fun sourceTypeThemeColors(
     type: EventSourceType,
     colors: androidx.compose.material3.ColorScheme,
 ): Pair<Color, Color> = when (type) {
-    EventSourceType.SCHEDULE -> colors.primary to colors.onPrimary
+    EventSourceType.CANVAS -> com.ekhonavigator.core.designsystem.theme.EkhoColors.current.cardinal to
+            com.ekhonavigator.core.designsystem.theme.EkhoColors.current.onFoundation
     EventSourceType.CUSTOM -> colors.secondary to colors.onSecondary
-    EventSourceType.CAMPUS -> colors.onSurfaceVariant to colors.onSurface
+    EventSourceType.CAMPUS -> colors.onSurfaceVariant to colors.surface
     EventSourceType.BOOKMARKED -> colors.tertiary to colors.onTertiary
 }
+
+/**
+ * One row in the Courses filter section. Index into the course palette so the
+ * leading dot matches what the calendar pill renders.
+ */
+data class CourseFilterOption(
+    val id: String,
+    val displayLabel: String,
+    val paletteSlot: Int,
+)
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -53,8 +72,20 @@ fun FilterSheetContent(
     onToggleCategory: (EventCategory) -> Unit,
     onClearCategories: () -> Unit,
     modifier: Modifier = Modifier,
+    courses: List<CourseFilterOption> = emptyList(),
+    selectedCourseIds: Set<String> = emptySet(),
+    onToggleCourse: (String) -> Unit = {},
+    onClearCourses: () -> Unit = {},
 ) {
     val colors = MaterialTheme.colorScheme
+    val canvasConnected = LocalCanvasConnected.current
+    // Hide the CANVAS source chip when no Canvas connection — without a PAT
+    // there are no Canvas events anyway, so the chip would just toggle "show
+    // events that don't exist". Re-appears automatically the moment a PAT is
+    // saved (CanvasTokenStore.changes() drives the holder).
+    val visibleSourceTypes = EventSourceType.entries.filter { type ->
+        type != EventSourceType.CANVAS || canvasConnected
+    }
 
     Column(
         modifier = modifier
@@ -73,10 +104,7 @@ fun FilterSheetContent(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // SCHEDULE excluded until class calendar import is implemented
-            EventSourceType.entries
-                .filter { it != EventSourceType.SCHEDULE }
-                .forEach { type ->
+            visibleSourceTypes.forEach { type ->
                     val isActive = type in activeSourceTypes
                     val (accentColor, _) = sourceTypeThemeColors(type, colors)
 
@@ -101,7 +129,15 @@ fun FilterSheetContent(
                                     imageVector = EkhoIcons.Bookmark,
                                     contentDescription = "Bookmarked",
                                     modifier = Modifier.size(16.dp),
-                                    tint = if (isActive) accentColor else colors.onSurfaceVariant,
+                                    // Horizon (tertiary) is the bookmark identity
+                                    // color (design.md §5) — applied when active so
+                                    // the icon "glows" the same color the bookmark
+                                    // accent uses on calendar pills + event rows.
+                                    tint = if (isActive) {
+                                        colors.tertiary
+                                    } else {
+                                        colors.onSurfaceVariant
+                                    },
                                 )
                             } else {
                                 Text(
@@ -118,8 +154,8 @@ fun FilterSheetContent(
                             .height(36.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = accentColor.copy(alpha = 0.12f),
-                            selectedLabelColor = accentColor,
+                            selectedContainerColor = colors.primaryContainer,
+                            selectedLabelColor = colors.onPrimaryContainer,
                             containerColor = colors.surfaceContainerHigh,
                             labelColor = colors.onSurfaceVariant,
                         ),
@@ -127,9 +163,9 @@ fun FilterSheetContent(
                             enabled = true,
                             selected = isActive,
                             borderColor = Color.Transparent,
-                            selectedBorderColor = accentColor.copy(alpha = 0.3f),
+                            selectedBorderColor = Color.Transparent,
                             borderWidth = 1.dp,
-                            selectedBorderWidth = 1.dp,
+                            selectedBorderWidth = 0.dp,
                         ),
                     )
                 }
@@ -137,82 +173,145 @@ fun FilterSheetContent(
 
         HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.3f))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = "Categories",
-                style = MaterialTheme.typography.titleSmall,
-                color = colors.onSurface,
-            )
-
-            if (selectedCategories.isNotEmpty()) {
-                FilterChip(
-                    selected = false,
-                    onClick = onClearCategories,
-                    label = {
-                        Text(
-                            text = "Clear",
-                            style = MaterialTheme.typography.labelSmall,
+        // Courses sit above Categories and start expanded — they're the most-used
+        // filter once Canvas is connected, so opening the sheet should land the
+        // user inside the chip list, not on a collapsed header.
+        if (courses.isNotEmpty()) {
+            val palette = coursePalette()
+            CollapsibleMultiSelectSection(
+                title = "Courses",
+                selectedCount = selectedCourseIds.size,
+                initiallyExpanded = true,
+                headerTrailingContent = {
+                    if (selectedCourseIds.isNotEmpty()) {
+                        ClearLink(onClick = onClearCourses)
+                    }
+                },
+            ) {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    courses.forEach { course ->
+                        val isSelected = course.id in selectedCourseIds
+                        val swatch = palette[course.paletteSlot % palette.size]
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { onToggleCourse(course.id) },
+                            label = {
+                                Text(
+                                    text = course.displayLabel,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                )
+                            },
+                            leadingIcon = {
+                                Box(
+                                    Modifier
+                                        .size(10.dp)
+                                        .clip(CircleShape)
+                                        .drawBehind { drawCircle(swatch) },
+                                )
+                            },
+                            modifier = Modifier.height(32.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = swatch.copy(alpha = 0.15f),
+                                selectedLabelColor = swatch,
+                                containerColor = colors.surfaceContainerHigh,
+                                labelColor = colors.onSurfaceVariant,
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = isSelected,
+                                borderColor = Color.Transparent,
+                                selectedBorderColor = swatch.copy(alpha = 0.4f),
+                                borderWidth = 1.dp,
+                                selectedBorderWidth = 1.dp,
+                            ),
                         )
-                    },
-                    modifier = Modifier.height(28.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = FilterChipDefaults.filterChipColors(
-                        containerColor = Color.Transparent,
-                        labelColor = colors.primary,
-                    ),
-                    border = FilterChipDefaults.filterChipBorder(
-                        enabled = true,
-                        selected = false,
-                        borderColor = Color.Transparent,
-                    ),
-                )
+                    }
+                }
             }
+            HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.3f))
         }
 
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+        CollapsibleMultiSelectSection(
+            title = "Categories",
+            selectedCount = selectedCategories.size,
+            headerTrailingContent = {
+                if (selectedCategories.isNotEmpty()) {
+                    ClearLink(onClick = onClearCategories)
+                }
+            },
         ) {
-            EventCategory.entries.forEach { category ->
-                val isSelected = category in selectedCategories
-
-                FilterChip(
-                    selected = isSelected,
-                    onClick = { onToggleCategory(category) },
-                    label = {
-                        Text(
-                            text = category.displayName,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                        )
-                    },
-                    leadingIcon = {
-                        EkhoMonogramBadge(
-                            monogram = category.monogram,
-                            containerColor = colors.surfaceContainerHighest,
-                            contentColor = if (isSelected) {
-                                colors.onPrimaryContainer
-                            } else {
-                                colors.onSurfaceVariant
-                            },
-                        )
-                    },
-                    modifier = Modifier.height(32.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = colors.primaryContainer,
-                        selectedLabelColor = colors.onPrimaryContainer,
-                        selectedLeadingIconColor = colors.onPrimaryContainer,
-                        containerColor = colors.surfaceContainerHigh,
-                        labelColor = colors.onSurfaceVariant,
-                    ),
-                )
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                EventCategory.entries.forEach { category ->
+                    val isSelected = category in selectedCategories
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { onToggleCategory(category) },
+                        label = {
+                            Text(
+                                text = category.displayName,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            )
+                        },
+                        leadingIcon = {
+                            EkhoMonogramBadge(
+                                monogram = category.monogram,
+                                containerColor = colors.surfaceContainerHighest,
+                                contentColor = if (isSelected) {
+                                    colors.onPrimaryContainer
+                                } else {
+                                    colors.onSurfaceVariant
+                                },
+                            )
+                        },
+                        modifier = Modifier.height(32.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = colors.primaryContainer,
+                            selectedLabelColor = colors.onPrimaryContainer,
+                            selectedLeadingIconColor = colors.onPrimaryContainer,
+                            containerColor = colors.surfaceContainerHigh,
+                            labelColor = colors.onSurfaceVariant,
+                        ),
+                    )
+                }
             }
         }
     }
+}
+
+@Composable
+private fun ClearLink(onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    FilterChip(
+        selected = false,
+        onClick = onClick,
+        label = {
+            Text(
+                text = "Clear",
+                style = MaterialTheme.typography.labelSmall,
+            )
+        },
+        modifier = Modifier.height(28.dp),
+        shape = RoundedCornerShape(8.dp),
+        colors = FilterChipDefaults.filterChipColors(
+            containerColor = Color.Transparent,
+            labelColor = colors.primary,
+        ),
+        border = FilterChipDefaults.filterChipBorder(
+            enabled = true,
+            selected = false,
+            borderColor = Color.Transparent,
+        ),
+    )
 }

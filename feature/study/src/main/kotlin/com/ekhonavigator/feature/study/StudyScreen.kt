@@ -66,8 +66,8 @@ fun StudyScreen(
             ) {
                 SmallFloatingActionButton(
                     onClick = onViewLibraryOnMap,
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
                 ) {
                     Icon(
                         imageVector = EkhoIcons.Place,
@@ -77,8 +77,8 @@ fun StudyScreen(
                 }
                 FloatingActionButton(
                     onClick = { openBookingInCustomTab(context, primaryToolbarColor) },
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
                 ) {
                     Icon(
                         imageVector = EkhoIcons.OpenInNew,

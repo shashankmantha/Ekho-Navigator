@@ -3,7 +3,7 @@ package com.ekhonavigator.core.database.converter
 import androidx.room.TypeConverter
 import com.ekhonavigator.core.model.RsvpStatus
 
-internal class RsvpStatusConverter {
+class RsvpStatusConverter {
 
     @TypeConverter
     fun fromRsvpStatus(value: RsvpStatus): String = value.name

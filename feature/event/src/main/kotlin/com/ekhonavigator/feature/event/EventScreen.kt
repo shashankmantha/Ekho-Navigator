@@ -22,11 +22,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.net.toUri
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -63,7 +67,9 @@ import com.ekhonavigator.core.designsystem.component.FriendPickerSheet
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventAttendee
+import com.ekhonavigator.core.designsystem.theme.LocalAssignmentDecorator
 import com.ekhonavigator.core.model.EventCategory
+import com.ekhonavigator.core.model.EventType
 import com.ekhonavigator.core.model.EventSource
 import com.ekhonavigator.core.model.RsvpStatus
 import com.ekhonavigator.core.model.prettifyAllCaps
@@ -79,6 +85,7 @@ fun EventScreen(
     eventId: String,
     onBack: () -> Unit = {},
     onLocationClick: (placeId: String) -> Unit = {},
+    onEditClick: (eventId: String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: EventDetailViewModel = hiltViewModel(
         checkNotNull(
@@ -96,8 +103,21 @@ fun EventScreen(
     val attendees by viewModel.attendees.collectAsStateWithLifecycle()
     val currentUserRsvp by viewModel.currentUserRsvp.collectAsStateWithLifecycle()
     val effectivePlaceId by viewModel.effectivePlaceId.collectAsStateWithLifecycle()
+    val customLocationOffer by viewModel.customLocationOffer.collectAsStateWithLifecycle()
     val friends by viewModel.friends.collectAsStateWithLifecycle()
     val shareSheetVisible by viewModel.shareSheetVisible.collectAsStateWithLifecycle()
+    val canvasContext by viewModel.canvasContext.collectAsStateWithLifecycle()
+    val assignmentContext by viewModel.assignmentContext.collectAsStateWithLifecycle()
+
+    // The VM emits the new (or deduped existing) marker placeId after save; route it
+    // through the same nav callback the campus path uses so the camera-pan animation runs.
+    LaunchedEffect(viewModel) {
+        viewModel.navigateToMarker.collect { placeId ->
+            onLocationClick(placeId)
+        }
+    }
+
+    var showSaveMarkerPrompt by remember { mutableStateOf(false) }
 
     // Track whether we ever loaded an event — if it disappears after loading,
     // the event was deleted (by owner, by self, or by remote sync) and we navigate back.
@@ -124,20 +144,56 @@ fun EventScreen(
         EventDetailContent(
             event = event!!,
             effectivePlaceId = effectivePlaceId,
+            customLocationOfferAvailable = customLocationOffer != null,
             onBookmarkClick = viewModel::toggleBookmark,
             canDelete = viewModel.canDelete,
             onDeleteClick = viewModel::deleteEvent,
+            canEdit = viewModel.canEdit,
+            onEditClick = { onEditClick(eventId) },
             canShare = viewModel.canShare,
             onShareClick = viewModel::openShareSheet,
+            canMarkComplete = viewModel.canMarkComplete,
+            onToggleCompleteClick = viewModel::toggleCompleted,
             hasAttendees = viewModel.hasAttendees,
             canRsvp = viewModel.canRsvp,
             isOwner = viewModel.isOwner,
             currentUserRsvp = currentUserRsvp,
             attendees = attendees,
+            canvasContext = canvasContext,
+            assignmentContext = assignmentContext,
             onRsvp = viewModel::rsvp,
             onLocationClick = onLocationClick,
+            onLocationSaveOfferClick = { showSaveMarkerPrompt = true },
             modifier = modifier,
         )
+
+        customLocationOffer?.let { offer ->
+            if (showSaveMarkerPrompt) {
+                AlertDialog(
+                    onDismissRequest = { showSaveMarkerPrompt = false },
+                    title = { Text("Save to your map?") },
+                    text = {
+                        Text(
+                            "\u201C${offer.title}\u201D was pinned to a marker by the event creator. " +
+                                "Save it to your map so you can navigate there.",
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            showSaveMarkerPrompt = false
+                            viewModel.saveCustomLocationToMyMarkers()
+                        }) {
+                            Text("Save")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showSaveMarkerPrompt = false }) {
+                            Text("Cancel")
+                        }
+                    },
+                )
+            }
+        }
 
         if (shareSheetVisible) {
             val attendeeUids = remember(attendees) { attendees.map { it.userId }.toSet() }
@@ -168,11 +224,18 @@ fun EventScreen(
 private fun EventDetailContent(
     event: CalendarEvent,
     effectivePlaceId: String?,
+    customLocationOfferAvailable: Boolean = false,
     onBookmarkClick: () -> Unit,
     canDelete: Boolean = false,
     onDeleteClick: () -> Unit = {},
+    canEdit: Boolean = false,
+    onEditClick: () -> Unit = {},
     canShare: Boolean = false,
     onShareClick: () -> Unit = {},
+    canMarkComplete: Boolean = false,
+    onToggleCompleteClick: () -> Unit = {},
+    canvasContext: com.ekhonavigator.core.canvas.model.PlannerItem? = null,
+    assignmentContext: com.ekhonavigator.core.canvas.model.CanvasAssignment? = null,
     hasAttendees: Boolean = false,
     canRsvp: Boolean = false,
     isOwner: Boolean = false,
@@ -180,12 +243,20 @@ private fun EventDetailContent(
     attendees: List<EventAttendee> = emptyList(),
     onRsvp: (RsvpStatus) -> Unit = {},
     onLocationClick: (placeId: String) -> Unit = {},
+    onLocationSaveOfferClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val zone = remember { ZoneId.systemDefault() }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
-    val cleanedDescription = remember(event.description) {
-        stripTrumbaHeaderLines(event.description)
+    // For Canvas assignments the live read-time join via `assignmentContext`
+    // is the source of truth — the previously-used `calendar_events` backfill
+    // got wiped on the next planner sync (planner DTO carries no body), which
+    // made descriptions disappear after the user navigated calendar→back→tap.
+    // Falling back to `event.description` keeps non-assignment events working.
+    val rawDescription = assignmentContext?.description?.takeIf { it.isNotBlank() }
+        ?: event.description
+    val cleanedDescription = remember(rawDescription) {
+        stripTrumbaHeaderLines(rawDescription)
     }
 
     Column(
@@ -202,8 +273,13 @@ private fun EventDetailContent(
             onBookmarkClick = onBookmarkClick,
             canShare = canShare,
             onShareClick = onShareClick,
+            canEdit = canEdit,
+            onEditClick = onEditClick,
             canDelete = canDelete,
             onDeleteClick = { showDeleteConfirmation = true },
+            canMarkComplete = canMarkComplete,
+            isCompleted = event.isCompleted,
+            onToggleCompleteClick = onToggleCompleteClick,
         )
 
         // ── State ribbon (only when event has a state) ─
@@ -222,14 +298,23 @@ private fun EventDetailContent(
         Spacer(Modifier.height(14.dp))
 
         // ── Title ──────────────────────────────────────
+        // Strikethrough completed assignments (Canvas: submitted/graded/excused;
+        // personal: isCompleted toggle). Single source of truth lives on the
+        // decorator so the visual stays consistent with row + pill render sites.
+        val isCompleted = LocalAssignmentDecorator.current.isCompleted(event.id)
         Text(
             text = event.title,
             style = MaterialTheme.typography.headlineMedium.copy(
                 letterSpacing = (-0.02).em,
                 lineHeight = 34.sp,
+                textDecoration = if (isCompleted) androidx.compose.ui.text.style.TextDecoration.LineThrough else null,
             ),
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = if (isCompleted) {
+                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
         )
 
         if (event.eventType.isNotBlank()) {
@@ -247,10 +332,18 @@ private fun EventDetailContent(
             MetaTextRow(label = "HOSTED BY", value = event.organization.prettifyAllCaps())
         }
         if (event.location.isNotBlank()) {
+            // Three states: existing place id resolves → nav directly; offer available
+            // (recipient or owner-with-deleted-marker) → prompt to save first; otherwise
+            // no click and the row stays in its un-linked styling.
+            val locationClick: (() -> Unit)? = when {
+                effectivePlaceId != null -> { -> onLocationClick(effectivePlaceId) }
+                customLocationOfferAvailable -> onLocationSaveOfferClick
+                else -> null
+            }
             MetaTextRow(
                 label = "WHERE",
                 value = event.location,
-                onClick = effectivePlaceId?.let { placeId -> { onLocationClick(placeId) } },
+                onClick = locationClick,
             )
         }
         if (event.status != "CONFIRMED") {
@@ -413,8 +506,24 @@ private fun EventDetailContent(
         ThinDivider()
         Spacer(Modifier.height(10.dp))
 
-        if (event.categories.isNotEmpty()) {
+        // Skip the TAGGED row on assignments — General has no contextual meaning
+        // on a homework. Per-type contextual categories deferred to next sprint.
+        if (event.categories.isNotEmpty() && event.type != EventType.ASSIGNMENT) {
             MetaChipsRow(label = "TAGGED", categories = event.categories)
+        }
+
+        val courseLabel = event.courseLabel
+        if (!courseLabel.isNullOrBlank()) {
+            CourseChipRow(label = courseLabel)
+        }
+
+        if (canvasContext != null) {
+            CanvasDetailsRow(item = canvasContext, assignment = assignmentContext)
+        }
+
+        if (event.source == EventSource.CANVAS && event.url.isNotBlank()) {
+            Spacer(modifier = Modifier.height(20.dp))
+            OpenInCanvasButton(url = event.url)
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -453,13 +562,34 @@ private fun ActionRow(
     onBookmarkClick: () -> Unit,
     canShare: Boolean,
     onShareClick: () -> Unit,
+    canEdit: Boolean,
+    onEditClick: () -> Unit,
     canDelete: Boolean,
     onDeleteClick: () -> Unit,
+    canMarkComplete: Boolean = false,
+    isCompleted: Boolean = false,
+    onToggleCompleteClick: () -> Unit = {},
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.End,
     ) {
+        if (canMarkComplete) {
+            IconButton(onClick = onToggleCompleteClick) {
+                Icon(
+                    imageVector = EkhoIcons.Check,
+                    contentDescription = if (isCompleted) "Mark incomplete" else "Mark complete",
+                    // Sage secondary when complete (matches the YOUR EVENT ribbon),
+                    // muted onSurfaceVariant when not — same dim/active treatment as
+                    // the bookmark toggle for visual consistency.
+                    tint = if (isCompleted) {
+                        MaterialTheme.colorScheme.secondary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+            }
+        }
         if (showBookmark) {
             IconButton(onClick = onBookmarkClick) {
                 Icon(
@@ -478,6 +608,15 @@ private fun ActionRow(
                 Icon(
                     imageVector = EkhoIcons.Share,
                     contentDescription = "Share event",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+        if (canEdit) {
+            IconButton(onClick = onEditClick) {
+                Icon(
+                    imageVector = EkhoIcons.Edit,
+                    contentDescription = "Edit event",
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
@@ -627,7 +766,7 @@ private fun MetaTextRow(
         )
         .padding(vertical = 5.dp)
     val valueColor = if (onClick != null) {
-        MaterialTheme.colorScheme.primaryContainer
+        MaterialTheme.colorScheme.primary
     } else {
         MaterialTheme.colorScheme.onSurface
     }
@@ -693,6 +832,198 @@ private fun MetaChipsRow(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun CanvasDetailsRow(
+    item: com.ekhonavigator.core.canvas.model.PlannerItem,
+    assignment: com.ekhonavigator.core.canvas.model.CanvasAssignment? = null,
+) {
+    // Canvas-only meta the bridged calendar_events row doesn't carry: status
+    // badge (submitted/late/missing/graded/excused) + points possible + the
+    // numeric grade when the per-class detail screen has populated the
+    // assignments cache (read-time join, no schema change).
+    val (statusLabel, statusColor) = canvasStatus(item)
+    val points = item.pointsPossible
+    val gradeText = assignment?.let(::gradeChipLabel)
+    if (statusLabel == null && points == null && gradeText == null) return
+
+    Row(
+        modifier = Modifier.padding(vertical = 5.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        MetaLabel("CANVAS", Modifier.width(MetaLabelWidth).padding(top = 6.dp))
+        FlowRow(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            if (gradeText != null) {
+                val gradeColor = MaterialTheme.colorScheme.secondary
+                AssistChip(
+                    onClick = {},
+                    label = { Text(text = gradeText, style = MaterialTheme.typography.labelSmall) },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        labelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    ),
+                    border = AssistChipDefaults.assistChipBorder(
+                        enabled = true,
+                        borderColor = gradeColor.copy(alpha = 0.3f),
+                    ),
+                )
+            }
+            if (statusLabel != null && statusColor != null) {
+                AssistChip(
+                    onClick = {},
+                    label = { Text(text = statusLabel, style = MaterialTheme.typography.labelSmall) },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = statusColor.copy(alpha = 0.12f),
+                        labelColor = statusColor,
+                    ),
+                    border = AssistChipDefaults.assistChipBorder(
+                        enabled = true,
+                        borderColor = statusColor.copy(alpha = 0.3f),
+                    ),
+                )
+            }
+            if (points != null) {
+                AssistChip(
+                    onClick = {},
+                    label = {
+                        val pointsText = if (points % 1.0 == 0.0) "${points.toInt()} pts" else "$points pts"
+                        Text(text = pointsText, style = MaterialTheme.typography.labelSmall)
+                    },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Numeric-grade chip text. Returns null when there's nothing the user would
+ * value seeing — Canvas might know the assignment exists but not have a grade
+ * yet. Format priorities match the Past Assignments row pill so the same
+ * assignment reads identically on both surfaces.
+ */
+private fun gradeChipLabel(assignment: com.ekhonavigator.core.canvas.model.CanvasAssignment): String? {
+    val score = assignment.submission.score
+    val points = assignment.pointsPossible
+    return when {
+        score != null && points != null && points > 0.0 -> "${formatPoints(score)} / ${formatPoints(points)}"
+        assignment.submission.graded && assignment.submission.grade != null -> assignment.submission.grade
+        else -> null
+    }
+}
+
+private fun formatPoints(value: Double): String =
+    if (value % 1.0 == 0.0) value.toInt().toString() else "%.1f".format(value)
+
+/**
+ * Picks the most user-meaningful status from the planner item's submission
+ * flags. Priority order matches what a student wants to see at a glance:
+ * Excused (it's done, don't worry) > Graded > Submitted > Late > Missing.
+ * "Needs grading" gets folded into Submitted since the user already submitted —
+ * the grading wait is the instructor's problem, not actionable from the user side.
+ */
+@Composable
+private fun canvasStatus(item: com.ekhonavigator.core.canvas.model.PlannerItem): Pair<String?, androidx.compose.ui.graphics.Color?> {
+    val submission = item.submission
+    val colors = MaterialTheme.colorScheme
+    return when {
+        submission.excused -> "Excused" to colors.onSurfaceVariant
+        submission.graded -> "Graded" to colors.secondary
+        submission.submitted -> "Submitted" to colors.secondary
+        submission.late -> "Late" to colors.tertiary
+        submission.missing -> "Missing" to colors.error
+        else -> null to null
+    }
+}
+
+@Composable
+private fun OpenInCanvasButton(url: String) {
+    // Hide the button entirely if the URL isn't launchable — Canvas's planner
+    // endpoint historically returned relative paths (`/courses/123/...`) that
+    // crash startActivity with ActivityNotFoundException. The data layer now
+    // absolutizes via `absolutizeCanvasUrl`, so this guard is belt-and-suspenders
+    // for any entity rows already in Room from before that fix landed.
+    val isLaunchable = url.startsWith("http://", ignoreCase = true) ||
+        url.startsWith("https://", ignoreCase = true)
+    if (!isLaunchable) return
+
+    val context = LocalContext.current
+    OutlinedButton(
+        onClick = {
+            // runCatching defends against odd device configurations (no browser
+            // installed, no Custom Tabs provider, malformed URI sneaking through).
+            // Better to silently no-op than crash the app — A2's per-class
+            // detail screen will give users another path to course content.
+            runCatching {
+                CustomTabsIntent.Builder()
+                    .setShowTitle(true)
+                    .build()
+                    .launchUrl(context, url.toUri())
+            }
+        },
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        Icon(
+            imageVector = EkhoIcons.OpenInNew,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = "Open in Canvas",
+            style = MaterialTheme.typography.labelLarge,
+        )
+    }
+}
+
+@Composable
+private fun CourseChipRow(label: String) {
+    // Color resolved through the same family-key map the calendar pills + My
+    // Courses tiles use; falls back to onSurfaceVariant when the user typed a
+    // course not in the cached Canvas list (signed out / not connected).
+    val decorator = LocalAssignmentDecorator.current
+    val courseColor = decorator.courseColorForLabel(label)
+        ?: MaterialTheme.colorScheme.onSurfaceVariant
+    Row(
+        modifier = Modifier.padding(vertical = 5.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        MetaLabel("COURSE", Modifier.width(MetaLabelWidth).padding(top = 6.dp))
+        AssistChip(
+            onClick = { /* clickable course-detail nav lands in Phase 7.A2 */ },
+            label = {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            },
+            leadingIcon = {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .background(courseColor),
+                )
+            },
+            colors = AssistChipDefaults.assistChipColors(
+                containerColor = courseColor.copy(alpha = 0.12f),
+                labelColor = courseColor,
+            ),
+            border = AssistChipDefaults.assistChipBorder(
+                enabled = true,
+                borderColor = courseColor.copy(alpha = 0.3f),
+            ),
+        )
     }
 }
 

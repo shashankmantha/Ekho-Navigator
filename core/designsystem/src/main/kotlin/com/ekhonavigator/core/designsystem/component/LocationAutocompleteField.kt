@@ -33,6 +33,8 @@ data class LocationSuggestion(
     val name: String,
     val isCustom: Boolean = false,
     val subtitle: String = "",
+    val latitude: Double? = null,
+    val longitude: Double? = null,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)

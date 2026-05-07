@@ -34,16 +34,19 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import com.ekhonavigator.core.designsystem.theme.EkhoColors
+import com.ekhonavigator.core.designsystem.theme.LocalAssignmentDecorator
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-enum class EkhoEventRowState { NONE, BOOKMARKED, PERSONAL }
+enum class EkhoEventRowState { NONE, BOOKMARKED, PERSONAL, ASSIGNMENT }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -60,11 +63,27 @@ fun EkhoEventRow(
     modifier: Modifier = Modifier,
     isPending: Boolean = false,
     organization: String = "",
+    eventId: String? = null,
 ) {
+    // Event taxonomy → divider color (design.md §5):
+    //   NONE       = generic campus event (no other tag)        → outline
+    //   BOOKMARKED = saved/starred                              → tertiary (Horizon)
+    //   PERSONAL   = user-created CUSTOM event                  → secondary (Sage)
+    //   ASSIGNMENT = course-tagged → course color (§6).
+    //                Fallback = Cardinal — Canvas is the dominant assignment
+    //                source, so untagged ASSIGNMENT reads as Canvas-LMS identity
+    //                rather than brand chrome.
+    val courseAccent = if (state == EkhoEventRowState.ASSIGNMENT && eventId != null) {
+        LocalAssignmentDecorator.current.courseColorFor(eventId)
+    } else {
+        null
+    }
+    val cardinal = EkhoColors.current.cardinal
     val accent = when (state) {
-        EkhoEventRowState.NONE -> MaterialTheme.colorScheme.outlineVariant
+        EkhoEventRowState.NONE -> MaterialTheme.colorScheme.outline
         EkhoEventRowState.BOOKMARKED -> MaterialTheme.colorScheme.tertiary
         EkhoEventRowState.PERSONAL -> MaterialTheme.colorScheme.secondary
+        EkhoEventRowState.ASSIGNMENT -> courseAccent ?: cardinal
     }
 
     Row(
@@ -91,14 +110,25 @@ fun EkhoEventRow(
                 Spacer(Modifier.height(2.dp))
             }
 
+            // Strikethrough on completed assignments (decorator: Canvas
+            // submitted/graded/excused OR personal isCompleted toggle).
+            // Past events get a softer dim — same temporal recede signal as
+            // calendar pills, but no strikethrough (past ≠ done).
+            val isCompleted = eventId != null && LocalAssignmentDecorator.current.isCompleted(eventId)
+            val isPastEvent = endTime <= java.time.Instant.now()
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleSmall.copy(
                     fontWeight = FontWeight.SemiBold,
                     letterSpacing = (-0.01).em,
                     lineHeight = 18.sp,
+                    textDecoration = if (isCompleted) TextDecoration.LineThrough else null,
                 ),
-                color = MaterialTheme.colorScheme.onSurface,
+                color = when {
+                    isCompleted -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+                    isPastEvent -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    else -> MaterialTheme.colorScheme.onSurface
+                },
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -123,7 +153,12 @@ fun EkhoEventRow(
                 }
             }
 
-            val hasChips = monograms.isNotEmpty() || isPending
+            // Categories don't carry meaning on ASSIGNMENT rows (a homework's
+            // "General" tag is just visual noise); suppress the monogram strip
+            // entirely. Contextual category sets per type — test/quiz for
+            // assignments, meeting/social for personal — is parked for later.
+            val effectiveMonograms = if (state == EkhoEventRowState.ASSIGNMENT) emptyList() else monograms
+            val hasChips = effectiveMonograms.isNotEmpty() || isPending
             if (hasChips) {
                 Spacer(Modifier.height(6.dp))
                 FlowRow(
@@ -131,7 +166,7 @@ fun EkhoEventRow(
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                     itemVerticalAlignment = Alignment.CenterVertically,
                 ) {
-                    monograms.take(5).forEach { EkhoMonogramBadge(monogram = it) }
+                    effectiveMonograms.take(5).forEach { EkhoMonogramBadge(monogram = it) }
                     if (isPending) PendingChip()
                 }
             }
@@ -155,6 +190,7 @@ private fun TimeColumn(
     val amPmFormatter = remember { DateTimeFormatter.ofPattern("a") }
     val start = startTime.atZone(zone)
     val end = endTime.atZone(zone)
+    val isPointInTime = startTime == endTime
 
     Row(modifier = Modifier.width(72.dp)) {
         Column(
@@ -183,34 +219,38 @@ private fun TimeColumn(
                 maxLines = 1,
                 softWrap = false,
             )
-            Spacer(Modifier.height(3.dp))
-            HorizontalDivider(
-                modifier = Modifier.width(10.dp),
-                color = accent,
-            )
-            Spacer(Modifier.height(3.dp))
-            Text(
-                text = end.format(hourFormatter),
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 12.sp,
-                ),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                softWrap = false,
-            )
-            Text(
-                text = end.format(amPmFormatter),
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 8.sp,
-                ),
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                maxLines = 1,
-                softWrap = false,
-            )
+            // Hide the end-time row for zero-duration items (Canvas assignments are
+            // due-time-emphasized — rendering "5:00 PM ─ 5:00 PM" reads as a bug).
+            if (!isPointInTime) {
+                Spacer(Modifier.height(3.dp))
+                HorizontalDivider(
+                    modifier = Modifier.width(10.dp),
+                    color = accent,
+                )
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    text = end.format(hourFormatter),
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.sp,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    softWrap = false,
+                )
+                Text(
+                    text = end.format(amPmFormatter),
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 8.sp,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    maxLines = 1,
+                    softWrap = false,
+                )
+            }
         }
         Spacer(Modifier.width(6.dp))
         Box(
@@ -305,18 +345,21 @@ private fun BookmarkIndicator(
             }
         }
 
+        // Personal events the user created themselves don't get a bookmark icon —
+        // they OWN the event, so "saved" is implicit; rendering a bookmark glyph
+        // (even non-interactive) implies it's a campus iCal event the user
+        // chose to keep, which is misleading. Empty trailing slot maintains the
+        // same row alignment as iCal rows that DO have the tappable bookmark.
         EkhoEventRowState.PERSONAL -> {
-            Box(
-                modifier = Modifier.size(32.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = EkhoIcons.Bookmark,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
+            Box(modifier = Modifier.size(32.dp))
+        }
+
+        // Canvas-sourced rows aren't bookmarkable from the app, and we don't yet know
+        // submission status from this surface (submitted/graded flags live on
+        // canvas_planner_items, not bridged into calendar_events). Empty trailing slot
+        // keeps row alignment consistent without falsely implying "completed" with a check.
+        EkhoEventRowState.ASSIGNMENT -> {
+            Box(modifier = Modifier.size(32.dp))
         }
     }
 }

@@ -31,6 +31,17 @@ android {
     buildFeatures {
         buildConfig = true
     }
+
+    // Stub android.* classes return defaults instead of throwing in JVM unit tests.
+    // Required because production code in this module calls android.util.Log directly
+    // (see DefaultCanvasPlannerRepository) — without this, every Log.d() throws
+    // "Method d in android.util.Log not mocked" inside runCatching {} and masks the
+    // real result with a fake failure.
+    testOptions {
+        unitTests {
+            isReturnDefaultValues = true
+        }
+    }
 }
 
 dependencies {
@@ -50,6 +61,7 @@ dependencies {
     implementation(projects.core.model)
     implementation(projects.core.database)
     implementation(projects.core.network)
+    api(projects.core.canvas)
 
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.play.services.maps)
@@ -67,4 +79,5 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
 }

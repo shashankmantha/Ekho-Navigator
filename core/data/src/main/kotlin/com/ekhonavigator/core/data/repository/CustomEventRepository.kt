@@ -29,6 +29,8 @@ interface CustomEventRepository {
 
     suspend fun addAttendees(eventId: String, sharedWith: Map<String, String>)
 
+    suspend fun removeAttendee(eventId: String, userId: String)
+
     suspend fun deleteEvent(eventId: String)
 
     suspend fun rsvp(eventId: String, userId: String, displayName: String, status: RsvpStatus)

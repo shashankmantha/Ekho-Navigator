@@ -47,11 +47,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ekhonavigator.core.designsystem.component.EkhoMonogramBadge
+import com.ekhonavigator.core.designsystem.component.EkhoSegmentedTabs
 import com.ekhonavigator.core.designsystem.component.FriendPickerEntry
 import com.ekhonavigator.core.designsystem.component.FriendPickerSheet
 import com.ekhonavigator.core.designsystem.component.LocationAutocompleteField
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.EventCategory
+import com.ekhonavigator.core.model.EventType
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -63,14 +65,22 @@ import java.time.format.DateTimeFormatter
 fun CreateEventScreen(
     onBack: () -> Unit,
     initialEpochDay: Long? = null,
+    eventId: String? = null,
     modifier: Modifier = Modifier,
     viewModel: CreateEventViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val locationSuggestions by viewModel.locationSuggestions.collectAsStateWithLifecycle()
+    val courseSuggestions by viewModel.courseSuggestions.collectAsStateWithLifecycle()
 
-    LaunchedEffect(initialEpochDay) {
-        if (initialEpochDay != null) {
+    LaunchedEffect(eventId) {
+        if (eventId != null) viewModel.setEventId(eventId)
+    }
+
+    // initialEpochDay is a create-mode shortcut from "tap a calendar day to create"; it would
+    // overwrite the loaded event's date in edit mode, so suppress it when editing.
+    LaunchedEffect(initialEpochDay, eventId) {
+        if (eventId == null && initialEpochDay != null) {
             viewModel.setDate(LocalDate.ofEpochDay(initialEpochDay))
         }
     }
@@ -109,6 +119,11 @@ fun CreateEventScreen(
             shape = RoundedCornerShape(12.dp),
         )
 
+        TypeSelector(
+            selected = uiState.type,
+            onSelected = viewModel::setType,
+        )
+
         PickerField(
             value = uiState.date?.format(dateFormatter) ?: "",
             label = "Date",
@@ -119,34 +134,49 @@ fun CreateEventScreen(
             errorText = "Required",
         )
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
+        if (uiState.type == EventType.ASSIGNMENT) {
+            // Single "Due" picker — assignments are a moment, not a span. Internally
+            // the save path collapses endTime = startTime so the entity stays valid
+            // and the existing bottom-anchored ASSIGNMENT pill renderer still works.
             PickerField(
                 value = uiState.startTime?.format(timeFormatter) ?: "",
-                label = "Start",
-                placeholder = "Start time",
+                label = "Due",
+                placeholder = "Due time",
                 onClick = { showStartTimePicker = true },
-                modifier = Modifier.weight(1f),
                 isRequired = true,
                 isError = uiState.startTimeError,
                 errorText = "Required",
             )
-            PickerField(
-                value = uiState.endTime?.format(timeFormatter) ?: "",
-                label = "End",
-                placeholder = "End time",
-                onClick = { showEndTimePicker = true },
-                modifier = Modifier.weight(1f),
-                isRequired = true,
-                isError = uiState.endTimeError || uiState.endBeforeStart,
-                errorText = when {
-                    uiState.endTimeError -> "Required"
-                    uiState.endBeforeStart -> "End must be after start"
-                    else -> null
-                },
-            )
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                PickerField(
+                    value = uiState.startTime?.format(timeFormatter) ?: "",
+                    label = "Start",
+                    placeholder = "Start time",
+                    onClick = { showStartTimePicker = true },
+                    modifier = Modifier.weight(1f),
+                    isRequired = true,
+                    isError = uiState.startTimeError,
+                    errorText = "Required",
+                )
+                PickerField(
+                    value = uiState.endTime?.format(timeFormatter) ?: "",
+                    label = "End",
+                    placeholder = "End time",
+                    onClick = { showEndTimePicker = true },
+                    modifier = Modifier.weight(1f),
+                    isRequired = true,
+                    isError = uiState.endTimeError || uiState.endBeforeStart,
+                    errorText = when {
+                        uiState.endTimeError -> "Required"
+                        uiState.endBeforeStart -> "End must be after start"
+                        else -> null
+                    },
+                )
+            }
         }
 
         if (uiState.startsInPast) {
@@ -179,9 +209,20 @@ fun CreateEventScreen(
             )
         }
 
-        CategoryDropdown(
-            selected = uiState.category,
-            onSelected = viewModel::setCategory,
+        // Categories don't make sense for assignments — General has no contextual
+        // meaning on a homework or test. Skipped entirely; contextual category
+        // sets per type (test/quiz/etc) is parked for next sprint.
+        if (uiState.type != EventType.ASSIGNMENT) {
+            CategoryDropdown(
+                selected = uiState.category,
+                onSelected = viewModel::setCategory,
+            )
+        }
+
+        CourseField(
+            value = uiState.courseLabel,
+            suggestions = courseSuggestions,
+            onValueChange = viewModel::setCourseLabel,
         )
 
         Spacer(Modifier.height(8.dp))
@@ -192,7 +233,13 @@ fun CreateEventScreen(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
         ) {
-            Text(if (uiState.isSaving) "Saving..." else "Create Event")
+            Text(
+                when {
+                    uiState.isSaving -> "Saving..."
+                    uiState.editingEventId != null -> "Save Changes"
+                    else -> "Create Event"
+                },
+            )
         }
 
         Spacer(Modifier.height(16.dp))
@@ -372,10 +419,90 @@ private fun CategoryDropdown(
 }
 
 @Composable
+private fun TypeSelector(
+    selected: EventType,
+    onSelected: (EventType) -> Unit,
+) {
+    // Limited to the two types the create form supports — EVENT and ASSIGNMENT.
+    // Other EventType values (CANVAS imports, etc.) come from sync, never from
+    // user creation, so they're intentionally not surfaced as selectable options.
+    val options = listOf(
+        EventType.EVENT to "Event",
+        EventType.ASSIGNMENT to "Assignment",
+    )
+    EkhoSegmentedTabs(
+        items = options,
+        selected = options.first { it.first == selected },
+        onSelect = { (type, _) -> onSelected(type) },
+        labelOf = { it.second },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CourseField(
+    value: String,
+    suggestions: List<String>,
+    onValueChange: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    // Filter suggestions by case-insensitive substring on the typed value, so
+    // "comp" matches "COMP-262", "COMP-360", etc. Hide menu when no matches
+    // (still accepts free-text — the OutlinedTextField is always editable).
+    val filteredSuggestions = remember(value, suggestions) {
+        if (value.isBlank()) suggestions
+        else suggestions.filter { it.contains(value, ignoreCase = true) }
+    }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded && filteredSuggestions.isNotEmpty(),
+        onExpandedChange = { expanded = it },
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {
+                onValueChange(it)
+                expanded = true
+            },
+            label = { Text("Course (optional)") },
+            placeholder = { Text("e.g. COMP-262") },
+            singleLine = true,
+            trailingIcon = if (suggestions.isNotEmpty()) {
+                { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) }
+            } else {
+                null
+            },
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
+                .fillMaxWidth(),
+        )
+
+        if (filteredSuggestions.isNotEmpty()) {
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+            ) {
+                filteredSuggestions.forEach { code ->
+                    DropdownMenuItem(
+                        text = { Text(code) },
+                        onClick = {
+                            onValueChange(code)
+                            expanded = false
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun PastDateWarning() {
     Surface(
         color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f),
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(12.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(

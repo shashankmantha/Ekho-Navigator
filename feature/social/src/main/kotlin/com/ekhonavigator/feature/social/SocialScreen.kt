@@ -33,9 +33,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -59,6 +56,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.ekhonavigator.core.designsystem.R as DesignR
+import com.ekhonavigator.core.designsystem.component.EkhoSegmentedTabs
 import com.ekhonavigator.core.model.OnlineStatus
 import com.ekhonavigator.feature.account.AccountScreen
 
@@ -98,9 +96,6 @@ fun SocialScreen(
 
     if (!uiState.isSignedIn) {
         AccountScreen(
-            onSignIn = {
-                viewModel.loadSocialData()
-            },
             modifier = modifier,
             forceSignedOutUi = true,
         )
@@ -234,37 +229,13 @@ private fun SocialTabStrip(
     onSelect: (SocialTab) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    SingleChoiceSegmentedButtonRow(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(48.dp),
-    ) {
-        SocialTab.entries.forEachIndexed { index, tab ->
-            SegmentedButton(
-                selected = selected == tab,
-                onClick = {
-                    onSelect(tab)
-                },
-                shape = SegmentedButtonDefaults.itemShape(
-                    index = index,
-                    count = SocialTab.entries.size,
-                ),
-                icon = {},
-                colors = SegmentedButtonDefaults.colors(
-                    activeContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    activeContentColor = MaterialTheme.colorScheme.onSurface,
-                    inactiveContainerColor = MaterialTheme.colorScheme.surface,
-                    inactiveContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                ),
-                label = {
-                    Text(
-                        text = tab.label,
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                },
-            )
-        }
-    }
+    EkhoSegmentedTabs(
+        items = SocialTab.entries,
+        selected = selected,
+        onSelect = onSelect,
+        labelOf = { it.label },
+        modifier = modifier,
+    )
 }
 
 @Composable

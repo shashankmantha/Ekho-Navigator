@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -36,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import com.ekhonavigator.core.designsystem.theme.LocalSignedIn
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSourceType
 import com.ekhonavigator.feature.calendar.component.MiniMonthCalendar
@@ -60,6 +62,7 @@ fun DayScreen(
 ) {
     val initialDate = remember(epochDay) { LocalDate.ofEpochDay(epochDay) }
     val selectedDate by viewModel.selectedDate.collectAsStateWithLifecycle()
+    var snapToTodayTrigger by remember { mutableIntStateOf(0) }
 
     // Initialize filters from the parent calendar screen's active selections (one-shot)
     LaunchedEffect(Unit) {
@@ -80,9 +83,12 @@ fun DayScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 SmallFloatingActionButton(
-                    onClick = { viewModel.selectDate(LocalDate.now()) },
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    onClick = {
+                        viewModel.selectDate(LocalDate.now())
+                        snapToTodayTrigger++
+                    },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
                 ) {
                     Icon(
                         imageVector = EkhoIcons.CalendarFilled,
@@ -91,17 +97,30 @@ fun DayScreen(
                     )
                 }
 
-                if (viewModel.isSignedIn) {
-                    FloatingActionButton(
-                        onClick = { onCreateEventClick(selectedDate.toEpochDay()) },
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    ) {
-                        Icon(
-                            imageVector = EkhoIcons.Add,
-                            contentDescription = "Create event",
-                        )
-                    }
+                val signedIn = LocalSignedIn.current
+                // Greyed when signed-out (matches CalendarScreen's pattern). The
+                // create-event flow needs an ownerUid; the FAB stays visible as a
+                // discovery hint but the click is suppressed.
+                FloatingActionButton(
+                    onClick = {
+                        if (!signedIn) return@FloatingActionButton
+                        onCreateEventClick(selectedDate.toEpochDay())
+                    },
+                    containerColor = if (signedIn) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainerHighest
+                    },
+                    contentColor = if (signedIn) {
+                        MaterialTheme.colorScheme.onPrimary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    },
+                ) {
+                    Icon(
+                        imageVector = EkhoIcons.Add,
+                        contentDescription = if (signedIn) "Create event" else "Sign in to create events",
+                    )
                 }
             }
         },
@@ -110,6 +129,7 @@ fun DayScreen(
             initialDate = initialDate,
             viewModel = viewModel,
             onEventClick = onEventClick,
+            snapToTodayTrigger = snapToTodayTrigger,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
@@ -134,7 +154,7 @@ fun DayTimelineContent(
 ) {
     val eventsForDay by viewModel.eventsForSelectedDate.collectAsStateWithLifecycle()
     val selectedDate by viewModel.selectedDate.collectAsStateWithLifecycle()
-    val miniCalendarDaySourceTypes by viewModel.miniCalendarDaySourceTypes.collectAsStateWithLifecycle()
+    val miniCalendarDayDots by viewModel.miniCalendarDayDots.collectAsStateWithLifecycle()
 
     val today = remember { LocalDate.now() }
     val dayFormatter = remember { DateTimeFormatter.ofPattern("EEEE, MMMM d") }
@@ -214,7 +234,7 @@ fun DayTimelineContent(
         ) {
             MiniMonthCalendar(
                 selectedDate = selectedDate,
-                daySourceTypes = miniCalendarDaySourceTypes,
+                dayDots = miniCalendarDayDots,
                 onDayClick = { date ->
                     val page = DAY_PAGE_RANGE + (date.toEpochDay() - today.toEpochDay()).toInt()
                     scope.launch { pagerState.animateScrollToPage(page) }
@@ -238,6 +258,7 @@ fun DayTimelineContent(
                     columnDates = listOf(pageDate),
                     events = eventsForDay,
                     onEventClick = onEventClick,
+                    snapToTodayTrigger = snapToTodayTrigger,
                     modifier = Modifier.fillMaxSize(),
                 )
             } else {

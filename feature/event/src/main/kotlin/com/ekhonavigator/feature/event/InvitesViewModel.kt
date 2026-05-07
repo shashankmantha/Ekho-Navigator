@@ -2,7 +2,10 @@ package com.ekhonavigator.feature.event
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ekhonavigator.core.canvas.model.CanvasAnnouncement
 import com.ekhonavigator.core.data.auth.AuthRepository
+import com.ekhonavigator.core.data.canvas.CanvasAnnouncementRepository
+import com.ekhonavigator.core.data.canvas.CanvasCourseRepository
 import com.ekhonavigator.core.data.repository.CalendarRepository
 import com.ekhonavigator.core.data.repository.CustomEventRepository
 import com.ekhonavigator.core.data.social.FriendRequest
@@ -16,6 +19,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -27,7 +31,27 @@ class InvitesViewModel @Inject constructor(
     private val customEventRepository: CustomEventRepository,
     private val socialRepository: SocialRepository,
     private val authRepository: AuthRepository,
+    private val canvasCourseRepository: CanvasCourseRepository,
+    private val canvasAnnouncementRepository: CanvasAnnouncementRepository,
 ) : ViewModel() {
+
+    init {
+        // Background fan-out: opening the bell screen implies the user wants
+        // fresh notifications. Same dedupe-by-seen-id pattern as
+        // CoursesHomeViewModel — the two are independent triggers; whichever
+        // surface the user lands on first kicks off the per-course sync.
+        viewModelScope.launch {
+            val seen = mutableSetOf<String>()
+            canvasCourseRepository.observeCourses().collect { courses ->
+                val newOnes = courses.filter { it.id !in seen }
+                if (newOnes.isEmpty()) return@collect
+                seen += newOnes.map { it.id }
+                newOnes.forEach { course ->
+                    launch { runCatching { canvasAnnouncementRepository.sync(course.id) } }
+                }
+            }
+        }
+    }
 
     private val _showPast = MutableStateFlow(false)
     val showPast: StateFlow<Boolean> = _showPast.asStateFlow()
@@ -47,6 +71,24 @@ class InvitesViewModel @Inject constructor(
         } else {
             socialRepository.observeIncomingRequests(uid)
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+        }
+    }
+
+    /** Cross-course announcement feed for the bell's Announcements section. */
+    val announcements: StateFlow<List<CanvasAnnouncement>> =
+        canvasAnnouncementRepository.observeAll()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Lookup so each row can render its originating course's family-key
+     *  label without spinning up a second VM or duplicating the course flow. */
+    val courseCodeById: StateFlow<Map<String, String>> =
+        canvasCourseRepository.observeCourses()
+            .map { it.associate { course -> course.id to course.code } }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    fun markAnnouncementRead(announcementId: String) {
+        viewModelScope.launch {
+            canvasAnnouncementRepository.markRead(announcementId)
         }
     }
 

@@ -7,7 +7,9 @@ import com.ekhonavigator.core.model.RsvpStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 
 /**
  * Fake [CustomEventRepository] for unit tests.
@@ -33,7 +35,16 @@ class TestCustomEventRepository : CustomEventRepository {
 
     override fun observeSharedEvents(): Flow<List<CalendarEvent>> = flowOf(emptyList())
 
-    override fun observeAttendees(eventId: String): Flow<List<EventAttendee>> = flowOf(emptyList())
+    /** Per-event attendee snapshots. Tests seed via [setAttendees] so the ViewModel's
+     *  edit-mode load can pick up a non-empty initial set. */
+    private val attendeesByEvent = MutableStateFlow<Map<String, List<EventAttendee>>>(emptyMap())
+
+    fun setAttendees(eventId: String, attendees: List<EventAttendee>) {
+        attendeesByEvent.value = attendeesByEvent.value + (eventId to attendees)
+    }
+
+    override fun observeAttendees(eventId: String): Flow<List<EventAttendee>> =
+        attendeesByEvent.map { it[eventId].orEmpty() }
 
     override suspend fun createEvent(
         event: CalendarEvent,
@@ -43,12 +54,22 @@ class TestCustomEventRepository : CustomEventRepository {
         return "test-event-id"
     }
 
-    override suspend fun updateEvent(event: CalendarEvent) {}
+    val updatedEvents = mutableListOf<CalendarEvent>()
+
+    override suspend fun updateEvent(event: CalendarEvent) {
+        updatedEvents += event
+    }
 
     val addedAttendees = mutableListOf<Pair<String, Map<String, String>>>()
 
     override suspend fun addAttendees(eventId: String, sharedWith: Map<String, String>) {
         addedAttendees += eventId to sharedWith
+    }
+
+    val removedAttendees = mutableListOf<Pair<String, String>>()
+
+    override suspend fun removeAttendee(eventId: String, userId: String) {
+        removedAttendees += eventId to userId
     }
 
     override suspend fun deleteEvent(eventId: String) {
@@ -68,9 +89,17 @@ class TestCustomEventRepository : CustomEventRepository {
 
     override suspend fun pushPendingEvents() {}
 
-    override fun startSync(scope: CoroutineScope) {}
+    var startSyncCalls = 0
+
+    override fun startSync(scope: CoroutineScope) {
+        startSyncCalls++
+    }
 
     override fun stopSync() {}
 
-    override suspend fun onSignOut() {}
+    var onSignOutCalls = 0
+
+    override suspend fun onSignOut() {
+        onSignOutCalls++
+    }
 }

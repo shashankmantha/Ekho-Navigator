@@ -69,6 +69,7 @@ dependencies {
 
     implementation("androidx.compose.material:material-icons-extended")
 
+    implementation(projects.core.canvas)
     implementation(projects.core.designsystem)
     implementation(projects.core.model)
     implementation(projects.core.data)
@@ -83,6 +84,7 @@ dependencies {
     implementation(projects.feature.social)
     implementation(projects.feature.map)
     implementation(projects.feature.study)
+    implementation(projects.feature.canvas)
 
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.navigation3.runtime)

@@ -26,9 +26,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ekhonavigator.core.designsystem.theme.EkhoColors
+import com.ekhonavigator.core.designsystem.theme.LocalAssignmentDecorator
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventSource
+import com.ekhonavigator.core.model.EventType
 import com.ekhonavigator.core.model.RsvpStatus
+import com.ekhonavigator.core.model.isPast
 import com.kizitonwose.calendar.core.CalendarDay
 import com.kizitonwose.calendar.core.DayPosition
 
@@ -66,13 +70,21 @@ fun DayContent(
         else -> MaterialTheme.colorScheme.onSurface
     }
 
-    // Source-type pill colors from the theme
-    val calendarPillColor = MaterialTheme.colorScheme.primary
+    // Event taxonomy → pill colors (design.md §5):
+    //   Canvas / assignment fallback → Cardinal (Canvas-LMS identity).
+    //                                  Course-tagged rows override per-course
+    //                                  via LocalAssignmentDecorator (§6 palette).
+    //   USER_CREATED / SHARED         → Sage (secondary).
+    //   ICAL_FEED                     → muted neutral (no other tag).
+    //   ICAL_FEED + bookmarked        → Horizon (tertiary).
+    val cardinal = EkhoColors.current.cardinal
+    val onFoundation = EkhoColors.current.onFoundation
+    val calendarPillColor = cardinal
     val customPillColor = MaterialTheme.colorScheme.secondary
     val campusMutedPillColor = MaterialTheme.colorScheme.surfaceContainerHighest
     val campusBookmarkedPillColor = MaterialTheme.colorScheme.tertiary
 
-    val onCalendarPillColor = MaterialTheme.colorScheme.onPrimary
+    val onCalendarPillColor = onFoundation
     val onCustomPillColor = MaterialTheme.colorScheme.onSecondary
     val onCampusMutedPillColor = MaterialTheme.colorScheme.onSurfaceVariant
     val onCampusBookmarkedPillColor = MaterialTheme.colorScheme.onTertiary
@@ -84,13 +96,13 @@ fun DayContent(
             .fillMaxWidth()
             .height(DayCellHeight)
             .padding(1.dp)
-            .clip(RoundedCornerShape(6.dp))
+            .clip(RoundedCornerShape(4.dp))
             .background(cellColor)
             .drawBehind {
                 if (isSelected && !(isToday && isCurrentMonth)) {
                     drawRoundRect(
                         color = selectedBg.copy(alpha = 0.5f),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(6.dp.toPx()),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx()),
                     )
                 }
             }
@@ -126,11 +138,17 @@ fun DayContent(
             val pillCount = if (hasOverflow) MaxVisibleSlots - 1 else events.size
             val visibleEvents = events.take(pillCount)
 
+            val decorator = LocalAssignmentDecorator.current
             Column(verticalArrangement = Arrangement.spacedBy(0.5.dp)) {
                 visibleEvents.forEach { event ->
+                    val courseColor = if (event.type == EventType.ASSIGNMENT) {
+                        decorator.courseColorFor(event.id)
+                    } else {
+                        null
+                    }
                     val (pillBg, pillText) = eventPillColors(
                         event = event,
-                        calendarPill = calendarPillColor,
+                        calendarPill = courseColor ?: calendarPillColor,
                         customPill = customPillColor,
                         campusMutedPill = campusMutedPillColor,
                         campusBookmarkedPill = campusBookmarkedPillColor,
@@ -141,14 +159,23 @@ fun DayContent(
                     )
                     val isPendingInvite = event.myRsvpStatus == RsvpStatus.PENDING
                     val pendingBorder = MaterialTheme.colorScheme.error
+                    val isCompleted = decorator.isCompleted(event.id)
+                    val isPastEvent = event.isPast()
+                    // Pill alpha priority: pending (needs attention) → completed
+                    // (struck-through) → past (subtle dim, no strike). Past + done
+                    // collapses to the completed treatment.
+                    val effectivePillBg = when {
+                        isPendingInvite -> pillBg.copy(alpha = 0.35f)
+                        isCompleted -> pillBg.copy(alpha = 0.4f)
+                        isPastEvent -> pillBg.copy(alpha = 0.65f)
+                        else -> pillBg
+                    }
 
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(2.dp))
-                            .background(
-                                if (isPendingInvite) pillBg.copy(alpha = 0.35f) else pillBg,
-                            )
+                            .background(effectivePillBg)
                             .drawBehind {
                                 if (isPendingInvite) {
                                     drawRoundRect(
@@ -172,8 +199,14 @@ fun DayContent(
                                 fontSize = 8.sp,
                                 lineHeight = 11.sp,
                                 fontWeight = FontWeight.Medium,
+                                textDecoration = if (isCompleted) androidx.compose.ui.text.style.TextDecoration.LineThrough else null,
                             ),
-                            color = if (isPendingInvite) pillText.copy(alpha = 0.75f) else pillText,
+                            color = when {
+                                isPendingInvite -> pillText.copy(alpha = 0.75f)
+                                isCompleted -> pillText.copy(alpha = 0.7f)
+                                isPastEvent -> pillText.copy(alpha = 0.85f)
+                                else -> pillText
+                            },
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -221,6 +254,5 @@ private fun eventPillColors(
 
     event.source == EventSource.USER_CREATED || event.source == EventSource.SHARED ->
         customPill to onCustom
-    // CLASS_SCHEDULE (future) falls through to calendar accent
     else -> calendarPill to onCalendar
 }
