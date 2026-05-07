@@ -10,6 +10,8 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingExcept
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -19,6 +21,8 @@ import javax.inject.Inject
 class FirebaseAuthRepository @Inject constructor() : AuthRepository {
 
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
+    private val firebaseMessaging: FirebaseMessaging = FirebaseMessaging.getInstance()
 
     override fun getCurrentUserEmail(): String? {
         return auth.currentUser?.email
@@ -40,8 +44,12 @@ class FirebaseAuthRepository @Inject constructor() : AuthRepository {
         val listener = FirebaseAuth.AuthStateListener { auth ->
             trySend(auth.currentUser?.uid)
         }
+
         auth.addAuthStateListener(listener)
-        awaitClose { auth.removeAuthStateListener(listener) }
+
+        awaitClose {
+            auth.removeAuthStateListener(listener)
+        }
     }
 
     override suspend fun signInWithGoogle(
@@ -81,6 +89,8 @@ class FirebaseAuthRepository @Inject constructor() : AuthRepository {
                 )
 
                 auth.signInWithCredential(firebaseCredential).await()
+
+                saveFcmTokenForCurrentUser()
             } catch (e: GoogleIdTokenParsingException) {
                 throw Exception("Google ID token parsing failed", e)
             }
@@ -91,5 +101,39 @@ class FirebaseAuthRepository @Inject constructor() : AuthRepository {
 
     override fun signOut() {
         auth.signOut()
+    }
+
+    private fun saveFcmTokenForCurrentUser() {
+        val uid = auth.currentUser?.uid
+
+        android.util.Log.d("FCM_TOKEN", "Current uid: $uid")
+
+        if (uid == null) return
+
+        firebaseMessaging.token
+            .addOnSuccessListener { token ->
+                android.util.Log.d("FCM_TOKEN", "Token received: $token")
+
+                val tokenData = mapOf(
+                    "token" to token,
+                    "platform" to "android",
+                    "updatedAt" to System.currentTimeMillis(),
+                )
+
+                firestore.collection("users")
+                    .document(uid)
+                    .collection("fcmTokens")
+                    .document(token)
+                    .set(tokenData)
+                    .addOnSuccessListener {
+                        android.util.Log.d("FCM_TOKEN", "Token saved successfully")
+                    }
+                    .addOnFailureListener { e ->
+                        android.util.Log.e("FCM_TOKEN", "Failed to save token", e)
+                    }
+            }
+            .addOnFailureListener { e ->
+                android.util.Log.e("FCM_TOKEN", "Failed to get token", e)
+            }
     }
 }

@@ -10,10 +10,14 @@ import com.ekhonavigator.feature.event.navigation.navigateToEvent
 @Serializable
 object HomeNavKey : NavKey
 
-fun EntryProviderScope<NavKey>.homeEntry(navigator: Navigator) {
+fun EntryProviderScope<NavKey>.homeEntry(
+    navigator: Navigator,
+    onConnectCanvasClick: () -> Unit,
+) {
     entry<HomeNavKey> {
         HomeScreen(
             onEventClick = navigator::navigateToEvent,
+            onConnectCanvasClick = onConnectCanvasClick,
         )
     }
 }

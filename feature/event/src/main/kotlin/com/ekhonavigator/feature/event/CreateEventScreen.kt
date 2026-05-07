@@ -5,8 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,18 +13,20 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
@@ -40,8 +40,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
@@ -49,26 +47,40 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ekhonavigator.core.designsystem.component.EkhoMonogramBadge
+import com.ekhonavigator.core.designsystem.component.EkhoSegmentedTabs
+import com.ekhonavigator.core.designsystem.component.FriendPickerEntry
+import com.ekhonavigator.core.designsystem.component.FriendPickerSheet
+import com.ekhonavigator.core.designsystem.component.LocationAutocompleteField
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.EventCategory
+import com.ekhonavigator.core.model.EventType
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateEventScreen(
     onBack: () -> Unit,
     initialEpochDay: Long? = null,
+    eventId: String? = null,
     modifier: Modifier = Modifier,
     viewModel: CreateEventViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val locationSuggestions by viewModel.locationSuggestions.collectAsStateWithLifecycle()
+    val courseSuggestions by viewModel.courseSuggestions.collectAsStateWithLifecycle()
 
-    LaunchedEffect(initialEpochDay) {
-        if (initialEpochDay != null) {
+    LaunchedEffect(eventId) {
+        if (eventId != null) viewModel.setEventId(eventId)
+    }
+
+    // initialEpochDay is a create-mode shortcut from "tap a calendar day to create"; it would
+    // overwrite the loaded event's date in edit mode, so suppress it when editing.
+    LaunchedEffect(initialEpochDay, eventId) {
+        if (eventId == null && initialEpochDay != null) {
             viewModel.setDate(LocalDate.ofEpochDay(initialEpochDay))
         }
     }
@@ -80,6 +92,7 @@ fun CreateEventScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var showStartTimePicker by remember { mutableStateOf(false) }
     var showEndTimePicker by remember { mutableStateOf(false) }
+    var showFriendPicker by remember { mutableStateOf(false) }
 
     val dateFormatter = remember { DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy") }
     val timeFormatter = remember { DateTimeFormatter.ofPattern("h:mm a") }
@@ -106,6 +119,11 @@ fun CreateEventScreen(
             shape = RoundedCornerShape(12.dp),
         )
 
+        TypeSelector(
+            selected = uiState.type,
+            onSelected = viewModel::setType,
+        )
+
         PickerField(
             value = uiState.date?.format(dateFormatter) ?: "",
             label = "Date",
@@ -116,44 +134,61 @@ fun CreateEventScreen(
             errorText = "Required",
         )
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
+        if (uiState.type == EventType.ASSIGNMENT) {
+            // Single "Due" picker — assignments are a moment, not a span. Internally
+            // the save path collapses endTime = startTime so the entity stays valid
+            // and the existing bottom-anchored ASSIGNMENT pill renderer still works.
             PickerField(
                 value = uiState.startTime?.format(timeFormatter) ?: "",
-                label = "Start",
-                placeholder = "Start time",
+                label = "Due",
+                placeholder = "Due time",
                 onClick = { showStartTimePicker = true },
-                modifier = Modifier.weight(1f),
                 isRequired = true,
                 isError = uiState.startTimeError,
                 errorText = "Required",
             )
-            PickerField(
-                value = uiState.endTime?.format(timeFormatter) ?: "",
-                label = "End",
-                placeholder = "End time",
-                onClick = { showEndTimePicker = true },
-                modifier = Modifier.weight(1f),
-                isRequired = true,
-                isError = uiState.endTimeError || uiState.endBeforeStart,
-                errorText = when {
-                    uiState.endTimeError -> "Required"
-                    uiState.endBeforeStart -> "End must be after start"
-                    else -> null
-                },
-            )
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                PickerField(
+                    value = uiState.startTime?.format(timeFormatter) ?: "",
+                    label = "Start",
+                    placeholder = "Start time",
+                    onClick = { showStartTimePicker = true },
+                    modifier = Modifier.weight(1f),
+                    isRequired = true,
+                    isError = uiState.startTimeError,
+                    errorText = "Required",
+                )
+                PickerField(
+                    value = uiState.endTime?.format(timeFormatter) ?: "",
+                    label = "End",
+                    placeholder = "End time",
+                    onClick = { showEndTimePicker = true },
+                    modifier = Modifier.weight(1f),
+                    isRequired = true,
+                    isError = uiState.endTimeError || uiState.endBeforeStart,
+                    errorText = when {
+                        uiState.endTimeError -> "Required"
+                        uiState.endBeforeStart -> "End must be after start"
+                        else -> null
+                    },
+                )
+            }
         }
 
-        OutlinedTextField(
+        if (uiState.startsInPast) {
+            PastDateWarning()
+        }
+
+        LocationAutocompleteField(
             value = uiState.location,
-            onValueChange = viewModel::setLocation,
-            label = { Text("Location") },
-            placeholder = { Text("Room, building, or address") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
+            onValueChange = viewModel::setLocationText,
+            onSuggestionSelected = viewModel::selectLocationSuggestion,
+            onCustomLocation = viewModel::useCustomLocationText,
+            suggestions = locationSuggestions,
         )
 
         OutlinedTextField(
@@ -167,117 +202,28 @@ fun CreateEventScreen(
             shape = RoundedCornerShape(12.dp),
         )
 
-        Text(
-            text = "Category",
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            EventCategory.entries.forEach { category ->
-                val isSelected = category == uiState.category
-
-                FilterChip(
-                    selected = isSelected,
-                    onClick = { viewModel.setCategory(category) },
-                    label = {
-                        Text(
-                            category.displayName,
-                            style = MaterialTheme.typography.labelSmall,
-                        )
-                    },
-                    leadingIcon = {
-                        EkhoMonogramBadge(
-                            monogram = category.monogram,
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                            contentColor = if (isSelected) {
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                        )
-                    },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = FilterChipDefaults.filterChipColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    ),
-                )
-            }
-        }
-
         if (uiState.friends.isNotEmpty()) {
-            Spacer(Modifier.height(8.dp))
-
-            Text(
-                text = "Share with Friends",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            ShareWithFriendsButton(
+                selectedCount = uiState.selectedFriendUids.size,
+                onClick = { showFriendPicker = true },
             )
-
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                uiState.friends.forEach { friend ->
-                    val isSelected = friend.uid in uiState.selectedFriendUids
-
-                    FilterChip(
-                        selected = isSelected,
-                        onClick = { viewModel.toggleFriend(friend.uid) },
-                        leadingIcon = {
-                            if (isSelected) {
-                                Icon(
-                                    imageVector = EkhoIcons.Check,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp),
-                                )
-                            } else {
-                                Box(
-                                    modifier = Modifier
-                                        .size(16.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Icon(
-                                        imageVector = EkhoIcons.Person,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(12.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            }
-                        },
-                        label = {
-                            Text(friend.displayName, style = MaterialTheme.typography.labelSmall)
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = FilterChipDefaults.filterChipColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer.copy(
-                                alpha = 0.3f
-                            ),
-                            selectedLabelColor = MaterialTheme.colorScheme.onSurface,
-                        ),
-                        border = FilterChipDefaults.filterChipBorder(
-                            enabled = true,
-                            selected = isSelected,
-                            borderColor = Color.Transparent,
-                            selectedBorderColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f),
-                            borderWidth = 1.dp,
-                            selectedBorderWidth = 1.dp,
-                        ),
-                    )
-                }
-            }
         }
+
+        // Categories don't make sense for assignments — General has no contextual
+        // meaning on a homework or test. Skipped entirely; contextual category
+        // sets per type (test/quiz/etc) is parked for next sprint.
+        if (uiState.type != EventType.ASSIGNMENT) {
+            CategoryDropdown(
+                selected = uiState.category,
+                onSelected = viewModel::setCategory,
+            )
+        }
+
+        CourseField(
+            value = uiState.courseLabel,
+            suggestions = courseSuggestions,
+            onValueChange = viewModel::setCourseLabel,
+        )
 
         Spacer(Modifier.height(8.dp))
 
@@ -287,7 +233,13 @@ fun CreateEventScreen(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
         ) {
-            Text(if (uiState.isSaving) "Saving..." else "Create Event")
+            Text(
+                when {
+                    uiState.isSaving -> "Saving..."
+                    uiState.editingEventId != null -> "Save Changes"
+                    else -> "Create Event"
+                },
+            )
         }
 
         Spacer(Modifier.height(16.dp))
@@ -318,6 +270,28 @@ fun CreateEventScreen(
         }
     }
 
+    if (showFriendPicker) {
+        val entries = remember(uiState.friends, uiState.selectedFriendUids) {
+            uiState.friends.map { friend ->
+                FriendPickerEntry(
+                    uid = friend.uid,
+                    displayName = friend.displayName,
+                    subtitle = friend.major,
+                    initiallySelected = friend.uid in uiState.selectedFriendUids,
+                )
+            }
+        }
+        FriendPickerSheet(
+            friends = entries,
+            onDismiss = { showFriendPicker = false },
+            onConfirm = { newSelection ->
+                viewModel.setSelectedFriends(newSelection)
+                showFriendPicker = false
+            },
+            actionLabel = "Add",
+        )
+    }
+
     if (showStartTimePicker) {
         TimePickerDialog(
             onDismiss = { showStartTimePicker = false },
@@ -336,6 +310,218 @@ fun CreateEventScreen(
                 showEndTimePicker = false
             },
         )
+    }
+}
+
+@Composable
+private fun ShareWithFriendsButton(
+    selectedCount: Int,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = EkhoIcons.Person,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.size(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Share with friends",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = if (selectedCount == 0) {
+                        "Optional — invite friends to RSVP"
+                    } else if (selectedCount == 1) {
+                        "1 friend selected"
+                    } else {
+                        "$selectedCount friends selected"
+                    },
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Icon(
+                imageVector = EkhoIcons.ChevronRight,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CategoryDropdown(
+    selected: EventCategory,
+    onSelected: (EventCategory) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+    ) {
+        OutlinedTextField(
+            value = selected.displayName,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Category") },
+            leadingIcon = {
+                EkhoMonogramBadge(
+                    monogram = selected.monogram,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                .fillMaxWidth(),
+        )
+
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            EventCategory.entries.forEach { category ->
+                DropdownMenuItem(
+                    text = { Text(category.displayName) },
+                    leadingIcon = {
+                        EkhoMonogramBadge(
+                            monogram = category.monogram,
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    onClick = {
+                        onSelected(category)
+                        expanded = false
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TypeSelector(
+    selected: EventType,
+    onSelected: (EventType) -> Unit,
+) {
+    // Limited to the two types the create form supports — EVENT and ASSIGNMENT.
+    // Other EventType values (CANVAS imports, etc.) come from sync, never from
+    // user creation, so they're intentionally not surfaced as selectable options.
+    val options = listOf(
+        EventType.EVENT to "Event",
+        EventType.ASSIGNMENT to "Assignment",
+    )
+    EkhoSegmentedTabs(
+        items = options,
+        selected = options.first { it.first == selected },
+        onSelect = { (type, _) -> onSelected(type) },
+        labelOf = { it.second },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CourseField(
+    value: String,
+    suggestions: List<String>,
+    onValueChange: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    // Filter suggestions by case-insensitive substring on the typed value, so
+    // "comp" matches "COMP-262", "COMP-360", etc. Hide menu when no matches
+    // (still accepts free-text — the OutlinedTextField is always editable).
+    val filteredSuggestions = remember(value, suggestions) {
+        if (value.isBlank()) suggestions
+        else suggestions.filter { it.contains(value, ignoreCase = true) }
+    }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded && filteredSuggestions.isNotEmpty(),
+        onExpandedChange = { expanded = it },
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {
+                onValueChange(it)
+                expanded = true
+            },
+            label = { Text("Course (optional)") },
+            placeholder = { Text("e.g. COMP-262") },
+            singleLine = true,
+            trailingIcon = if (suggestions.isNotEmpty()) {
+                { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) }
+            } else {
+                null
+            },
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
+                .fillMaxWidth(),
+        )
+
+        if (filteredSuggestions.isNotEmpty()) {
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+            ) {
+                filteredSuggestions.forEach { code ->
+                    DropdownMenuItem(
+                        text = { Text(code) },
+                        onClick = {
+                            onValueChange(code)
+                            expanded = false
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PastDateWarning() {
+    Surface(
+        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(
+                imageVector = EkhoIcons.Schedule,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+            )
+            Text(
+                text = "This event is in the past — save anyway?",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onTertiaryContainer,
+            )
+        }
     }
 }
 

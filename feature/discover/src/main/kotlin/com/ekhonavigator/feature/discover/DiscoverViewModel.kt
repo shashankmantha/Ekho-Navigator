@@ -3,21 +3,28 @@ package com.ekhonavigator.feature.discover
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ekhonavigator.core.data.auth.AuthRepository
+import com.ekhonavigator.core.data.canvas.CanvasCourseRepository
+import com.ekhonavigator.core.data.canvas.CanvasPlannerRepository
 import com.ekhonavigator.core.data.place.PlaceRepository
 import com.ekhonavigator.core.data.repository.CalendarRepository
-import com.ekhonavigator.core.data.repository.CustomEventRepository
+import com.ekhonavigator.core.designsystem.theme.CourseColorAssigner
+import com.ekhonavigator.core.designsystem.theme.CourseColorInput
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSourceType
+import com.ekhonavigator.core.model.EventType
 import com.ekhonavigator.core.model.Place
 import com.ekhonavigator.core.model.matchesCategories
 import com.ekhonavigator.core.model.matchesSourceTypes
+import com.ekhonavigator.feature.event.component.CourseFilterOption
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -28,28 +35,50 @@ import javax.inject.Inject
 class DiscoverViewModel @Inject constructor(
     private val repository: CalendarRepository,
     private val authRepository: AuthRepository,
-    private val customEventRepository: CustomEventRepository,
     private val placeRepository: PlaceRepository,
+    canvasCourseRepository: CanvasCourseRepository,
+    canvasPlannerRepository: CanvasPlannerRepository,
 ) : ViewModel() {
 
-    val isSignedIn: Boolean
-        get() = authRepository.getCurrentUserUid() != null
+    // customEventRepository.startSync() and the signed-in check were removed when
+    // AuthLifecycleObserver took over the boot/teardown lifecycle.
+    // FAB-side gating now reads LocalSignedIn from composition.
 
-    init {
-        if (isSignedIn) {
-            customEventRepository.startSync(viewModelScope)
-        }
-    }
-
-    // SCHEDULE excluded until class schedule import is implemented
-    private val _activeSourceTypes = MutableStateFlow(
-        EventSourceType.entries.toSet() - EventSourceType.SCHEDULE,
-    )
+    private val _activeSourceTypes = MutableStateFlow(EventSourceType.entries.toSet())
     val activeSourceTypes: StateFlow<Set<EventSourceType>> = _activeSourceTypes.asStateFlow()
 
-    /** Multi-select category filter: empty = show all categories. */
     private val _selectedCategories = MutableStateFlow<Set<EventCategory>>(emptySet())
     val selectedCategories: StateFlow<Set<EventCategory>> = _selectedCategories.asStateFlow()
+
+    /** Multi-select course filter: empty = no course filter applied. */
+    private val _selectedCourseIds = MutableStateFlow<Set<String>>(emptySet())
+    val selectedCourseIds: StateFlow<Set<String>> = _selectedCourseIds.asStateFlow()
+
+    /** Current-term Canvas courses with palette slots. Empty when not connected. */
+    val availableCourses: StateFlow<List<CourseFilterOption>> = canvasCourseRepository
+        .observeCourses()
+        .map { courses ->
+            if (courses.isEmpty()) return@map emptyList()
+            val slots = CourseColorAssigner.assign(
+                courses.map { CourseColorInput(id = it.id, code = it.code) },
+            )
+            courses.map { course ->
+                CourseFilterOption(
+                    id = course.id,
+                    displayLabel = course.code,
+                    paletteSlot = slots[course.id] ?: 0,
+                )
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Event id → course id, used by the filter to drop ASSIGNMENT rows whose course is unselected. */
+    private val eventIdToCourseId: StateFlow<Map<String, String>> = canvasPlannerRepository
+        .observeAllItems()
+        .map { items ->
+            items.mapNotNull { item -> item.courseId?.let { item.id to it } }.toMap()
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -58,18 +87,53 @@ class DiscoverViewModel @Inject constructor(
 
     val focusedPlace: StateFlow<Place?> = combine(
         _focusedPlaceId,
-        placeRepository.observePlaces(),
+        placeRepository.observePlaces()
+            .catch {
+                emit(emptyList())
+            },
     ) { id, places ->
-        id?.let { targetId -> places.firstOrNull { it.id == targetId } }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+        id?.let { targetId ->
+            places.firstOrNull { place ->
+                place.id == targetId
+            }
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = null,
+    )
 
-    val discoverEvents: StateFlow<List<CalendarEvent>> = combine(
-        repository.observeEvents(),
+    /** Bundled non-event filter state — keeps the [discoverEvents] combine to 3 streams. */
+    private data class FilterState(
+        val query: String,
+        val activeTypes: Set<EventSourceType>,
+        val categories: Set<EventCategory>,
+        val selectedCourseIds: Set<String>,
+        val focusedPlaceId: String?,
+    )
+
+    private val filterState: StateFlow<FilterState> = combine(
         _searchQuery,
         _activeSourceTypes,
         _selectedCategories,
+        _selectedCourseIds,
         _focusedPlaceId,
-    ) { allEvents, query, activeTypes, categories, focusedPid ->
+    ) { query, activeTypes, categories, courseIds, focusedPid ->
+        FilterState(query, activeTypes, categories, courseIds, focusedPid)
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        FilterState("", _activeSourceTypes.value, emptySet(), emptySet(), null),
+    )
+
+    val discoverEvents: StateFlow<List<CalendarEvent>> = combine(
+        repository.observeEvents()
+            .catch {
+                emit(emptyList())
+            },
+        filterState,
+        eventIdToCourseId,
+    ) { allEvents, filters, eventCourseMap ->
         val now = LocalDate.now(ZoneId.of("America/Los_Angeles"))
             .atStartOfDay(ZoneId.of("America/Los_Angeles"))
             .toInstant()
@@ -77,17 +141,27 @@ class DiscoverViewModel @Inject constructor(
         allEvents.filter { event ->
             val notPast = event.startTime >= now
 
-            val matchesQuery = query.isBlank() ||
-                    event.title.contains(query, ignoreCase = true) ||
-                    event.description.contains(query, ignoreCase = true) ||
-                    event.location.contains(query, ignoreCase = true)
+            val matchesQuery = filters.query.isBlank() ||
+                    event.title.contains(filters.query, ignoreCase = true) ||
+                    event.description.contains(filters.query, ignoreCase = true) ||
+                    event.location.contains(filters.query, ignoreCase = true)
 
-            val matchesPlace = focusedPid == null || event.placeId == focusedPid
+            val matchesPlace = filters.focusedPlaceId == null || event.placeId == filters.focusedPlaceId
 
-            notPast && event.matchesSourceTypes(activeTypes) &&
-                    event.matchesCategories(categories) && matchesQuery && matchesPlace
+            // Course filter only applies to ASSIGNMENT rows; empty set = no filter.
+            val coursePasses = filters.selectedCourseIds.isEmpty() ||
+                    event.type != EventType.ASSIGNMENT ||
+                    eventCourseMap[event.id] in filters.selectedCourseIds
+
+            notPast && event.matchesSourceTypes(filters.activeTypes) &&
+                    event.matchesCategories(filters.categories) &&
+                    matchesQuery && matchesPlace && coursePasses
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList(),
+    )
 
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
@@ -99,6 +173,7 @@ class DiscoverViewModel @Inject constructor(
 
     fun toggleCategory(category: EventCategory) {
         val current = _selectedCategories.value
+
         _selectedCategories.value = if (category in current) {
             current - category
         } else {
@@ -110,9 +185,18 @@ class DiscoverViewModel @Inject constructor(
         _selectedCategories.value = emptySet()
     }
 
+    fun toggleCourse(courseId: String) {
+        val current = _selectedCourseIds.value
+        _selectedCourseIds.value = if (courseId in current) current - courseId else current + courseId
+    }
+
+    fun clearCourses() {
+        _selectedCourseIds.value = emptySet()
+    }
+
     fun toggleSourceType(type: EventSourceType) {
         val current = _activeSourceTypes.value
-        // Don't allow deselecting all — at least one must stay active
+
         if (type in current && current.size > 1) {
             _activeSourceTypes.value = current - type
         } else if (type !in current) {
@@ -122,7 +206,10 @@ class DiscoverViewModel @Inject constructor(
 
     fun toggleBookmark(eventId: String) {
         viewModelScope.launch {
-            repository.toggleBookmark(eventId)
+            runCatching {
+                repository.toggleBookmark(eventId)
+            }
         }
     }
+
 }

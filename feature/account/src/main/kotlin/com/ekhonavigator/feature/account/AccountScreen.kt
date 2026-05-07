@@ -18,8 +18,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -28,7 +26,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -41,22 +38,22 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
-import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import kotlinx.coroutines.launch
 
 @Composable
 fun AccountScreen(
-    onSignIn: () -> Unit = {},
-    onSignOut: () -> Unit = {},
-    onSettingsClick: () -> Unit = {},
+    onConnectCanvasClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: AccountViewModel = hiltViewModel(),
+    forceSignedOutUi: Boolean = false,
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    LaunchedEffect(uiState) {
-        if (uiState is AccountUiState.SignedIn) onSignIn()
+    val displayState = if (forceSignedOutUi) {
+        AccountUiState.SignedOut
+    } else {
+        uiState
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -76,20 +73,6 @@ fun AccountScreen(
                     .padding(top = 16.dp, start = 16.dp, end = 16.dp),
             )
         },
-        floatingActionButton = {
-            if (uiState is AccountUiState.SignedIn) {
-                FloatingActionButton(
-                    onClick = onSettingsClick,
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                ) {
-                    Icon(
-                        imageVector = EkhoIcons.Settings,
-                        contentDescription = "Settings",
-                    )
-                }
-            }
-        }
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -97,7 +80,7 @@ fun AccountScreen(
                 .padding(paddingValues)
                 .background(MaterialTheme.colorScheme.background),
         ) {
-            when (val state = uiState) {
+            when (val state = displayState) {
                 AccountUiState.Loading -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -122,11 +105,11 @@ fun AccountScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 24.dp),
-                                shape = RoundedCornerShape(24.dp),
+                                shape = RoundedCornerShape(28.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surface,
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                 ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                             ) {
                                 Column(
                                     modifier = Modifier
@@ -177,7 +160,7 @@ fun AccountScreen(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .height(52.dp),
-                                        shape = RoundedCornerShape(14.dp),
+                                        shape = RoundedCornerShape(16.dp),
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = MaterialTheme.colorScheme.primary,
                                         ),
@@ -284,13 +267,12 @@ fun AccountScreen(
                         },
                         onSignOutClick = {
                             viewModel.onSignOutClick()
-                            onSignOut()
                         },
+                        onConnectCanvasClick = onConnectCanvasClick,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
             }
-
         }
     }
 }

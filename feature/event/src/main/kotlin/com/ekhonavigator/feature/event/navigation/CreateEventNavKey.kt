@@ -5,8 +5,15 @@ import com.ekhonavigator.core.navigation.Navigator
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class CreateEventNavKey(val initialEpochDay: Long? = null) : NavKey
+data class CreateEventNavKey(
+    val initialEpochDay: Long? = null,
+    val eventId: String? = null,
+) : NavKey
 
 fun Navigator.navigateToCreateEvent(initialEpochDay: Long? = null) {
-    navigate(CreateEventNavKey(initialEpochDay))
+    navigate(CreateEventNavKey(initialEpochDay = initialEpochDay))
+}
+
+fun Navigator.navigateToEditEvent(eventId: String) {
+    navigate(CreateEventNavKey(eventId = eventId))
 }

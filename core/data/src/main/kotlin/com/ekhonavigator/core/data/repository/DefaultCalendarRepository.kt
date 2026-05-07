@@ -11,6 +11,7 @@ import com.ekhonavigator.core.database.model.CalendarEventEntity
 import com.ekhonavigator.core.database.model.toDomainModel
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.RsvpStatus
+import com.ekhonavigator.core.model.isPast
 import com.ekhonavigator.core.network.ICalFeedDataSource
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -88,25 +89,23 @@ class DefaultCalendarRepository @Inject constructor(
             entity?.toDomainModel(myRsvpStatus = rsvps[entity.uid])
         }
 
-    override fun observePendingInvites(): Flow<List<CalendarEvent>> =
-        combine(calendarEventDao.observeAllEvents(), myRsvpByEventId) { entities, rsvps ->
-            val myUid = authRepository.getCurrentUserUid()
-            val now = Instant.now()
-            entities.joinMyRsvp(rsvps).filter {
-                it.myRsvpStatus == RsvpStatus.PENDING &&
-                        it.ownerUid != myUid &&
-                        it.endTime > now
-            }
-        }
+    override fun observePendingInvites(includePast: Boolean): Flow<List<CalendarEvent>> =
+        observeInvitesWithStatus(RsvpStatus.PENDING, includePast)
 
-    override fun observeDeclinedInvites(): Flow<List<CalendarEvent>> =
+    override fun observeDeclinedInvites(includePast: Boolean): Flow<List<CalendarEvent>> =
+        observeInvitesWithStatus(RsvpStatus.NOT_GOING, includePast)
+
+    private fun observeInvitesWithStatus(
+        status: RsvpStatus,
+        includePast: Boolean,
+    ): Flow<List<CalendarEvent>> =
         combine(calendarEventDao.observeAllEvents(), myRsvpByEventId) { entities, rsvps ->
             val myUid = authRepository.getCurrentUserUid()
             val now = Instant.now()
-            entities.joinMyRsvp(rsvps).filter {
-                it.myRsvpStatus == RsvpStatus.NOT_GOING &&
-                        it.ownerUid != myUid &&
-                        it.endTime > now
+            entities.joinMyRsvp(rsvps).filter { event ->
+                event.myRsvpStatus == status &&
+                    event.ownerUid != myUid &&
+                    (includePast || !event.isPast(now))
             }
         }
 
@@ -146,6 +145,10 @@ class DefaultCalendarRepository @Inject constructor(
 
     override suspend fun restoreBookmarks() {
         val uid = authRepository.getCurrentUserUid() ?: return
+        // Wipe Room bookmarks first so anything toggled while signed-out (or
+        // belonging to a previous account on this device) doesn't survive into
+        // the freshly-signed-in session. Firestore is the source of truth.
+        calendarEventDao.clearAllBookmarks()
         try {
             val docs = firestore.collection("users").document(uid)
                 .collection("bookmarkedEvents")

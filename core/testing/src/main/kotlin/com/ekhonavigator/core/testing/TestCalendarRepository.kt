@@ -4,6 +4,7 @@ import com.ekhonavigator.core.data.repository.CalendarRepository
 import com.ekhonavigator.core.data.util.SyncResult
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.RsvpStatus
+import com.ekhonavigator.core.model.isPast
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.map
@@ -82,22 +83,34 @@ class TestCalendarRepository : CalendarRepository {
     override fun observeEventById(id: String): Flow<CalendarEvent?> =
         eventsFlow.map { events -> events.find { it.id == id } }
 
-    override fun observePendingInvites(): Flow<List<CalendarEvent>> =
-        eventsFlow.map { events -> events.filter { it.myRsvpStatus == RsvpStatus.PENDING } }
+    override fun observePendingInvites(includePast: Boolean): Flow<List<CalendarEvent>> =
+        eventsFlow.map { events ->
+            events.filter {
+                it.myRsvpStatus == RsvpStatus.PENDING && (includePast || !it.isPast())
+            }
+        }
 
-    override fun observeDeclinedInvites(): Flow<List<CalendarEvent>> =
-        eventsFlow.map { events -> events.filter { it.myRsvpStatus == RsvpStatus.NOT_GOING } }
+    override fun observeDeclinedInvites(includePast: Boolean): Flow<List<CalendarEvent>> =
+        eventsFlow.map { events ->
+            events.filter {
+                it.myRsvpStatus == RsvpStatus.NOT_GOING && (includePast || !it.isPast())
+            }
+        }
 
     override suspend fun toggleBookmark(eventId: String) {
         toggledBookmarkIds += eventId
     }
 
+    var restoreBookmarksCalls = 0
+
     override suspend fun restoreBookmarks() {
-        // No-op in tests
+        restoreBookmarksCalls++
     }
 
+    var onSignOutCalls = 0
+
     override suspend fun onSignOut() {
-        // No-op in tests
+        onSignOutCalls++
     }
 
     override suspend fun sync(feedUrl: String): SyncResult =

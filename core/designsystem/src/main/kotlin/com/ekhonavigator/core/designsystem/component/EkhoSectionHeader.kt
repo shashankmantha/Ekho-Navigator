@@ -67,7 +67,7 @@ fun EkhoSectionHeader(
 private fun CountPill(count: Int) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        shape = RoundedCornerShape(6.dp),
+        shape = RoundedCornerShape(4.dp),
     ) {
         Text(
             text = count.toString(),

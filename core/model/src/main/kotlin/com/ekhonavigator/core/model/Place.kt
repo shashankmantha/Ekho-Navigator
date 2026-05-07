@@ -8,6 +8,7 @@ data class Place(
     val category: PlaceCategory,
     val aliases: List<String> = emptyList(),
     val isCustom: Boolean = false,
+    val ownerUid: String? = null,
 )
 
 enum class PlaceCategory {

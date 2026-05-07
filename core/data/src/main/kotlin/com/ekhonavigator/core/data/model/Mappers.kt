@@ -4,14 +4,12 @@ import com.ekhonavigator.core.database.model.CalendarEventEntity
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSource
+import com.ekhonavigator.core.model.EventType
 import com.ekhonavigator.core.network.model.NetworkCalendarEvent
 import com.google.firebase.firestore.DocumentSnapshot
 import java.time.Instant
 
-/**
- * Maps a network event to a database entity.
- * [existingBookmark] preserves the user's bookmark if the event already exists locally.
- */
+/** [existingBookmark] preserves the user's bookmark across re-syncs — the iCal feed has no awareness of it. */
 fun NetworkCalendarEvent.toEntity(
     existingBookmark: Boolean = false,
     syncedAt: Instant = Instant.now(),
@@ -34,11 +32,7 @@ fun NetworkCalendarEvent.toEntity(
     placeId = placeId,
 )
 
-/**
- * Maps a domain [CalendarEvent] to a database entity for user-created events.
- * Sets [EventSource.USER_CREATED] and marks as pending sync by default.
- * Always bookmarked — the user owns this event, so it's inherently "saved".
- */
+/** [isBookmarked] is forced true: the user owns this event, so "saved" is implicit — they can't un-save their own creation. */
 fun CalendarEvent.toCustomEventEntity(
     eventId: String = id,
 ): CalendarEventEntity = CalendarEventEntity(
@@ -55,28 +49,45 @@ fun CalendarEvent.toCustomEventEntity(
     lastSyncedAt = Instant.now(),
     source = EventSource.USER_CREATED,
     ownerUid = ownerUid,
+    ownerDisplayName = ownerDisplayName,
     pendingSync = true,
     eventName = eventName,
     organization = organization,
     eventType = eventType,
     placeId = placeId,
+    externalSourceId = externalSourceId,
+    externalSourceType = externalSourceType,
+    dueAt = dueAt,
+    customLocationTitle = customLocation?.title,
+    customLocationLatitude = customLocation?.latitude,
+    customLocationLongitude = customLocation?.longitude,
+    type = type,
+    courseLabel = courseLabel,
+    isCompleted = isCompleted,
 )
 
-/**
- * Maps a Firestore event document to a [CalendarEventEntity].
- * [source] defaults to [EventSource.SHARED] but can be overridden for owned events
- * syncing to a second device.
- * Returns null if required fields are missing.
- */
+/** [source] defaults to SHARED but is overridden when an owner's second device receives their own event back through the listener. */
 fun firestoreDocToEntity(
     doc: DocumentSnapshot,
     source: EventSource = EventSource.SHARED,
-): CalendarEventEntity? {
-    val title = doc.getString("title") ?: return null
-    val startMillis = doc.getLong("startTime") ?: return null
-    val endMillis = doc.getLong("endTime") ?: return null
+): CalendarEventEntity? = firestoreDataToEntity(doc.id, doc.data, source)
 
-    val categoryNames = doc.get("categories") as? List<*> ?: emptyList<String>()
+/**
+ * Map-based variant of [firestoreDocToEntity] — exists so JVM unit tests can cover the
+ * field parsing without constructing a real [DocumentSnapshot] (the SDK doesn't expose
+ * a public builder, and mocking Firestore types is heavier than the round-trip is worth).
+ */
+internal fun firestoreDataToEntity(
+    id: String,
+    data: Map<String, Any?>?,
+    source: EventSource = EventSource.SHARED,
+): CalendarEventEntity? {
+    if (data == null) return null
+    val title = data["title"] as? String ?: return null
+    val startMillis = (data["startTime"] as? Number)?.toLong() ?: return null
+    val endMillis = (data["endTime"] as? Number)?.toLong() ?: return null
+
+    val categoryNames = data["categories"] as? List<*> ?: emptyList<String>()
     val categories = categoryNames.mapNotNull { name ->
         try {
             EventCategory.valueOf(name as String)
@@ -85,11 +96,16 @@ fun firestoreDocToEntity(
         }
     }.ifEmpty { listOf(EventCategory.GENERAL) }
 
+    val customLocation = data["customLocation"] as? Map<*, *>
+    val customLocationTitle = customLocation?.get("title") as? String
+    val customLocationLat = (customLocation?.get("latitude") as? Number)?.toDouble()
+    val customLocationLng = (customLocation?.get("longitude") as? Number)?.toDouble()
+
     return CalendarEventEntity(
-        uid = doc.id,
+        uid = id,
         title = title,
-        description = doc.getString("description") ?: "",
-        location = doc.getString("location") ?: "",
+        description = data["description"] as? String ?: "",
+        location = data["location"] as? String ?: "",
         startTime = Instant.ofEpochMilli(startMillis),
         endTime = Instant.ofEpochMilli(endMillis),
         categories = categories,
@@ -98,10 +114,24 @@ fun firestoreDocToEntity(
         isBookmarked = true,
         lastSyncedAt = Instant.now(),
         source = source,
-        ownerUid = doc.getString("ownerUid"),
+        ownerUid = data["ownerUid"] as? String,
+        ownerDisplayName = data["ownerDisplayName"] as? String ?: "",
         pendingSync = false,
-        eventName = doc.getString("eventName") ?: "",
-        organization = doc.getString("organization") ?: "",
-        eventType = doc.getString("eventType") ?: "",
+        eventName = data["eventName"] as? String ?: "",
+        organization = data["organization"] as? String ?: "",
+        eventType = data["eventType"] as? String ?: "",
+        placeId = data["placeId"] as? String,
+        customLocationTitle = customLocationTitle,
+        customLocationLatitude = customLocationLat,
+        customLocationLongitude = customLocationLng,
+        type = (data["type"] as? String)?.let { name ->
+            try {
+                EventType.valueOf(name)
+            } catch (_: IllegalArgumentException) {
+                EventType.EVENT
+            }
+        } ?: EventType.EVENT,
+        courseLabel = data["courseLabel"] as? String,
+        isCompleted = data["isCompleted"] as? Boolean ?: false,
     )
 }

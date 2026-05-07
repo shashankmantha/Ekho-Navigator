@@ -134,7 +134,7 @@ annotation class ThemePreviews
 @ThemePreviews
 @Composable
 fun BackgroundDefault() {
-    EkhoTheme(disableDynamicTheming = true) {
+    EkhoTheme(dynamicTheming = false) {
         EkhoBackground(Modifier.size(100.dp), content = {})
     }
 }
@@ -142,15 +142,7 @@ fun BackgroundDefault() {
 @ThemePreviews
 @Composable
 fun BackgroundDynamic() {
-    EkhoTheme(disableDynamicTheming = false) {
-        EkhoBackground(Modifier.size(100.dp), content = {})
-    }
-}
-
-@ThemePreviews
-@Composable
-fun BackgroundAndroid() {
-    EkhoTheme(androidTheme = true) {
+    EkhoTheme(dynamicTheming = true) {
         EkhoBackground(Modifier.size(100.dp), content = {})
     }
 }
@@ -158,7 +150,7 @@ fun BackgroundAndroid() {
 @ThemePreviews
 @Composable
 fun GradientBackgroundDefault() {
-    EkhoTheme(disableDynamicTheming = true) {
+    EkhoTheme(dynamicTheming = false) {
         EkhoGradientBackground(Modifier.size(100.dp), content = {})
     }
 }
@@ -166,15 +158,7 @@ fun GradientBackgroundDefault() {
 @ThemePreviews
 @Composable
 fun GradientBackgroundDynamic() {
-    EkhoTheme(disableDynamicTheming = false) {
-        EkhoGradientBackground(Modifier.size(100.dp), content = {})
-    }
-}
-
-@ThemePreviews
-@Composable
-fun GradientBackgroundAndroid() {
-    EkhoTheme(androidTheme = true) {
+    EkhoTheme(dynamicTheming = true) {
         EkhoGradientBackground(Modifier.size(100.dp), content = {})
     }
 }

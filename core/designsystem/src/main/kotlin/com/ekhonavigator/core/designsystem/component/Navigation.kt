@@ -346,12 +346,21 @@ object EkhoNavigationDefaults {
     @Composable
     fun navigationContentColor() = MaterialTheme.colorScheme.onSurfaceVariant
 
+    /**
+     * Icon color on the active-tab Clay pill. Resolves to `onPrimary` — white in
+     * light mode, warm-dark `surface` (`#1A1410`) in dark mode. This is the
+     * foreground/background flip from design.md §2: dark mode icons sit DARK on
+     * the lifted Clay (`#D9846A`) instead of vibrating against pure white.
+     */
     @Composable
-    fun navigationSelectedItemColor() = MaterialTheme.colorScheme.onPrimaryContainer
+    fun navigationSelectedItemColor() = MaterialTheme.colorScheme.onPrimary
 
+    /** Active-tab label sits below the pill on the bar surface; coloring it
+     *  with `primary` (Clay) ties it to the indicator without being a second pill. */
     @Composable
-    fun navigationSelectedTextColor() = MaterialTheme.colorScheme.onSurface
+    fun navigationSelectedTextColor() = MaterialTheme.colorScheme.primary
 
+    /** Active-tab pill background — Clay per design.md §3, was salmon. */
     @Composable
-    fun navigationIndicatorColor() = MaterialTheme.colorScheme.primaryContainer
+    fun navigationIndicatorColor() = MaterialTheme.colorScheme.primary
 }

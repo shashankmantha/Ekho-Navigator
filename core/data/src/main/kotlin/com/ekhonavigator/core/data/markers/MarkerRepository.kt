@@ -15,7 +15,10 @@ data class UserDroppedMarker(
 )
 
 class MarkerRepository @Inject constructor() {
-    private val firestore = FirebaseFirestore.getInstance()
+    // Lazy so constructing this class doesn't touch FirebaseApp — JVM unit tests
+    // can instantiate the repo without bringing up Firebase as long as they never
+    // call a method that actually hits Firestore.
+    private val firestore by lazy { FirebaseFirestore.getInstance() }
 
     // The Firestore path for markers is: users -> (userId) -> droppedMarkers -> (markerId)
     private fun getUserMarkersCollection(userId: String) =

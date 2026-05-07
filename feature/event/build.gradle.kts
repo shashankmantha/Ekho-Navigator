@@ -55,6 +55,10 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.activity.compose)
+    // Custom Tabs for the "Open in Canvas" CTA — surfaces Canvas's web UI
+    // for actions the API doesn't cover (submit, attach, message instructor)
+    // without leaving our app context.
+    implementation(libs.androidx.browser)
 
     // Runtime library for JSON serialization
     implementation(libs.kotlinx.serialization.json)

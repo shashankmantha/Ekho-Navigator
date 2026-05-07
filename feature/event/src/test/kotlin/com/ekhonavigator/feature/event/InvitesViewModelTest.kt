@@ -14,6 +14,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.time.Instant
 
 /**
  * Unit tests for [InvitesViewModel].
@@ -44,7 +45,27 @@ class InvitesViewModelTest {
             customEventRepository,
             socialRepository,
             authRepository,
+            StubCanvasCourseRepository(),
+            StubCanvasAnnouncementRepository(),
         )
+    }
+
+    private class StubCanvasCourseRepository : com.ekhonavigator.core.data.canvas.CanvasCourseRepository {
+        override fun observeCourses() =
+            kotlinx.coroutines.flow.flowOf(emptyList<com.ekhonavigator.core.canvas.model.CanvasCourse>())
+        override suspend fun sync() = Result.success(Unit)
+        override suspend fun clearAll() {}
+    }
+
+    private class StubCanvasAnnouncementRepository : com.ekhonavigator.core.data.canvas.CanvasAnnouncementRepository {
+        override fun observeForCourse(courseId: String) =
+            kotlinx.coroutines.flow.flowOf(emptyList<com.ekhonavigator.core.canvas.model.CanvasAnnouncement>())
+        override fun observeAll() =
+            kotlinx.coroutines.flow.flowOf(emptyList<com.ekhonavigator.core.canvas.model.CanvasAnnouncement>())
+        override fun observeUnreadCount() = kotlinx.coroutines.flow.flowOf(0)
+        override suspend fun sync(courseId: String) = Result.success(Unit)
+        override suspend fun markRead(announcementId: String) {}
+        override suspend fun clearAll() {}
     }
 
     @Test
@@ -96,6 +117,26 @@ class InvitesViewModelTest {
         viewModel.rsvp(eventId = "evt-99", status = RsvpStatus.GOING)
 
         assertTrue(customEventRepository.rsvpCalls.isEmpty())
+    }
+
+    @Test
+    fun `togglePast surfaces past pending invites that are hidden by default`() = runTest {
+        val past = testCalendarEvent(
+            id = "old",
+            myRsvpStatus = RsvpStatus.PENDING,
+            startTime = Instant.parse("2020-01-01T00:00:00Z"),
+            endTime = Instant.parse("2020-01-01T01:00:00Z"),
+        )
+        val upcoming = testCalendarEvent(id = "new", myRsvpStatus = RsvpStatus.PENDING)
+
+        viewModel.pendingInvites.test {
+            assertEquals(emptyList<Any>(), awaitItem())
+            calendarRepository.emit(listOf(past, upcoming))
+            assertEquals(listOf(upcoming), awaitItem())
+
+            viewModel.togglePast()
+            assertEquals(listOf(past, upcoming), awaitItem())
+        }
     }
 
     @Test

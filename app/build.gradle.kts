@@ -31,9 +31,12 @@ android {
             localProperties.load(localPropertiesFile.inputStream())
         }
         val mapsApiKey = localProperties.getProperty("MAPS_API_KEY") ?: ""
+        val routesApiKey = localProperties.getProperty("ROUTES_API_KEY") ?: ""
 
         // This makes the key available to AndroidManifest.xml as ${MAPS_API_KEY}
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+
+        buildConfigField("String", "ROUTES_API_KEY", "\"$routesApiKey\"")
     }
 
     buildTypes {
@@ -52,6 +55,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -61,9 +65,11 @@ dependencies {
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
+    implementation("com.google.firebase:firebase-messaging")
 
     implementation("androidx.compose.material:material-icons-extended")
 
+    implementation(projects.core.canvas)
     implementation(projects.core.designsystem)
     implementation(projects.core.model)
     implementation(projects.core.data)
@@ -78,6 +84,7 @@ dependencies {
     implementation(projects.feature.social)
     implementation(projects.feature.map)
     implementation(projects.feature.study)
+    implementation(projects.feature.canvas)
 
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.navigation3.runtime)

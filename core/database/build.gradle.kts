@@ -21,7 +21,7 @@ android {
 }
 
 dependencies {
-    implementation(projects.core.model)
+    api(projects.core.model)
 
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)

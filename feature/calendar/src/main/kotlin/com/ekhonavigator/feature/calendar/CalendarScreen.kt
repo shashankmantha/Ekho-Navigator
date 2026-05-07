@@ -23,9 +23,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -41,7 +38,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ekhonavigator.core.designsystem.component.EkhoSegmentedTabs
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import com.ekhonavigator.core.designsystem.theme.LocalSignedIn
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSourceType
 import com.ekhonavigator.feature.event.component.FilterSheetContent
@@ -62,7 +61,6 @@ fun CalendarScreen(
     onEventClick: (String) -> Unit,
     onDayClick: (Long, Set<EventSourceType>, Set<EventCategory>) -> Unit,
     onCreateEventClick: (Long?) -> Unit = {},
-    onSettingsClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: CalendarViewModel = hiltViewModel(),
 ) {
@@ -78,9 +76,14 @@ fun CalendarScreen(
     var monthSnapTrigger by remember { mutableIntStateOf(0) }
 
     var showFilterSheet by remember { mutableStateOf(false) }
-    val filterSheetState = rememberModalBottomSheetState()
+    // skipPartiallyExpanded so the sheet uses content's intrinsic height and re-measures
+    // when collapsible sections grow — otherwise the partial-expand peek height is locked
+    // to the initial composition and later expansions get clipped.
+    val filterSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val activeSourceTypes by viewModel.activeSourceTypes.collectAsStateWithLifecycle()
     val selectedCategories by viewModel.selectedCategories.collectAsStateWithLifecycle()
+    val availableCourses by viewModel.availableCourses.collectAsStateWithLifecycle()
+    val selectedCourseIds by viewModel.selectedCourseIds.collectAsStateWithLifecycle()
 
     // Wrap onDayClick to forward current filter state to the DayScreen
     val onDayClickWithFilters: (Long) -> Unit = { epochDay ->
@@ -102,8 +105,8 @@ fun CalendarScreen(
                             CalendarTab.MONTH.ordinal -> monthSnapTrigger++
                         }
                     },
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
                 ) {
                     Icon(
                         imageVector = EkhoIcons.CalendarFilled,
@@ -113,8 +116,24 @@ fun CalendarScreen(
                 }
 
                 val selectedDate by viewModel.selectedDate.collectAsStateWithLifecycle()
+                val signedIn = LocalSignedIn.current
+                // Greyed when signed-out: event creation requires an ownerUid for
+                // sharing/sync. The DefaultCustomEventRepository would throw
+                // NotSignedInException if reached anyway — disable here so the
+                // user gets a visual hint instead of a silent no-op.
+                val fabContainer = if (signedIn) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerHighest
+                }
+                val fabContent = if (signedIn) {
+                    MaterialTheme.colorScheme.onPrimary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                }
                 FloatingActionButton(
                     onClick = {
+                        if (!signedIn) return@FloatingActionButton
                         val epochDay = if (pagerState.currentPage == CalendarTab.DAY.ordinal) {
                             selectedDate.toEpochDay()
                         } else {
@@ -122,12 +141,12 @@ fun CalendarScreen(
                         }
                         onCreateEventClick(epochDay)
                     },
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    containerColor = fabContainer,
+                    contentColor = fabContent,
                 ) {
                     Icon(
                         imageVector = EkhoIcons.Add,
-                        contentDescription = "Create event",
+                        contentDescription = if (signedIn) "Create event" else "Sign in to create events",
                     )
                 }
 
@@ -146,37 +165,16 @@ fun CalendarScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                SingleChoiceSegmentedButtonRow(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp), // Match SearchBar height
-                ) {
-                    tabs.forEachIndexed { index, tab ->
-                        SegmentedButton(
-                            selected = pagerState.currentPage == index,
-                            onClick = {
-                                scope.launch { pagerState.animateScrollToPage(index) }
-                            },
-                            shape = SegmentedButtonDefaults.itemShape(
-                                index = index,
-                                count = tabs.size,
-                            ),
-                            icon = { /* no checkmark */ },
-                            colors = SegmentedButtonDefaults.colors(
-                                activeContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                activeContentColor = MaterialTheme.colorScheme.onSurface,
-                                inactiveContainerColor = MaterialTheme.colorScheme.surface,
-                                inactiveContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            ),
-                            label = {
-                                Text(
-                                    text = tab.title,
-                                    style = MaterialTheme.typography.labelMedium,
-                                )
-                            },
-                        )
-                    }
-                }
+                EkhoSegmentedTabs(
+                    items = tabs,
+                    selected = tabs[pagerState.currentPage.coerceIn(tabs.indices)],
+                    onSelect = { tab ->
+                        val index = tabs.indexOf(tab)
+                        scope.launch { pagerState.animateScrollToPage(index) }
+                    },
+                    labelOf = { it.title },
+                    modifier = Modifier.weight(1f),
+                )
 
                 Spacer(modifier = Modifier.width(8.dp))
 
@@ -246,6 +244,10 @@ fun CalendarScreen(
                 onToggleSourceType = viewModel::toggleSourceType,
                 onToggleCategory = viewModel::toggleCategory,
                 onClearCategories = viewModel::clearCategories,
+                courses = availableCourses,
+                selectedCourseIds = selectedCourseIds,
+                onToggleCourse = viewModel::toggleCourse,
+                onClearCourses = viewModel::clearCourses,
             )
         }
     }

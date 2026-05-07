@@ -34,9 +34,13 @@ import com.ekhonavigator.core.designsystem.component.EkhoEventRow
 import com.ekhonavigator.core.designsystem.component.EkhoEventRowState
 import com.ekhonavigator.core.designsystem.component.EkhoSectionHeader
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import com.ekhonavigator.core.designsystem.theme.LocalCanvasConnected
+import com.ekhonavigator.core.designsystem.theme.LocalSignedIn
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventSource
+import com.ekhonavigator.core.model.EventType
 import com.ekhonavigator.core.model.RsvpStatus
+import com.ekhonavigator.core.model.isPast
 import com.ekhonavigator.core.model.prettifyAllCaps
 import java.time.Instant
 import java.time.LocalDate
@@ -47,11 +51,16 @@ import java.util.Locale
 @Composable
 fun HomeScreen(
     onEventClick: (String) -> Unit,
+    onConnectCanvasClick: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val allEvents by viewModel.events.collectAsStateWithLifecycle()
-    val showAll by viewModel.showAll.collectAsStateWithLifecycle()
+    val importantOnly by viewModel.importantOnly.collectAsStateWithLifecycle()
+    val canvasNudgeDismissed by viewModel.canvasNudgeDismissed.collectAsStateWithLifecycle()
+    val isSignedIn = LocalSignedIn.current
+    val canvasConnected = LocalCanvasConnected.current
+    val showCanvasNudge = isSignedIn && !canvasConnected && !canvasNudgeDismissed
 
     val zone = remember { ZoneId.of("America/Los_Angeles") }
     val today = remember { LocalDate.now(zone) }
@@ -62,7 +71,7 @@ fun HomeScreen(
         val cutoff = today.plusDays(7)
 
         val byDate = allEvents
-            .filter { it.endTime.isAfter(now) }
+            .filter { !it.isPast(now) }
             .filter { !it.startTime.atZone(zone).toLocalDate().isBefore(today) }
             .groupBy { it.startTime.atZone(zone).toLocalDate() }
             .toSortedMap()
@@ -97,6 +106,14 @@ fun HomeScreen(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         )
 
+        if (showCanvasNudge) {
+            CanvasNudgeCard(
+                onConnectClick = onConnectCanvasClick,
+                onDismissClick = viewModel::dismissCanvasNudge,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
+        }
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -113,12 +130,12 @@ fun HomeScreen(
             )
 
             FilterChip(
-                selected = !showAll,
-                onClick = { viewModel.toggleShowAll() },
-                label = { Text("Bookmarked") },
+                selected = importantOnly,
+                onClick = { viewModel.toggleImportantOnly() },
+                label = { Text("Important") },
                 leadingIcon = {
                     Icon(
-                        imageVector = if (!showAll) EkhoIcons.Bookmark else EkhoIcons.BookmarkBorder,
+                        imageVector = if (importantOnly) EkhoIcons.Star else EkhoIcons.StarBorder,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
@@ -127,15 +144,15 @@ fun HomeScreen(
                     containerColor = Color.Transparent,
                     labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    selectedContainerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.1f),
-                    selectedLabelColor = MaterialTheme.colorScheme.tertiary,
-                    selectedLeadingIconColor = MaterialTheme.colorScheme.tertiary,
+                    selectedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    selectedLabelColor = MaterialTheme.colorScheme.onSurface,
+                    selectedLeadingIconColor = MaterialTheme.colorScheme.onSurface,
                 ),
                 border = FilterChipDefaults.filterChipBorder(
                     enabled = true,
-                    selected = !showAll,
+                    selected = importantOnly,
                     borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                    selectedBorderColor = MaterialTheme.colorScheme.tertiary,
+                    selectedBorderColor = MaterialTheme.colorScheme.outline,
                     borderWidth = 1.dp,
                     selectedBorderWidth = 1.dp
                 ),
@@ -151,7 +168,7 @@ fun HomeScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = if (!showAll) "No bookmarked events" else "No upcoming events",
+                    text = if (importantOnly) "Nothing important upcoming" else "No upcoming events",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -187,6 +204,7 @@ fun HomeScreen(
                         organization = event.organization.prettifyAllCaps(),
                         onClick = { onEventClick(event.id) },
                         onBookmarkClick = { viewModel.toggleBookmark(event.id) },
+                        eventId = event.id,
                     )
                     HorizontalDivider(
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
@@ -200,6 +218,7 @@ fun HomeScreen(
 }
 
 private fun CalendarEvent.toRowState(): EkhoEventRowState = when {
+    type == EventType.ASSIGNMENT -> EkhoEventRowState.ASSIGNMENT
     source != EventSource.ICAL_FEED -> EkhoEventRowState.PERSONAL
     isBookmarked -> EkhoEventRowState.BOOKMARKED
     else -> EkhoEventRowState.NONE

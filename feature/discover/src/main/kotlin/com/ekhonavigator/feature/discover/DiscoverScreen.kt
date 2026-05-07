@@ -4,7 +4,6 @@ package com.ekhonavigator.feature.discover
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -27,9 +26,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -48,10 +44,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ekhonavigator.core.designsystem.component.EkhoSegmentedTabs
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import com.ekhonavigator.core.designsystem.theme.LocalCanvasConnected
+import com.ekhonavigator.core.designsystem.theme.LocalSignedIn
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSourceType
 import com.ekhonavigator.core.model.Place
+import com.ekhonavigator.feature.canvas.courses.CoursesHomeContent
 import com.ekhonavigator.feature.event.component.FilterSheetContent
 import com.ekhonavigator.feature.study.StudyScreen
 import kotlinx.coroutines.launch
@@ -62,8 +62,9 @@ fun DiscoverScreen(
     onDayClick: (Long, Set<EventSourceType>, Set<EventCategory>) -> Unit,
     onCreateEventClick: (Long?) -> Unit = {},
     onViewLibraryOnMap: () -> Unit = {},
+    onCourseClick: (courseId: String) -> Unit = {},
     focusPlaceId: String? = null,
-    initialTab: DiscoverTab = DiscoverTab.STUDY,
+    initialTab: DiscoverTab = DiscoverTab.COURSES,
     modifier: Modifier = Modifier,
     viewModel: DiscoverViewModel = hiltViewModel(),
 ) {
@@ -73,9 +74,14 @@ fun DiscoverScreen(
     var selectedTab by rememberSaveable { mutableStateOf(initialTab) }
 
     var showFilterSheet by remember { mutableStateOf(false) }
-    val filterSheetState = rememberModalBottomSheetState()
+    // skipPartiallyExpanded so the sheet uses content's intrinsic height and re-measures
+    // when collapsible sections grow — otherwise the partial-expand peek height is locked
+    // to the initial composition and later expansions get clipped.
+    val filterSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val activeSourceTypes by viewModel.activeSourceTypes.collectAsStateWithLifecycle()
     val selectedCategories by viewModel.selectedCategories.collectAsStateWithLifecycle()
+    val availableCourses by viewModel.availableCourses.collectAsStateWithLifecycle()
+    val selectedCourseIds by viewModel.selectedCourseIds.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val focusedPlace by viewModel.focusedPlace.collectAsStateWithLifecycle()
 
@@ -88,7 +94,7 @@ fun DiscoverScreen(
     }
 
     Scaffold(
-        modifier,
+        modifier = modifier,
         floatingActionButton = {
             if (selectedTab == DiscoverTab.EVENTS) {
                 Column(
@@ -97,10 +103,12 @@ fun DiscoverScreen(
                 ) {
                     SmallFloatingActionButton(
                         onClick = {
-                            scope.launch { listState.animateScrollToItem(0) }
+                            scope.launch {
+                                listState.animateScrollToItem(0)
+                            }
                         },
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
                     ) {
                         Icon(
                             imageVector = EkhoIcons.CalendarFilled,
@@ -109,17 +117,30 @@ fun DiscoverScreen(
                         )
                     }
 
-                    if (viewModel.isSignedIn) {
-                        FloatingActionButton(
-                            onClick = { onCreateEventClick(null) },
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        ) {
-                            Icon(
-                                imageVector = EkhoIcons.Add,
-                                contentDescription = "Create event",
-                            )
-                        }
+                    val signedIn = LocalSignedIn.current
+                    // Greyed when signed-out (matches Calendar/Day pattern). Discover
+                    // is reachable signed-out so the FAB stays visible as a discovery
+                    // hint; the click is suppressed without an ownerUid.
+                    FloatingActionButton(
+                        onClick = {
+                            if (!signedIn) return@FloatingActionButton
+                            onCreateEventClick(null)
+                        },
+                        containerColor = if (signedIn) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainerHighest
+                        },
+                        contentColor = if (signedIn) {
+                            MaterialTheme.colorScheme.onPrimary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        },
+                    ) {
+                        Icon(
+                            imageVector = EkhoIcons.Add,
+                            contentDescription = if (signedIn) "Create event" else "Sign in to create events",
+                        )
                     }
                 }
             }
@@ -130,8 +151,28 @@ fun DiscoverScreen(
                 .fillMaxSize()
                 .padding(paddingValues),
         ) {
+            // Courses tab is gated on Canvas connection — when not connected
+            // it disappears entirely (the ConnectCanvas screen is still
+            // reachable from Account/Settings as the entry point). Per A3 the
+            // tab bar will collapse into a single scrolling Campus layout;
+            // for A1 we keep the tab pattern intact and add Courses alongside.
+            val canvasConnected = LocalCanvasConnected.current
+            val visibleTabs = remember(canvasConnected) {
+                if (canvasConnected) DiscoverTab.entries else DiscoverTab.entries - DiscoverTab.COURSES
+            }
+            // If Canvas disconnects while the user is sitting on the Courses
+            // tab, snap them back to Study — otherwise the tab strip drops
+            // the Courses pill while the content area still renders the
+            // Courses branch (now empty), which reads as "the tab broke."
+            LaunchedEffect(canvasConnected) {
+                if (!canvasConnected && selectedTab == DiscoverTab.COURSES) {
+                    selectedTab = DiscoverTab.STUDY
+                }
+            }
+
             DiscoverTabStrip(
                 selected = selectedTab,
+                tabs = visibleTabs,
                 onSelect = { selectedTab = it },
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
@@ -141,6 +182,8 @@ fun DiscoverScreen(
             )
 
             when (selectedTab) {
+                DiscoverTab.COURSES -> CoursesTabContent(onCourseClick = onCourseClick)
+
                 DiscoverTab.EVENTS -> EventsTabContent(
                     viewModel = viewModel,
                     searchQuery = searchQuery,
@@ -154,7 +197,9 @@ fun DiscoverScreen(
                     listState = listState,
                 )
 
-                DiscoverTab.STUDY -> StudyScreen(onViewLibraryOnMap = onViewLibraryOnMap)
+                DiscoverTab.STUDY -> StudyScreen(
+                    onViewLibraryOnMap = onViewLibraryOnMap,
+                )
             }
         }
     }
@@ -171,48 +216,45 @@ fun DiscoverScreen(
                 onToggleSourceType = viewModel::toggleSourceType,
                 onToggleCategory = viewModel::toggleCategory,
                 onClearCategories = viewModel::clearCategories,
+                courses = availableCourses,
+                selectedCourseIds = selectedCourseIds,
+                onToggleCourse = viewModel::toggleCourse,
+                onClearCourses = viewModel::clearCourses,
             )
         }
     }
 }
 
 enum class DiscoverTab(val title: String) {
+    COURSES("Courses"),
     STUDY("Study"),
-    EVENTS("Events")
+    EVENTS("Events"),
 }
 
 @Composable
 private fun DiscoverTabStrip(
     selected: DiscoverTab,
+    tabs: List<DiscoverTab>,
     onSelect: (DiscoverTab) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    SingleChoiceSegmentedButtonRow(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(48.dp),
-    ) {
-        DiscoverTab.entries.forEachIndexed { index, tab ->
-            SegmentedButton(
-                selected = selected == tab,
-                onClick = { onSelect(tab) },
-                shape = SegmentedButtonDefaults.itemShape(
-                    index = index,
-                    count = DiscoverTab.entries.size,
-                ),
-                icon = { },
-                colors = SegmentedButtonDefaults.colors(
-                    activeContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    activeContentColor = MaterialTheme.colorScheme.onSurface,
-                    inactiveContainerColor = MaterialTheme.colorScheme.surface,
-                    inactiveContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                ),
-                label = {
-                    Text(tab.title, style = MaterialTheme.typography.labelMedium)
-                },
-            )
-        }
-    }
+    EkhoSegmentedTabs(
+        items = tabs,
+        selected = selected,
+        onSelect = onSelect,
+        labelOf = { it.title },
+        modifier = modifier,
+    )
+}
+
+@Composable
+private fun CoursesTabContent(
+    onCourseClick: (courseId: String) -> Unit,
+) {
+    // The content (week outlook + recent announcements + course grid) lives
+    // in feature/canvas — every section it stacks pulls from Canvas-side
+    // repositories, so the composable is colocated with its data sources.
+    CoursesHomeContent(onCourseClick = onCourseClick)
 }
 
 @Composable
@@ -250,6 +292,7 @@ private fun EventsTabContent(
 
                 val allSourcesActive = activeSourceTypes.size == EventSourceType.entries.size
                 val hasActiveFilters = selectedCategories.isNotEmpty() || !allSourcesActive
+
                 IconButton(
                     onClick = onOpenFilters,
                     modifier = Modifier.size(48.dp),
@@ -324,8 +367,14 @@ private fun FocusedPlaceChip(
 
 @Composable
 private fun LazyListState.isScrollingUp(): Boolean {
-    var previousIndex by remember(this) { mutableIntStateOf(firstVisibleItemIndex) }
-    var previousScrollOffset by remember(this) { mutableIntStateOf(firstVisibleItemScrollOffset) }
+    var previousIndex by remember(this) {
+        mutableIntStateOf(firstVisibleItemIndex)
+    }
+
+    var previousScrollOffset by remember(this) {
+        mutableIntStateOf(firstVisibleItemScrollOffset)
+    }
+
     return remember(this) {
         derivedStateOf {
             if (previousIndex != firstVisibleItemIndex) {
@@ -339,4 +388,3 @@ private fun LazyListState.isScrollingUp(): Boolean {
         }
     }.value
 }
-

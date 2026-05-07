@@ -24,12 +24,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -72,6 +75,7 @@ fun EditProfileScreen(
         String, String, String, String, Boolean, Boolean, Boolean, Boolean, Boolean, OnlineStatus, String
     ) -> Unit,
     onSignOutClick: () -> Unit,
+    onConnectCanvasClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var displayName by rememberSaveable { mutableStateOf(initialDisplayName) }
@@ -94,7 +98,7 @@ fun EditProfileScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
             .padding(WindowInsets.safeDrawing.asPaddingValues())
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 16.dp),
@@ -114,7 +118,7 @@ fun EditProfileScreen(
                 onValueChange = { displayName = it },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(16.dp),
             )
         }
 
@@ -130,7 +134,7 @@ fun EditProfileScreen(
                 onValueChange = { major = it },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(16.dp),
             )
         }
 
@@ -147,7 +151,7 @@ fun EditProfileScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(120.dp),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(16.dp),
             )
         }
 
@@ -163,7 +167,7 @@ fun EditProfileScreen(
                 onValueChange = { links = it },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(16.dp),
             )
         }
 
@@ -288,6 +292,24 @@ fun EditProfileScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        // Integrations — Canvas connection lives here now (was the old Settings
+        // screen). Account identity above, third-party connections below.
+        Text(
+            text = "Integrations",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        Spacer(modifier = Modifier.height(4.dp))
+        IntegrationCard(
+            title = "Canvas",
+            description = "Connect your Canvas account to surface assignments and grades.",
+            onClick = onConnectCanvasClick,
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
         OutlinedButton(
             onClick = {
                 onSaveClick(
@@ -371,6 +393,51 @@ fun EditProfileScreen(
 }
 
 @Composable
+private fun IntegrationCard(
+    title: String,
+    description: String,
+    onClick: () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        onClick = onClick,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(modifier = Modifier.size(16.dp))
+            Icon(
+                imageVector = EkhoIcons.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
 private fun ProfileHeader(
     email: String,
     avatarId: String,
@@ -443,11 +510,11 @@ private fun ProfileFieldCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface,
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Column(
             modifier = Modifier.padding(16.dp),

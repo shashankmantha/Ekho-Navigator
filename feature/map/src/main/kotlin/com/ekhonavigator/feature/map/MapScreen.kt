@@ -1,7 +1,5 @@
 package com.ekhonavigator.feature.map
 
-import com.ekhonavigator.core.model.SharedLocation
-import com.ekhonavigator.feature.map.FriendInfo
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
@@ -27,11 +25,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -56,7 +58,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.compose.navigation
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ekhonavigator.core.data.route.TravelMode
+import com.ekhonavigator.core.model.SharedLocation
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
@@ -79,6 +83,17 @@ data class UserMarker(
     val droppedMarkerLocation: LatLng,
     val markerLabelComment: String = ""
 )
+
+// Must match the prefix used by DefaultPlaceRepository when wrapping
+// UserDroppedMarkers as Place entries — the navigated focusPlaceId arrives
+// from the event WHERE row in that namespaced form.
+private const val MARKER_FOCUS_PREFIX = "marker_"
+
+// Google Maps' InfoWindow draws a white tooltip background regardless of app theme
+// (the SDK snapshots the content into a Bitmap, so MaterialTheme can't override it).
+// These are fixed dark text colors that read on that white in both light and dark mode.
+internal val InfoWindowPrimary = androidx.compose.ui.graphics.Color(0xFF1A1A1A)
+internal val InfoWindowSecondary = androidx.compose.ui.graphics.Color(0xFF606060)
 
 // - MAP CONTROLS
 @Composable
@@ -150,11 +165,30 @@ fun MapScreen(
     viewModel: MapViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+
+    val activeRoutePoints by viewModel.activeRoutePoints.collectAsStateWithLifecycle()
+    val isRouteLoading by viewModel.isRouteLoading.collectAsStateWithLifecycle()
+
     val csuciCenter = LatLng(34.162134342787105, -119.04400892418893)
 
     val focusedPlace = remember(focusPlaceId) {
         focusPlaceId?.let { id -> CampusPlacesData.places.firstOrNull { it.id == id } }
     }
+
+    // User markers may not be loaded yet when navigation arrives; track via derivedStateOf
+    // so the camera animates as soon as the matching marker streams in from Firestore.
+    val focusedUserMarker by remember(focusPlaceId) {
+        derivedStateOf {
+            val rawId = focusPlaceId
+                ?.takeIf { it.startsWith(MARKER_FOCUS_PREFIX) }
+                ?.removePrefix(MARKER_FOCUS_PREFIX)
+                ?.toLongOrNull()
+                ?: return@derivedStateOf null
+            viewModel.droppedMarkers.firstOrNull { it.id == rawId }
+        }
+    }
+
+    val focusTarget: LatLng? = focusedPlace?.position ?: focusedUserMarker?.droppedMarkerLocation
 
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(csuciCenter, 15f)
@@ -164,15 +198,17 @@ fun MapScreen(
 
     // Animate (not initial position) — contentPadding is only honored on CameraUpdate moves.
     // Gate on isMapLoaded to avoid the world-view flash from racing the SDK's map init.
-    LaunchedEffect(focusPlaceId, isMapLoaded) {
-        if (focusedPlace != null && isMapLoaded) {
+    LaunchedEffect(focusTarget, isMapLoaded) {
+        val target = focusTarget
+        if (target != null && isMapLoaded) {
             cameraPositionState.animate(
-                CameraUpdateFactory.newLatLngZoom(focusedPlace.position, 17f),
+                CameraUpdateFactory.newLatLngZoom(target, 17f),
             )
         }
     }
 
     var selectedCampusPlace by remember { mutableStateOf<CampusPlace?>(null) }
+    var isAnyMarkerInfoShowing by remember { mutableStateOf(false) }
 
     // Permission state
     var hasLocationPermission by remember {
@@ -182,6 +218,30 @@ fun MapScreen(
                 Manifest.permission.ACCESS_FINE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED
         )
+    }
+
+    val fusedLocationClientForRouting =
+        remember { LocationServices.getFusedLocationProviderClient(context) }
+    var userCurrentLocationForRouting by remember { mutableStateOf<LatLng?>(null) }
+
+    LaunchedEffect(hasLocationPermission) {
+        if (hasLocationPermission) {
+            val locationRequest = com.google.android.gms.location.LocationRequest.Builder(
+                com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, 5000
+            ).build()
+
+            val locationCallback = object : com.google.android.gms.location.LocationCallback() {
+                override fun onLocationResult(result: com.google.android.gms.location.LocationResult) {
+                    result.lastLocation?.let {
+                        userCurrentLocationForRouting = LatLng(it.latitude, it.longitude)
+                    }
+                }
+            }
+
+            fusedLocationClientForRouting.requestLocationUpdates(
+                locationRequest, locationCallback, android.os.Looper.getMainLooper()
+            )
+        }
     }
 
     var requestLocationPermission by remember { mutableStateOf(false) }
@@ -265,11 +325,18 @@ fun MapScreen(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
             contentPadding = mapPaddingForInfoCards,
-            properties = MapProperties(isMyLocationEnabled = hasLocationPermission),
-            uiSettings = MapUiSettings(
-                myLocationButtonEnabled = false, // hide default to use custom square one
-                zoomControlsEnabled = true
+            properties = MapProperties(
+                isMyLocationEnabled = hasLocationPermission &&
+                        !isAnyMarkerInfoShowing &&
+                        selectedCampusPlace == null &&
+                        selectedDroppedMarkerForOptions == null
             ),
+            uiSettings = MapUiSettings(
+                myLocationButtonEnabled = false,
+                zoomControlsEnabled = true,
+                mapToolbarEnabled = false
+            ),
+            onMapClick = { isAnyMarkerInfoShowing = false },
             onMapLongClick = { latLng ->
                 viewModel.addMarker(latLng)
             },
@@ -294,6 +361,10 @@ fun MapScreen(
                         }
                         MarkerInfoWindowContent(
                             state = markerState,
+                            onClick = {
+                                isAnyMarkerInfoShowing = true
+                                false
+                            },
                             onInfoWindowClick = {
                                 selectedCampusPlace = place
                             }
@@ -306,8 +377,15 @@ fun MapScreen(
 
             droppedMarkers.forEach { droppedMarker ->
                 key("user-marker-${droppedMarker.id}") {
+                    val markerState =
+                        rememberMarkerState(position = droppedMarker.droppedMarkerLocation)
+                    if (focusPlaceId == "$MARKER_FOCUS_PREFIX${droppedMarker.id}") {
+                        LaunchedEffect(focusPlaceId) {
+                            markerState.showInfoWindow()
+                        }
+                    }
                     MarkerInfoWindowContent(
-                        state = rememberMarkerState(position = droppedMarker.droppedMarkerLocation),
+                        state = markerState,
                         icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE),
                         onInfoWindowClick = {
                             selectedDroppedMarkerForOptions = droppedMarker
@@ -316,29 +394,35 @@ fun MapScreen(
                             selectedDroppedMarkerForOptions = droppedMarker
                         }
                     ) {
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        // No Card wrapper — Google Maps' SDK draws the surrounding white
+                        // tooltip already, and an inner Card was rendering as a black box
+                        // on top of it in dark mode.
+                        Column(
+                            modifier = Modifier.padding(8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Column(
-                                modifier = Modifier.padding(8.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = droppedMarker.markerLabelComment.ifBlank { "Dropped Marker" },
-                                    textAlign = TextAlign.Center,
-                                    style = MaterialTheme.typography.labelLarge
-                                )
-                                Text(
-                                    text = "Tap bubble for options (edit/remove)",
-                                    textAlign = TextAlign.Center,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                            Text(
+                                text = droppedMarker.markerLabelComment.ifBlank { "Dropped Marker" },
+                                textAlign = TextAlign.Center,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = InfoWindowPrimary,
+                            )
+                            Text(
+                                text = "Tap bubble for options (edit/remove)",
+                                textAlign = TextAlign.Center,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = InfoWindowSecondary,
+                            )
                         }
                     }
                 }
+            }
+            if (activeRoutePoints.isNotEmpty()) {
+                com.google.maps.android.compose.Polyline(
+                    points = activeRoutePoints,
+                    color = androidx.compose.ui.graphics.Color(0xFF2196F3),
+                    width = 12f
+                )
             }
         }
         // --- Custom Center Button ---
@@ -349,8 +433,23 @@ fun MapScreen(
                 csuciCenter = csuciCenter,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(end = 12.dp, bottom = 115.dp) // Sits exactly above zoom controls
+                    .padding(end = 11.dp, bottom = 100.dp) // Sits exactly above zoom controls
             )
+        }
+
+        if (activeRoutePoints.isNotEmpty()) {
+            androidx.compose.material3.SmallFloatingActionButton(
+                onClick = { viewModel.clearActiveRoute() },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 8.dp, bottom = 140.dp), // Sits exactly above target button
+                containerColor = MaterialTheme.colorScheme.errorContainer
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Clear Route"
+                )
+            }
         }
 
         // Search & Filter Overlay
@@ -360,6 +459,14 @@ fun MapScreen(
                 .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            if (isRouteLoading) {
+                androidx.compose.material3.LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 12.dp, end = 12.dp, bottom = 8.dp),
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
 
             // Search Card UI
             Card(
@@ -405,7 +512,11 @@ fun MapScreen(
                                 FilterChip(
                                     selected = (selectedCategory == category),
                                     onClick = { selectedCategory = category },
-                                    label = { Text(category.label) }
+                                    label = { Text(category.label) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    ),
                                 )
                             }
                         }
@@ -423,7 +534,7 @@ fun MapScreen(
                 Surface(
                     modifier = Modifier.clickable { showFilterTip = false },
                     shape = MaterialTheme.shapes.extraLarge,
-                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     tonalElevation = 6.dp,
                     shadowElevation = 4.dp
                 ) {
@@ -438,7 +549,7 @@ fun MapScreen(
                             Text(
                                 text = "Zoom in to see points of interest. Click filters to see even more.",
                                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.5.sp),
-                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center
                             )
                             Text(
@@ -455,20 +566,25 @@ fun MapScreen(
             }
         }
 
-        // --- DIALOGS ---
         if (selectedDroppedMarkerForOptions != null) {
             val selectedMarker = selectedDroppedMarkerForOptions!!
             AlertDialog(
                 onDismissRequest = { selectedDroppedMarkerForOptions = null },
                 title = { Text("Marker options") },
                 text = {
-                    Column {
-                        Text(text = selectedMarker.markerLabelComment.ifBlank { "Details: (none)" })
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = selectedMarker.markerLabelComment.ifBlank { "Details: (none)" },
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+
                         TextButton(onClick = {
                             selectedDroppedMarkerForOptions = null
                             markerBeingEdited = selectedMarker
                             editLabelText = selectedMarker.markerLabelComment
                         }) { Text("Edit label") }
+
                         TextButton(onClick = {
                             selectedDroppedMarkerForOptions = null
                             markerPendingRemoval = selectedMarker
@@ -478,6 +594,40 @@ fun MapScreen(
                             selectedDroppedMarkerForOptions = null
                             showFriendPickerForMarker = selectedMarker
                         }) { Text("Send to Friend") }
+
+                        // Navigation Row at the bottom
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Start,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(onClick = {
+                                selectedDroppedMarkerForOptions = null
+                                viewModel.getDirectionsToDestination(
+                                    selectedMarker.droppedMarkerLocation,
+                                    TravelMode.WALK,
+                                    userCurrentLocationForRouting
+                                )
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Default.DirectionsWalk,
+                                    contentDescription = "Walk"
+                                )
+                            }
+                            IconButton(onClick = {
+                                selectedDroppedMarkerForOptions = null
+                                viewModel.getDirectionsToDestination(
+                                    selectedMarker.droppedMarkerLocation,
+                                    TravelMode.DRIVE,
+                                    userCurrentLocationForRouting
+                                )
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Default.DirectionsCar,
+                                    contentDescription = "Drive"
+                                )
+                            }
+                        }
                     }
                 },
                 confirmButton = {
@@ -534,9 +684,14 @@ fun MapScreen(
             val marker = showFriendPickerForMarker!!
             FriendPickerCard(
                 markerLabel = marker.markerLabelComment.ifBlank { "Dropped Marker" },
-                friends = viewModel.friends,
+                searchText = viewModel.searchTextForFriendPicker,
+                onSearchTextChange = { newText ->
+                    viewModel.updateSearchTextForFriendPicker(newText)
+                },
+                friends = viewModel.friendsListMatchingSearchQuery,
                 onFriendSelected = { friend ->
                     showFriendPickerForMarker = null
+                    viewModel.updateSearchTextForFriendPicker("") // Reset on success
                     val sharedLoc = SharedLocation(
                         title = marker.markerLabelComment.ifBlank { "Dropped Marker" },
                         latitude = marker.droppedMarkerLocation.latitude,
@@ -544,7 +699,10 @@ fun MapScreen(
                     )
                     onShareLocationToChat(friend.id, friend.name, sharedLoc)
                 },
-                onDismiss = { showFriendPickerForMarker = null }
+                onDismiss = {
+                    showFriendPickerForMarker = null
+                    viewModel.updateSearchTextForFriendPicker("") // Reset on cancel
+                }
             )
         }
 
@@ -555,6 +713,22 @@ fun MapScreen(
                 onViewLocationEvents = {
                     selectedCampusPlace = null
                     onOpenDiscoverForPlace(place.id)
+                },
+                onGetWalkingDirections = {
+                    selectedCampusPlace = null
+                    viewModel.getDirectionsToDestination(
+                        place.position,
+                        TravelMode.WALK,
+                        userCurrentLocationForRouting
+                    )
+                },
+                onGetDrivingDirections = {
+                    selectedCampusPlace = null
+                    viewModel.getDirectionsToDestination(
+                        place.position,
+                        TravelMode.DRIVE,
+                        userCurrentLocationForRouting
+                    )
                 }
             )
         }

@@ -31,10 +31,14 @@ val CALENDAR = TopLevelNavItem(
     label = "Calendar",
 )
 
+// Renamed Discover → Campus in Phase 7.A1 to reflect the tab's evolved scope
+// (My Courses + study + iCal events). NavKey stays `DiscoverNavKey` so we
+// don't break the saved-back-stack from older installs; A3 will do the deeper
+// rename if/when the layout collapses to a single Campus screen.
 val DISCOVER = TopLevelNavItem(
     selectedIcon = EkhoIcons.EventsFilled,
     unselectedIcon = EkhoIcons.EventsOutlined,
-    label = "Discover",
+    label = "Campus",
 )
 
 val SOCIAL = TopLevelNavItem(

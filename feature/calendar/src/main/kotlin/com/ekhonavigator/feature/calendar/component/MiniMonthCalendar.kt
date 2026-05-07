@@ -26,6 +26,8 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.ekhonavigator.core.designsystem.theme.EkhoColors
+import com.ekhonavigator.core.designsystem.theme.coursePalette
 import com.ekhonavigator.core.model.EventSourceType
 import com.kizitonwose.calendar.compose.HorizontalCalendar
 import com.kizitonwose.calendar.compose.rememberCalendarState
@@ -41,15 +43,26 @@ import java.time.format.TextStyle
 import java.util.Locale
 
 /**
+ * One dot rendered under a date. Canvas events with a known course render as
+ * [CourseSlot] (per-course palette color); everything else falls back to the
+ * generic [Source] type color so a single garnet "Canvas" dot doesn't paper
+ * over the per-course identity already shown in timeline pills.
+ */
+sealed interface DayDot {
+    data class Source(val type: EventSourceType) : DayDot
+    data class CourseSlot(val slot: Int) : DayDot
+}
+
+/**
  * Compact horizontal-swipe month calendar for day/week navigation.
- * Shows small date numbers with colored dots for days that have events,
- * colored by [EventSourceType]. Tapping a day fires [onDayClick].
- * Includes a scrollable month tab row at the bottom.
+ * Shows small date numbers with colored dots for days that have events.
+ * Tapping a day fires [onDayClick]. Includes a scrollable month tab row at
+ * the bottom.
  */
 @Composable
 fun MiniMonthCalendar(
     selectedDate: LocalDate,
-    daySourceTypes: Map<LocalDate, Set<EventSourceType>>,
+    dayDots: Map<LocalDate, Set<DayDot>>,
     onDayClick: (LocalDate) -> Unit,
     onMonthChanged: (YearMonth) -> Unit,
     modifier: Modifier = Modifier,
@@ -110,7 +123,7 @@ fun MiniMonthCalendar(
                     day = day,
                     isToday = day.date == today,
                     isSelected = day.date == selectedDate,
-                    sourceTypes = daySourceTypes[day.date].orEmpty(),
+                    dots = dayDots[day.date].orEmpty(),
                     onClick = { onDayClick(day.date) },
                 )
             },
@@ -128,14 +141,23 @@ fun MiniMonthCalendar(
 }
 
 /**
- * Maps a [EventSourceType] to its dot color from the current theme.
+ * Maps a [DayDot] to its rendered color. Source dots resolve from the current
+ * theme; CourseSlot dots resolve from the per-course rotation palette so the
+ * mini-calendar's dots match the colors users see on the timeline pills.
  */
 @Composable
-private fun dotColorForSourceType(type: EventSourceType): Color = when (type) {
-    EventSourceType.SCHEDULE -> MaterialTheme.colorScheme.primary
-    EventSourceType.CUSTOM -> MaterialTheme.colorScheme.secondary
-    EventSourceType.CAMPUS -> MaterialTheme.colorScheme.onSurfaceVariant
-    EventSourceType.BOOKMARKED -> MaterialTheme.colorScheme.tertiary
+private fun dotColorFor(dot: DayDot): Color = when (dot) {
+    is DayDot.Source -> when (dot.type) {
+        EventSourceType.CUSTOM -> MaterialTheme.colorScheme.secondary
+        EventSourceType.CAMPUS -> MaterialTheme.colorScheme.onSurfaceVariant
+        EventSourceType.BOOKMARKED -> MaterialTheme.colorScheme.tertiary
+        // Canvas LMS identity, NOT brand chrome — design.md §5.
+        EventSourceType.CANVAS -> EkhoColors.current.cardinal
+    }
+    is DayDot.CourseSlot -> {
+        val palette = coursePalette()
+        palette[dot.slot % palette.size]
+    }
 }
 
 @Composable
@@ -143,7 +165,7 @@ private fun MiniDayCell(
     day: CalendarDay,
     isToday: Boolean,
     isSelected: Boolean,
-    sourceTypes: Set<EventSourceType>,
+    dots: Set<DayDot>,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -159,9 +181,10 @@ private fun MiniDayCell(
     val todayBg = MaterialTheme.colorScheme.onSurface
     val selectedBg = MaterialTheme.colorScheme.surfaceContainerHighest
 
-    // Resolve dot colors while in composable scope
-    val dotColors = if (isCurrentMonth && sourceTypes.isNotEmpty()) {
-        sourceTypes.map { dotColorForSourceType(it) }
+    // Resolve dot colors while in composable scope. Cap dot count to avoid
+    // overflow on dense days (>4 distinct dots gets visually noisy).
+    val dotColors = if (isCurrentMonth && dots.isNotEmpty()) {
+        dots.take(4).map { dotColorFor(it) }
     } else {
         emptyList()
     }
