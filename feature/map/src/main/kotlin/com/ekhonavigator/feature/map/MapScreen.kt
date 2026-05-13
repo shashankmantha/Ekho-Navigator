@@ -1,5 +1,7 @@
 package com.ekhonavigator.feature.map
 
+import androidx.compose.foundation.isSystemInDarkTheme
+import com.google.android.gms.maps.model.MapStyleOptions
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
@@ -194,6 +196,12 @@ fun MapScreen(
         position = CameraPosition.fromLatLngZoom(csuciCenter, 15f)
     }
 
+    val mapStyle = if (isSystemInDarkTheme()) {
+        MapStyleOptions.loadRawResourceStyle(context, R.raw.map_style_dark)
+    } else {
+        null
+    }
+
     var isMapLoaded by remember { mutableStateOf(false) }
 
     // Animate (not initial position) — contentPadding is only honored on CameraUpdate moves.
@@ -326,6 +334,7 @@ fun MapScreen(
             cameraPositionState = cameraPositionState,
             contentPadding = mapPaddingForInfoCards,
             properties = MapProperties(
+                mapStyleOptions = mapStyle,
                 isMyLocationEnabled = hasLocationPermission &&
                         !isAnyMarkerInfoShowing &&
                         selectedCampusPlace == null &&
@@ -539,7 +548,7 @@ fun MapScreen(
                     shadowElevation = 4.dp
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(
@@ -548,15 +557,17 @@ fun MapScreen(
                         ) {
                             Text(
                                 text = "Zoom in to see points of interest. Click filters to see even more.",
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.5.sp),
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, lineHeight = 14.sp),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
                             )
                             Text(
                                 text = "Hold anywhere on the map to drop a custom marker.",
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.5.sp),
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                textAlign = TextAlign.Center
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
                             )
                         }
                         Spacer(modifier = Modifier.size(8.dp))
