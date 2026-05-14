@@ -83,7 +83,7 @@ import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerInfoWindowContent
+import com.google.maps.android.compose.MarkerInfoWindow
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
 import kotlinx.coroutines.delay
@@ -98,9 +98,6 @@ data class UserMarker(
 )
 
 private const val MARKER_FOCUS_PREFIX = "marker_"
-
-internal val InfoWindowPrimary = androidx.compose.ui.graphics.Color(0xFF1A1A1A)
-internal val InfoWindowSecondary = androidx.compose.ui.graphics.Color(0xFF606060)
 
 // - MAP CONTROLS
 @Composable
@@ -374,8 +371,7 @@ fun MapScreen(
                                 markerState.showInfoWindow()
                             }
                         }
-                        val markerIcon = rememberMarkerIcon(place.category)
-                        MarkerInfoWindowContent(
+                        MarkerInfoWindow(
                             state = markerState,
                             icon = markerIcon,
                             onClick = {
@@ -384,10 +380,18 @@ fun MapScreen(
                             },
                             onInfoWindowClick = {
                                 selectedCampusPlace = place
+                            },
+                            content = {
+                                Surface(
+                                    shape = MaterialTheme.shapes.medium,
+                                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    tonalElevation = 4.dp,
+                                    shadowElevation = 4.dp
+                                ) {
+                                    CampusPlacePreviewCard(place = place)
+                                }
                             }
-                        ) {
-                            CampusPlacePreviewCard(place = place)
-                        }
+                        )
                     }
                 }
             }
@@ -401,7 +405,7 @@ fun MapScreen(
                             markerState.showInfoWindow()
                         }
                     }
-                    MarkerInfoWindowContent(
+                    MarkerInfoWindow(
                         state = markerState,
                         icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE),
                         onInfoWindowClick = {
@@ -409,29 +413,33 @@ fun MapScreen(
                         },
                         onInfoWindowLongClick = {
                             selectedDroppedMarkerForOptions = droppedMarker
+                        },
+                        content = {
+                            Surface(
+                                shape = MaterialTheme.shapes.small,
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                tonalElevation = 4.dp
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(8.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = droppedMarker.markerLabelComment.ifBlank { "Dropped Marker" },
+                                        textAlign = TextAlign.Center,
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                    )
+                                    Text(
+                                        text = "Tap bubble for options (edit/remove)",
+                                        textAlign = TextAlign.Center,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
                         }
-                    ) {
-                        // No Card wrapper — Google Maps' SDK draws the surrounding white
-                        // tooltip already, and an inner Card was rendering as a black box
-                        // on top of it in dark mode.
-                        Column(
-                            modifier = Modifier.padding(8.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = droppedMarker.markerLabelComment.ifBlank { "Dropped Marker" },
-                                textAlign = TextAlign.Center,
-                                style = MaterialTheme.typography.labelLarge,
-                                color = InfoWindowPrimary,
-                            )
-                            Text(
-                                text = "Tap bubble for options (edit/remove)",
-                                textAlign = TextAlign.Center,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = InfoWindowSecondary,
-                            )
-                        }
-                    }
+                    )
                 }
             }
             if (activeRoutePoints.isNotEmpty()) {
