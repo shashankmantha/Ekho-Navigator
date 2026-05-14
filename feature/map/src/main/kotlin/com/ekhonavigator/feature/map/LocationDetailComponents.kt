@@ -28,10 +28,6 @@ import androidx.compose.ui.window.DialogProperties
 
 @Composable
 fun CampusPlacePreviewCard(place: CampusPlace) {
-    // No Card wrapper — Google Maps' SDK draws the surrounding white tooltip already,
-    // and an inner themed Card was rendering as a black box on top of it in dark mode.
-    // Text colors are fixed near-black/gray to read on the SDK's white background in
-    // both light and dark mode.
     Column(
         modifier = Modifier
             .padding(16.dp)
@@ -43,13 +39,13 @@ fun CampusPlacePreviewCard(place: CampusPlace) {
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.ExtraBold,
             textAlign = TextAlign.Center,
-            color = InfoWindowPrimary,
+            color = MaterialTheme.colorScheme.onSurface,
         )
 
         Text(
             text = place.category.label.uppercase(),
             style = MaterialTheme.typography.labelSmall,
-            color = InfoWindowSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = FontWeight.ExtraBold,
             modifier = Modifier.padding(top = 2.dp)
         )
@@ -61,13 +57,13 @@ fun CampusPlacePreviewCard(place: CampusPlace) {
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
-            color = InfoWindowPrimary,
+            color = MaterialTheme.colorScheme.onSurface,
         )
 
         Text(
             text = place.fullLocationDescription,
             style = MaterialTheme.typography.bodySmall,
-            color = InfoWindowSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 4.dp)
         )
@@ -145,10 +141,16 @@ fun CampusPlaceDetailCard(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         androidx.compose.material3.IconButton(onClick = onGetWalkingDirections) {
-                            Icon(imageVector = androidx.compose.material.icons.Icons.Default.DirectionsWalk, contentDescription = "Walk")
+                            Icon(
+                                imageVector = androidx.compose.material.icons.Icons.Default.DirectionsWalk,
+                                contentDescription = "Walk"
+                            )
                         }
                         androidx.compose.material3.IconButton(onClick = onGetDrivingDirections) {
-                            Icon(imageVector = androidx.compose.material.icons.Icons.Default.DirectionsCar, contentDescription = "Drive")
+                            Icon(
+                                imageVector = androidx.compose.material.icons.Icons.Default.DirectionsCar,
+                                contentDescription = "Drive"
+                            )
                         }
                     }
 
