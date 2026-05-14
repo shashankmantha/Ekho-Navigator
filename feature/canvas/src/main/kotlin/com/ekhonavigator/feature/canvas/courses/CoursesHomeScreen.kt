@@ -46,14 +46,6 @@ import java.time.ZoneId
 import java.time.temporal.TemporalAdjusters
 import javax.inject.Inject
 
-/**
- * The Courses tab "home base" — week outlook + recent announcements + the
- * existing My Courses grid stacked into a single scrolling column.
- *
- * Replaces the previous bare `MyCoursesGrid`-only layout in DiscoverScreen.
- * Lives in feature/canvas because every section pulls from Canvas-side data;
- * DiscoverScreen now just calls this composable for the COURSES tab.
- */
 @Composable
 fun CoursesHomeContent(
     onCourseClick: (courseId: String) -> Unit,
@@ -70,11 +62,6 @@ fun CoursesHomeContent(
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         WeekOutlookCard(state = uiState.weekOutlook)
-
-        // Announcements moved to the bell screen (InvitesScreen) — they were
-        // duplicating content here and the bell wasn't pulling its weight.
-        // Background sync from this VM still fires so the bell badge stays
-        // fresh whenever the user lands on Courses.
 
         Text(
             text = "My Courses",
@@ -147,11 +134,6 @@ private fun WeekOutlookCard(state: WeekOutlookState) {
     }
 }
 
-/**
- * Tiny color-dot row keyed off the same family-key palette the My Courses
- * grid + calendar pills use. One dot per course that contributes a deadline
- * this week — color-couples the outlook visually to the course set below.
- */
 @Composable
 private fun CourseColorStrip(slots: List<Int>) {
     val palette = coursePalette()
@@ -170,10 +152,6 @@ private fun CourseColorStrip(slots: List<Int>) {
     }
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// ViewModel + state
-// ────────────────────────────────────────────────────────────────────────────
-
 @HiltViewModel
 class CoursesHomeViewModel @Inject constructor(
     private val courseRepository: CanvasCourseRepository,
@@ -182,11 +160,9 @@ class CoursesHomeViewModel @Inject constructor(
 ) : ViewModel() {
 
     init {
-        // Background fan-out: announcement sync is otherwise per-course-detail
-        // open, which means the Campus tab home would render whatever was in
-        // cache from the LAST course the user opened — usually stale. Fire one
-        // sync per active course on first VM creation; subsequent course-list
-        // emissions don't re-fan-out (the dedupe set already saw them).
+        // Fan out announcement sync once per course on first VM creation —
+        // otherwise the Courses home shows whatever the last opened course left
+        // in cache. Dedupe set keeps later emissions from re-syncing.
         viewModelScope.launch {
             val seen = mutableSetOf<String>()
             courseRepository.observeCourses().collect { courses ->
@@ -225,32 +201,18 @@ sealed interface WeekOutlookState {
     data class Available(
         val deadlineCount: Int,
         val totalPoints: Double,
-        /** Sorted distinct days the deadlines fall on. UI renders these as
-         *  short day-of-week labels ("Mon · Tue · Fri") so the math behind
-         *  `deadlineCount` is verifiable at a glance — fixes the "wait, where
-         *  did that 4th day come from" debugging trap. */
+        // Sorted distinct days the deadlines fall on — UI renders as "Mon · Tue · Fri"
+        // so the deadlineCount math is verifiable at a glance.
         val activeDays: List<DayOfWeek>,
-        /** Course palette slots for every course that contributed at least one
-         *  deadline this week. Render as small color dots so the outlook visually
-         *  ties back to the My Courses grid below — at a glance you see which
-         *  courses are loading you up. Sorted by paletteSlot for a stable
-         *  left-to-right order. */
+        // Course palette slots for courses with at least one deadline this week,
+        // sorted for stable left-to-right rendering.
         val coursePaletteSlots: List<Int>,
     ) : WeekOutlookState
 }
 
-/**
- * Counts deadlines + sums points for items due in the current Mon→Sun window
- * (local zone). Excludes:
- *  - non-assignment/quiz plannables (announcements, calendar events,
- *    planner notes, discussions, wiki pages) — students think of those as
- *    "things to read", not deadlines, and the calendar grid only renders
- *    assignment + quiz pills anyway, so their inclusion makes the outlook
- *    count diverge visibly from what the user sees on the calendar.
- *  - items the user has already engaged with (forward-looking only)
- *  - dupes by id (Canvas occasionally returns the same plannable twice
- *    across paginated planner responses)
- */
+// Excludes non-assignment/quiz plannables so the count matches what the
+// calendar grid actually renders. Filters submitted/graded/excused items, and
+// dedupes by id since paginated planner responses sometimes repeat.
 internal fun computeWeekOutlook(
     items: List<PlannerItem>,
     courses: List<com.ekhonavigator.core.canvas.model.CanvasCourse>,
@@ -281,10 +243,7 @@ internal fun computeWeekOutlook(
         .toSortedSet()
         .toList()
 
-    // Build palette-slot list for the contributing courses, using the same
-    // family-key assigner the calendar pills + My Courses grid use so the dots
-    // here always match the colors below. Computed against the FULL course
-    // list so a course's slot is stable regardless of which weeks it appears in.
+    // Assign against the FULL course list so a slot stays stable week to week.
     val slotByCourseId = CourseColorAssigner.assign(
         courses.map { CourseColorInput(id = it.id, code = it.code) },
     )
@@ -307,9 +266,7 @@ private val DEADLINE_KINDS = setOf(
     com.ekhonavigator.core.canvas.model.PlannerKind.QUIZ,
 )
 
-/** Three-letter weekday label for the week-outlook caption. Locale.US so the
- *  abbreviation stays stable regardless of the device's display language —
- *  matches the rest of the app's date formatting. */
+// Locale.US so the abbreviation stays stable across device languages.
 private fun dayShortLabel(day: DayOfWeek): String =
     day.getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.US)
 

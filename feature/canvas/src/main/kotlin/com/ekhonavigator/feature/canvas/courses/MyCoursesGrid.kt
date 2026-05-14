@@ -49,16 +49,6 @@ import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 
-/**
- * A first-class "My Courses" section for the Campus tab. Renders a 2-column grid
- * of course cards using the same family-key palette mapping as the calendar pills
- * and FilterSheet course chips, so a course's identity reads consistently across
- * every surface.
- *
- * Self-gating via the LoadedEmpty state — if no Canvas courses are cached, the
- * caller can decide what to render (typically nothing, since the surrounding
- * Campus tab is itself gated on `LocalCanvasConnected`).
- */
 @Composable
 fun MyCoursesGrid(
     onCourseClick: (courseId: String) -> Unit,
@@ -70,10 +60,8 @@ fun MyCoursesGrid(
     if (state !is MyCoursesGridUiState.Loaded || state.cards.isEmpty()) return
 
     val palette = coursePalette()
-    // Manual 2-column grid via row-pairs — avoids the nested-vertical-scroll
-    // crash that LazyVerticalGrid hits when embedded in DiscoverScreen's
-    // verticalScroll Column. Course count per term is small (≤10), so the
-    // perf hit of skipping LazyVerticalGrid is negligible.
+    // Manual 2-column grid — LazyVerticalGrid crashes inside DiscoverScreen's
+    // verticalScroll Column, and course counts per term are tiny anyway.
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -92,8 +80,7 @@ fun MyCoursesGrid(
                         modifier = Modifier.weight(1f),
                     )
                 }
-                // Pad the last row with an empty weight slot when odd count so
-                // the lone card doesn't stretch full-width.
+                // Empty weight slot keeps the lone card from stretching full-width.
                 if (rowCards.size == 1) Spacer(modifier = Modifier.weight(1f))
             }
         }
@@ -261,10 +248,7 @@ data class LastActivity(
     val relativeTime: String,
 )
 
-/**
- * Picks the most recent (by `plannableDate`) submitted/graded/excused planner
- * item per course within the last 30 days. Renders as e.g. "Graded Lab 3 · 2d ago".
- */
+// Most recent submitted/graded/excused item per course within horizon days.
 private fun lastActivityByCourseId(
     items: List<PlannerItem>,
     today: LocalDate,

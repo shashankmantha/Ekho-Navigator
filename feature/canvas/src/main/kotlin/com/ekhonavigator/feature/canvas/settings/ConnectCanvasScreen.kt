@@ -213,12 +213,9 @@ private fun ConnectedContent(
     }
 }
 
-/**
- * CSUCI students access Canvas at the vanity URL `cilearn.csuci.edu`, not at the
- * Instructure subdomain we use for API calls. Sending them to `/profile/settings`
- * directly skips the Account → Settings nav. Custom Tabs preserves their existing
- * Canvas web session, so the page lands on Approved Integrations already signed in.
- */
+// CSUCI students sign into Canvas at the vanity URL, not the Instructure
+// subdomain we hit for API calls. Custom Tabs reuses their existing web
+// session, landing them on Approved Integrations already signed in.
 private const val CANVAS_SETTINGS_URL = "https://cilearn.csuci.edu/profile/settings"
 
 @Composable
@@ -226,9 +223,7 @@ private fun OpenCanvasSettingsButton() {
     val context = LocalContext.current
     OutlinedButton(
         onClick = {
-            // runCatching defends against odd device configurations (no browser,
-            // no Custom Tabs provider). Same pattern as CourseDetailScreen's
-            // OpenInCanvasButton.
+            // Guards against devices with no browser / Custom Tabs provider.
             runCatching {
                 CustomTabsIntent.Builder()
                     .setShowTitle(true)

@@ -43,10 +43,8 @@ class ConnectCanvasViewModel @Inject constructor(
 
     fun setToken(token: String) {
         val current = _uiState.value as? ConnectCanvasUiState.NotConnected ?: return
-        // Strip ALL whitespace, not just edges — Canvas tokens are alphanumeric,
-        // and copy-paste sometimes injects a hard wrap mid-string. OkHttp's
-        // Authorization header validator rejects any \n with
-        // IllegalArgumentException at the Retrofit call site.
+        // Strip all whitespace, not just edges — OkHttp rejects any \n in the
+        // Authorization header, and copy-paste sometimes injects a hard wrap.
         _uiState.value = current.copy(token = token.stripAllWhitespace(), error = null)
     }
 
@@ -70,9 +68,8 @@ class ConnectCanvasViewModel @Inject constructor(
                     institutionStore.setDomain(uid, sanitizedDomain)
                     tokenStore.put(account, sanitizedToken)
                     _uiState.value = ConnectCanvasUiState.Connected(domain = sanitizedDomain)
-                    // Kick an immediate sync so the user sees content as soon as they
-                    // navigate back. Otherwise courses + planner items only appear after
-                    // they happen to open the Calendar tab (the only other sync trigger).
+                    // Kick a sync now so content shows on the way out — otherwise
+                    // it only loads when the user opens Calendar later.
                     triggerInitialSync()
                 },
                 onFailure = { error ->
@@ -101,9 +98,8 @@ class ConnectCanvasViewModel @Inject constructor(
             tokenStore.delete(CanvasAccount(firebaseUid = uid, domain = connected.domain))
             institutionStore.clearDomain(uid)
         }
-        // Wipe Canvas data alongside the credentials. Without this, courses +
-        // bridged Canvas event pills linger on Calendar/Discover until the
-        // next sign-out — confusing for a "I just disconnected" user.
+        // Wipe data alongside the credentials — stale courses and pills would
+        // otherwise hang around until the next sign-out.
         viewModelScope.launch {
             runCatching { canvasCourseRepository.clearAll() }
             runCatching { canvasPlannerRepository.clearAll() }
@@ -114,9 +110,8 @@ class ConnectCanvasViewModel @Inject constructor(
     private fun resolveInitialState(): ConnectCanvasUiState {
         val uid = identitySource.currentUid() ?: return ConnectCanvasUiState.NotConnected()
         val domain = institutionStore.getDomain(uid) ?: return ConnectCanvasUiState.NotConnected()
-        // Don't claim Connected if the PAT is missing — institution + token can drift
-        // out of sync (e.g. legacy state from before sign-out cleanup was scoped right).
-        // Without a token, every API call 401s, so the UI must let the user re-enter.
+        // Institution and token can drift out of sync; without a token every call
+        // 401s, so don't claim Connected — let the user re-enter.
         val account = CanvasAccount(firebaseUid = uid, domain = domain)
         if (tokenStore.get(account).isNullOrBlank()) {
             institutionStore.clearDomain(uid)

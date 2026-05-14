@@ -72,13 +72,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/**
- * Per-class detail screen. **No Scaffold / TopAppBar** — the app-level nav
- * scaffold provides the contextual back arrow for any non-top-level destination
- * (mirrors the pattern in EventScreen, every other detail screen). Same reason
- * we don't manage system bars here — `EkhoNavigatorApp` handles edge-to-edge
- * insets globally.
- */
 @Composable
 fun CourseDetailScreen(
     courseId: String,
@@ -93,11 +86,8 @@ fun CourseDetailScreen(
         CourseDetailUiState.Loading -> CenteredSpinner(modifier = modifier)
         CourseDetailUiState.NotFound -> NotFoundState(modifier = modifier)
         is CourseDetailUiState.Loaded -> {
-            // Resolve the slot index against the active palette here — the
-            // ViewModel can't call the @Composable coursePalette() hook,
-            // and the palette lists are `internal` to the design system,
-            // so the only place the resolution can live is at the render
-            // boundary.
+            // ViewModel can't call the @Composable coursePalette() hook, so
+            // the slot→color resolution lives at the render boundary.
             val palette = coursePalette()
             val courseColor = palette[state.paletteSlot % palette.size]
             LoadedContent(
@@ -244,8 +234,7 @@ private fun AnnouncementRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // Unread indicator. Disappears the moment the row is expanded —
-            // markRead() lands by the time the next emission arrives.
+            // Unread dot vanishes on expand — markRead lands before next emission.
             if (announcement.isUnread) {
                 Box(
                     modifier = Modifier
@@ -264,7 +253,6 @@ private fun AnnouncementRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        // Author + relative date — caption row beneath the title.
         val caption = remember(announcement.authorName, announcement.postedAt) {
             buildAnnouncementCaption(announcement, zone)
         }
@@ -275,10 +263,9 @@ private fun AnnouncementRow(
                 color = colors.onSurfaceVariant,
             )
         }
-        // Body shows on expand. Strip HTML tags first; rendering rich HTML in
-        // Compose without a WebView is non-trivial and the polish pass can
-        // upgrade this to a proper renderer later.
         if (expanded) {
+            // Strip tags rather than render rich HTML — a Compose HTML renderer
+            // would be heavy for a feature most announcements don't lean on.
             val body = remember(announcement.message) {
                 stripHtmlTags(announcement.message.orEmpty()).trim()
             }
@@ -307,13 +294,8 @@ private fun buildAnnouncementCaption(
     return parts.joinToString(" · ")
 }
 
-/**
- * Crude HTML-to-text fallback for announcement bodies. Drops tag markup,
- * collapses whitespace, decodes the handful of entities Canvas actually emits.
- * Good enough for the inline expand — the polish pass can swap in a proper
- * HTML renderer if announcement formatting matters more than we currently
- * think it does.
- */
+// Crude HTML→text — drops tags, collapses whitespace, decodes the few entities
+// Canvas actually emits. Good enough for inline expand.
 private fun stripHtmlTags(html: String): String {
     if (html.isEmpty()) return html
     val withoutTags = html.replace(HTML_TAG_REGEX, " ")
@@ -339,10 +321,8 @@ private fun PastAssignmentsSection(
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         SectionHeader("Past assignments")
         assignments.forEach { assignment ->
-            // Tap routes to EventScreen via the planner-bridged calendar event
-            // uid (`assignment_<id>`). EventScreen already handles "row not in
-            // Room anymore" by auto-navigating back, so out-of-window items
-            // gracefully bail rather than rendering an empty detail.
+            // EventScreen handles missing rows by auto-navigating back, so
+            // out-of-window assignments bail rather than show empty detail.
             val plannerBridgedUid = "assignment_${assignment.id}"
             PastAssignmentRow(
                 assignment = assignment,
@@ -359,10 +339,8 @@ private fun PastAssignmentRow(
     zone: java.time.ZoneId,
     onClick: () -> Unit,
 ) {
-    // Strikethrough engaged assignments (graded/submitted/excused) the same
-    // way EkhoEventRow + LocalAssignmentDecorator do for in-window planner
-    // rows — this section is outside the decorator's index, so we apply the
-    // style locally using the assignment's own submission state.
+    // Decorator's index only covers in-window planner rows; this section
+    // applies the strikethrough locally from the assignment's own state.
     val struck = assignment.submission.engaged
     val titleStyle = MaterialTheme.typography.bodyMedium.copy(
         textDecoration = if (struck) {
@@ -423,10 +401,8 @@ private fun PlannerItemSection(
     onItemClick: (eventId: String) -> Unit,
 ) {
     val zone = remember { java.time.ZoneId.systemDefault() }
-    // Group by due-date so each day gets a small sub-header above its rows —
-    // EkhoEventRow only renders the time (HH:mm), which made every row look
-    // like it was on the same day. Sort order respects the caller's input
-    // ordering (asc for upcoming, desc for recent submissions).
+    // Group by due-date — EkhoEventRow only shows HH:mm, which made every row
+    // look same-day. Caller controls sort order (asc upcoming, desc recent).
     val grouped = remember(items) {
         items.groupBy { (it.dueAt ?: it.plannableDate).atZone(zone).toLocalDate() }
     }
@@ -463,8 +439,7 @@ private fun DateSubheader(date: java.time.LocalDate) {
     val today = remember { java.time.LocalDate.now() }
     val tomorrow = remember { today.plusDays(1) }
     val yesterday = remember { today.minusDays(1) }
-    // Anchor labels for the three nearby dates so the user doesn't have to
-    // compare numerals — matches the EventScreen DateEyebrow vocabulary.
+    // Anchor labels for nearby dates — matches EventScreen's DateEyebrow.
     val label = remember(date) {
         val rel = when (date) {
             today -> "TODAY"
@@ -490,7 +465,6 @@ private fun DateSubheader(date: java.time.LocalDate) {
 private fun GradeSummarySection(state: GradeSummaryState.Available) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         SectionHeader("Grade summary")
-        // Headline: weighted total + caption with the source-of-truth + count.
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.Bottom,
@@ -514,8 +488,7 @@ private fun GradeSummarySection(state: GradeSummaryState.Available) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        // Per-group rows. Sorted by Canvas position (already DAO-sorted), with
-        // the synthetic "Other" bucket trailing thanks to position=Int.MAX_VALUE.
+        // Synthetic "Other" bucket trails because its position is Int.MAX_VALUE.
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             state.groups.forEach { group ->
                 GradeGroupRow(group = group)
@@ -528,9 +501,7 @@ private fun GradeSummarySection(state: GradeSummaryState.Available) {
 private fun GradeGroupRow(group: GroupBreakdown) {
     val percent = group.percent
     val barFraction = (percent ?: 0.0).coerceIn(0.0, 100.0).toFloat() / 100f
-    // Tier the tint by performance so the row's color reads the same way the
-    // hero pill does — green-ish for ≥90, neutral for 70-89, red for <70.
-    // Greyed out entirely when the group has no graded items yet.
+    // Green ≥90, neutral 70-89, red <70. Grey for ungraded groups.
     val colors = MaterialTheme.colorScheme
     val barColor = when {
         percent == null -> colors.surfaceContainerHighest
@@ -571,8 +542,6 @@ private fun GradeGroupRow(group: GroupBreakdown) {
                 color = if (percent == null) colors.onSurfaceVariant else barColor,
             )
         }
-        // Slim performance bar — clipped to a rounded rect so the tint reads
-        // as a chip rather than a raw progress indicator.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -611,9 +580,8 @@ private fun WeightBadge(weight: Double) {
 @Composable
 private fun WhatIfSection(state: WhatIfState) {
     if (state == WhatIfState.Unavailable) {
-        // No grade or no points to project from — skip the section entirely
-        // rather than render an empty stub. Most common cause: instructor
-        // hasn't released grades yet, so currentScore on the course is null.
+        // No grade or remaining points — usually means instructor hasn't released
+        // grades yet (currentScore is null). Skip the section entirely.
         return
     }
     val loaded = state as WhatIfState.Available
@@ -631,8 +599,8 @@ private fun WhatIfSection(state: WhatIfState) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        // Slider lives in the screen so we can keep WhatIfState pure-data;
-        // the slider's onValueChange computes the projection on the fly.
+        // Slider lives in the screen so WhatIfState stays pure-data; projection
+        // is computed live from onValueChange.
         WhatIfSlider(state = loaded)
     }
 }
@@ -646,7 +614,7 @@ private fun WhatIfSlider(state: WhatIfState.Available) {
         value = sliderValue,
         onValueChange = { sliderValue = it },
         valueRange = 0f..100f,
-        steps = 19,  // 5-pt increments — fine enough for projection, coarse enough to feel intentional
+        steps = 19,  // 5-point increments
     )
     val projection = projectFinal(
         earnedPoints = state.earnedPoints,
@@ -718,8 +686,7 @@ private fun HeroSection(
                     color = courseColor,
                 )
             }
-            // Hide the hero pill when the GradeSummarySection has its own
-            // (richer) total — the section's headline number replaces it.
+            // Hidden when GradeSummarySection's headline carries the same number.
             if (showGradePill && (course.currentGrade != null || course.currentScore != null)) {
                 GradePill(grade = course.currentGrade, score = course.currentScore)
             }
@@ -744,16 +711,6 @@ private fun HeroSection(
     }
 }
 
-/**
- * Per-assignment grade pill. Mirrors the course-level GradePill visual so the
- * vocabulary stays consistent. Falls back through three render modes:
- *  1. "score / pointsPossible" — most informative; both numbers Canvas-known
- *  2. "Excused" / "Missing" — terminal states with no numeric grade
- *  3. status-only badge ("Submitted" / "Late") — Canvas knows the workflow
- *     state but no score has been entered yet
- *  4. nothing — assignment is past-due but un-engaged; the row's just listed
- *     for the "what was assigned this term" recap
- */
 @Composable
 private fun AssignmentGradePill(assignment: CanvasAssignment) {
     val sub = assignment.submission
@@ -819,8 +776,7 @@ private fun OpenInCanvasButton(url: String) {
     val context = LocalContext.current
     OutlinedButton(
         onClick = {
-            // runCatching defends against odd device configurations (no browser,
-            // no Custom Tabs provider). Same pattern as EventScreen's button.
+            // Guards against devices with no browser / Custom Tabs provider.
             runCatching {
                 CustomTabsIntent.Builder()
                     .setShowTitle(true)
@@ -855,13 +811,8 @@ class CourseDetailViewModel @Inject constructor(
 
     private val _courseId = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
 
-    /** Per-course assignment sync runs lazily here — the planner sync that
-     *  AuthLifecycleObserver fires at sign-in covers calendar surfaces, but the
-     *  assignments endpoint is the only source of per-item grades, and we
-     *  don't want to N×-fan-out at app launch (one call per course). Triggered
-     *  every time a new courseId arrives; `distinctUntilChanged` keeps repeat
-     *  Composable recompositions from re-firing. NoCanvasAccountException is
-     *  expected for signed-out users — runCatching swallows it. */
+    // Lazy per-course sync — fanning out at sign-in would mean one call per
+    // active course just to populate detail screens nobody may open.
     @OptIn(ExperimentalCoroutinesApi::class)
     private val assignments: StateFlow<List<CanvasAssignment>> = _courseId
         .filterNotNull()
@@ -893,9 +844,7 @@ class CourseDetailViewModel @Inject constructor(
             initialValue = emptyList(),
         )
 
-    /** Mirrors the assignment-side lazy-sync — fires once per distinct
-     *  courseId, observes the per-course feed. Cross-course aggregation
-     *  (Campus tab home) goes through a different observer. */
+    // Same lazy-per-courseId pattern as [assignments].
     @OptIn(ExperimentalCoroutinesApi::class)
     private val announcements: StateFlow<List<CanvasAnnouncement>> = _courseId
         .filterNotNull()
@@ -916,16 +865,13 @@ class CourseDetailViewModel @Inject constructor(
         _courseId.value = id
     }
 
-    /** Stamps the row's `readAt` to now. Called on first row expand. */
     fun markAnnouncementRead(announcementId: String) {
         viewModelScope.launch {
             announcementRepository.markRead(announcementId)
         }
     }
 
-    // Six total inputs — past Kotlin's typed combine arity (5). Inner combine
-    // bundles the three calendar-side flows into a Triple; outer combine takes
-    // that Triple plus the three Canvas-side flows for the final assembly.
+    // Nested combine — typed Kotlin combine maxes at 5 inputs and we have 6.
     private data class CalendarFacts(
         val id: String?,
         val courses: List<CanvasCourse>,
@@ -945,10 +891,8 @@ class CourseDetailViewModel @Inject constructor(
         val id = facts.id ?: return@combine CourseDetailUiState.Loading
         val course = facts.courses.firstOrNull { it.id == id }
             ?: return@combine CourseDetailUiState.NotFound
-        // Compute palette slot against the FULL active-course set so the color
-        // matches every other surface (calendar pills, My Courses grid, filter
-        // chips). Slot index is what travels — actual Color resolution happens
-        // in the Composable layer where coursePalette() can be called.
+        // Assign against the FULL course set so the slot matches every other
+        // surface (calendar pills, My Courses grid, filter chips).
         val slots = CourseColorAssigner.assign(
             facts.courses.map { CourseColorInput(id = it.id, code = it.code) },
         )
@@ -970,15 +914,11 @@ class CourseDetailViewModel @Inject constructor(
     )
 
     private companion object {
-        // Match the Past Assignments / Upcoming top-N convention. "View all in
-        // Canvas" tap-out covers the long tail.
+        // Long tail goes to "Open in Canvas".
         const val MAX_ANNOUNCEMENTS_INLINE = 5
     }
 }
 
-/** Future, not-yet-engaged work for this course. Top 5 by ascending due date —
- *  if the user has more than that we trust they'll go to the calendar for the
- *  full picture; the per-class screen optimizes for "what's next" at a glance. */
 private fun pickUpcoming(items: List<PlannerItem>, now: java.time.Instant = java.time.Instant.now()): List<PlannerItem> =
     items
         .asSequence()
@@ -990,25 +930,17 @@ private fun pickUpcoming(items: List<PlannerItem>, now: java.time.Instant = java
         .take(5)
         .toList()
 
-/** Anything submitted, graded, or excused — sorted most-recent first. Same
- *  top-5 cap as upcoming. The full graded history with per-item scores lives
- *  in pickPastAssignments (assignments endpoint, not planner). */
+// Full graded history with scores lives in pickPastAssignments — this is the
+// planner-side preview, top 5 most recent.
 private fun pickRecentSubmissions(items: List<PlannerItem>): List<PlannerItem> =
     items
         .filter { it.submission.engaged }
         .sortedByDescending { it.dueAt ?: it.plannableDate }
         .take(5)
 
-/**
- * Full graded-history view for the course. Shows assignments where the user
- * has either acted on it (submitted/graded/excused) OR the due date is in the
- * past — the second clause catches missing assignments + ungraded busywork the
- * student should still see in their term recap.
- *
- * Sorted most-recent first; assignments with no due date sink to the bottom
- * (matches DAO sort, repeated here so the in-memory list-flow path stays
- * consistent if ordering ever moves off the DAO).
- */
+// Past-due clause catches missing + ungraded busywork the student should still
+// see in their term recap. Sort matches DAO so the list-flow stays consistent
+// if ordering ever moves out of SQL.
 private fun pickPastAssignments(
     assignments: List<CanvasAssignment>,
     now: java.time.Instant = java.time.Instant.now(),
@@ -1023,25 +955,12 @@ private fun pickPastAssignments(
                 .thenByDescending { it.dueAt },
         )
 
-/** True when the user has acted on (or been excused from) the assignment —
- *  the submission row should land in "Recent submissions", not "Upcoming". */
 private val PlannerSubmissionStatus.engaged: Boolean
     get() = submitted || graded || excused
 
-/**
- * Builds the weighted grade-summary breakdown from the cached assignment_groups
- * tree. Two-phase compute:
- *
- *  1. Per-group: Σ score / Σ pointsPossible across the group's graded,
- *     non-excused assignments.
- *  2. Course total: weighted average across groups that have at least one
- *     graded item, renormalized so the un-started buckets don't drag the
- *     average to zero. If no group exposes a weight, fall through to a
- *     pure points-total fallback.
- *
- * Returns Unavailable when nothing's been graded yet — the UI falls back to
- * the hero's `course.currentScore` pill in that case.
- */
+// Renormalizes across started groups so un-started buckets don't drag the
+// average to zero. Falls back to points-only when no weights, then to the
+// course-level Canvas number when nothing computes locally.
 private fun computeGradeSummary(
     course: CanvasCourse,
     groups: List<CanvasAssignmentGroup>,
@@ -1079,12 +998,10 @@ private fun computeGradeSummary(
         val total = weightedActive.sumOf { (it.percent!! * it.weight!!) / totalActiveWeight }
         total to true
     } else {
-        // Points-only fallback: course doesn't expose weights, or no weighted
-        // group has graded items yet. Still useful to surface the raw percent.
+        // No weights set or no weighted group has graded items yet.
         val totalPossible = breakdowns.sumOf { it.possiblePoints }
         if (totalPossible <= 0.0) {
-            // Last-ditch fall-through to the course-level Canvas number when
-            // we can't compute anything ourselves but Canvas can.
+            // Trust the Canvas-side number when we can't compute it locally.
             val fromCourse = course.currentScore ?: return GradeSummaryState.Unavailable
             fromCourse to false
         } else {
@@ -1148,20 +1065,13 @@ sealed interface CourseDetailUiState {
 }
 
 sealed interface GradeSummaryState {
-    /** Course has no graded items yet, or assignment_groups sync hasn't
-     *  populated. The hero falls back to `course.currentScore` (the existing
-     *  Canvas-aggregated number) in this state so the user still sees
-     *  *something* if Canvas knows a grade we can't yet break down. */
+    // Hero falls back to course.currentScore when this fires.
     data object Unavailable : GradeSummaryState
     data class Available(
-        /** Renormalized weighted total — computed only across groups that
-         *  have at least one graded assignment, so an early-term grade isn't
-         *  crushed by 0% on un-started buckets. */
+        // Renormalized only across started groups so early-term grades aren't
+        // crushed by zeros on buckets that haven't started yet.
         val weightedPercent: Double,
         val gradedAssignmentCount: Int,
-        /** Whether the renormalized total uses Canvas-supplied weights or
-         *  fell through to the points-only fallback (course doesn't use
-         *  weighted grading). Drives the caption in the UI. */
         val usesWeights: Boolean,
         val groups: List<GroupBreakdown>,
     ) : GradeSummaryState
@@ -1169,13 +1079,11 @@ sealed interface GradeSummaryState {
 
 data class GroupBreakdown(
     val name: String,
-    /** Null when Canvas didn't surface a weight (un-weighted course) — the
-     *  per-group bar still renders but no weight badge appears. */
+    // Null when Canvas exposes no weight (un-weighted course).
     val weight: Double?,
     val earnedPoints: Double,
     val possiblePoints: Double,
-    /** Null when no graded assignments in this group yet — the row renders
-     *  greyed with an em-dash so the structure stays visible. */
+    // Null when no graded assignments in this group yet.
     val percent: Double?,
 )
 
@@ -1186,7 +1094,6 @@ sealed interface WhatIfState {
         val earnedPoints: Double,
         val gradedPoints: Double,
         val remainingPoints: Double,
-        /** Slider seed — defaults to "user maintains current grade." */
         val assumedRemainingPercent: Float,
     ) : WhatIfState
 }

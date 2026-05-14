@@ -128,9 +128,8 @@ private fun LoadedContent(
         if (state.courses.isEmpty() && !state.syncing) {
             EmptyCourses(onRetry)
         } else {
-            // Compute palette slot per course once at this level so every row
-            // shares the same family-key assignment as the calendar / filter
-            // sheet do — no Canvas knowledge leaks into the row composable.
+            // Assign palette slots once here so every row matches the calendar
+            // and filter sheet — no Canvas knowledge leaks into CourseCard.
             val palette = coursePalette()
             val courseSlots = remember(state.courses) {
                 CourseColorAssigner.assign(
@@ -215,10 +214,6 @@ private fun CourseCard(course: CanvasCourse, courseColor: Color) {
 
 @Composable
 private fun CourseColorBlock(color: Color) {
-    // Solid color "tile" — same family-key→palette mapping the calendar pills,
-    // assignment dots, and FilterSheet course chips use, so a course's identity
-    // stays consistent across every surface. Sized down from the old 64dp image
-    // box to give the title + grade pill more horizontal room.
     Box(
         modifier = Modifier
             .size(48.dp)
