@@ -1,5 +1,16 @@
 package com.ekhonavigator.feature.map
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Apartment
+import androidx.compose.material.icons.filled.Handyman
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.LocalParking
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import com.ekhonavigator.core.model.Place
 import com.google.android.gms.maps.model.LatLng
 import com.ekhonavigator.core.model.PlaceCategory as CorePlaceCategory
@@ -41,3 +52,24 @@ private fun PlaceCategory.toCoreCategory(): CorePlaceCategory = when (this) {
     PlaceCategory.SERVICES -> CorePlaceCategory.SERVICES
     PlaceCategory.ALL -> CorePlaceCategory.GENERAL
 }
+
+val PlaceCategory.icon: ImageVector
+    get() = when (this) {
+        PlaceCategory.PARKING -> Icons.Default.LocalParking
+        PlaceCategory.FOOD -> Icons.Default.Restaurant
+        PlaceCategory.HOUSING -> Icons.Default.Home
+        PlaceCategory.BUILDINGS -> Icons.Default.Apartment
+        PlaceCategory.SERVICES -> Icons.Default.Handyman
+        PlaceCategory.ALL -> Icons.Default.Place
+    }
+
+val PlaceCategory.color: Color
+    @Composable
+    get() = when (this) {
+        PlaceCategory.PARKING -> Color(0xFF2196F3)     // blue
+        PlaceCategory.FOOD -> Color(0xFFFF9800)       // orange
+        PlaceCategory.HOUSING -> Color(0xFF9C27B0)    // purple
+        PlaceCategory.SERVICES -> Color(0xFF4CAF50)   // green
+        PlaceCategory.BUILDINGS -> MaterialTheme.colorScheme.primary
+        PlaceCategory.ALL -> MaterialTheme.colorScheme.secondary
+    }

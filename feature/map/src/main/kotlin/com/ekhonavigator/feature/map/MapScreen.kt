@@ -1,14 +1,11 @@
 package com.ekhonavigator.feature.map
 
-import com.google.android.gms.maps.model.Dot
-import com.google.android.gms.maps.model.Gap
-import com.google.android.gms.maps.model.RoundCap
-import androidx.compose.foundation.isSystemInDarkTheme
-import com.google.android.gms.maps.model.MapStyleOptions
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -16,6 +13,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -57,8 +55,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -70,7 +73,11 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.Dot
+import com.google.android.gms.maps.model.Gap
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.MapStyleOptions
+import com.google.android.gms.maps.model.RoundCap
 import com.google.maps.android.compose.CameraPositionState
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
@@ -81,6 +88,7 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.ui.graphics.Canvas as ComposeCanvas
 
 
 data class UserMarker(
@@ -89,14 +97,8 @@ data class UserMarker(
     val markerLabelComment: String = ""
 )
 
-// Must match the prefix used by DefaultPlaceRepository when wrapping
-// UserDroppedMarkers as Place entries — the navigated focusPlaceId arrives
-// from the event WHERE row in that namespaced form.
 private const val MARKER_FOCUS_PREFIX = "marker_"
 
-// Google Maps' InfoWindow draws a white tooltip background regardless of app theme
-// (the SDK snapshots the content into a Bitmap, so MaterialTheme can't override it).
-// These are fixed dark text colors that read on that white in both light and dark mode.
 internal val InfoWindowPrimary = androidx.compose.ui.graphics.Color(0xFF1A1A1A)
 internal val InfoWindowSecondary = androidx.compose.ui.graphics.Color(0xFF606060)
 
@@ -372,8 +374,10 @@ fun MapScreen(
                                 markerState.showInfoWindow()
                             }
                         }
+                        val markerIcon = rememberMarkerIcon(place.category)
                         MarkerInfoWindowContent(
                             state = markerState,
+                            icon = markerIcon,
                             onClick = {
                                 isAnyMarkerInfoShowing = true
                                 false
@@ -529,14 +533,24 @@ fun MapScreen(
                         Spacer(modifier = Modifier.height(10.dp))
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             items(PlaceCategory.entries) { category ->
+                                val categoryColor = category.color
                                 FilterChip(
                                     selected = (selectedCategory == category),
                                     onClick = { selectedCategory = category },
                                     label = { Text(category.label) },
                                     colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        selectedContainerColor = categoryColor,
+                                        selectedLabelColor = Color.White,
+                                        containerColor = Color.Transparent,
+                                        labelColor = categoryColor
                                     ),
+                                    border = FilterChipDefaults.filterChipBorder(
+                                        enabled = true,
+                                        selected = selectedCategory == category,
+                                        borderColor = categoryColor,
+                                        selectedBorderColor = Color.Transparent,
+                                        borderWidth = 1.dp
+                                    )
                                 )
                             }
                         }
@@ -568,7 +582,10 @@ fun MapScreen(
                         ) {
                             Text(
                                 text = "Zoom in to see points of interest. Click filters to see even more.",
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, lineHeight = 14.sp),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = 11.sp,
+                                    lineHeight = 14.sp
+                                ),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.fillMaxWidth()
@@ -754,5 +771,43 @@ fun MapScreen(
                 }
             )
         }
+    }
+}
+
+@Composable
+fun rememberMarkerIcon(category: PlaceCategory): com.google.android.gms.maps.model.BitmapDescriptor {
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val imageVector = category.icon
+    val color = category.color
+
+    val painter = androidx.compose.ui.graphics.vector.rememberVectorPainter(imageVector)
+
+    return androidx.compose.runtime.remember(imageVector, color) {
+        val sizePx = with(density) { 26.dp.toPx() }        //size of icons
+
+        val bitmap = Bitmap.createBitmap(
+            sizePx.toInt(),
+            sizePx.toInt(),
+            Bitmap.Config.ARGB_8888
+        )
+        val canvas = Canvas(bitmap)
+
+        val drawScope = CanvasDrawScope()
+
+        drawScope.draw(
+            density = density,
+            layoutDirection = LayoutDirection.Ltr,
+            canvas = ComposeCanvas(canvas),
+            size = Size(sizePx, sizePx)
+        ) {
+            with(painter) {
+                draw(
+                    size = size,
+                    colorFilter = ColorFilter.tint(color)
+                )
+            }
+        }
+
+        BitmapDescriptorFactory.fromBitmap(bitmap)
     }
 }
