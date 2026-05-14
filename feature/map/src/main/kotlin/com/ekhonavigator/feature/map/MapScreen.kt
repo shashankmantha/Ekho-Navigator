@@ -1,5 +1,8 @@
 package com.ekhonavigator.feature.map
 
+import com.google.android.gms.maps.model.Dot
+import com.google.android.gms.maps.model.Gap
+import com.google.android.gms.maps.model.RoundCap
 import androidx.compose.foundation.isSystemInDarkTheme
 import com.google.android.gms.maps.model.MapStyleOptions
 import android.Manifest
@@ -169,6 +172,7 @@ fun MapScreen(
     val context = LocalContext.current
 
     val activeRoutePoints by viewModel.activeRoutePoints.collectAsStateWithLifecycle()
+    val activeTravelMode by viewModel.activeTravelMode.collectAsStateWithLifecycle()
     val isRouteLoading by viewModel.isRouteLoading.collectAsStateWithLifecycle()
 
     val csuciCenter = LatLng(34.162134342787105, -119.04400892418893)
@@ -430,7 +434,14 @@ fun MapScreen(
                 com.google.maps.android.compose.Polyline(
                     points = activeRoutePoints,
                     color = androidx.compose.ui.graphics.Color(0xFF2196F3),
-                    width = 12f
+                    width = 12f,
+                    pattern = if (activeTravelMode == TravelMode.WALK) {
+                        listOf(Dot(), Gap(20f))
+                    } else {
+                        null
+                    },
+                    startCap = RoundCap(),
+                    endCap = RoundCap()
                 )
             }
         }

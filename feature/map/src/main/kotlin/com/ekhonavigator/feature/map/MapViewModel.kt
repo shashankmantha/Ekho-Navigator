@@ -32,6 +32,9 @@ class MapViewModel @Inject constructor(
     private val _activeRoutePoints = MutableStateFlow<List<LatLng>>(emptyList())
     val activeRoutePoints = _activeRoutePoints.asStateFlow()
 
+    private val _activeTravelMode = MutableStateFlow<TravelMode?>(null)
+    val activeTravelMode = _activeTravelMode.asStateFlow()
+
     private val _isRouteLoading = MutableStateFlow(false)
     val isRouteLoading = _isRouteLoading.asStateFlow()
 
@@ -179,6 +182,7 @@ class MapViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             _isRouteLoading.value = true
+            _activeTravelMode.value = travelMode
 
             // Use user's real location if available, otherwise fallback to CSUCI center
             val origin = userLocation ?: LatLng(34.162134342787105, -119.04400892418893)
@@ -201,6 +205,7 @@ class MapViewModel @Inject constructor(
 
     fun clearActiveRoute() {
         _activeRoutePoints.value = emptyList()
+        _activeTravelMode.value = null
     }
 
     override fun onCleared() {
