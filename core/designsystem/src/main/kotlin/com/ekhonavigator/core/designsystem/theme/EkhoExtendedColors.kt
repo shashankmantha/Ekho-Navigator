@@ -28,6 +28,13 @@ data class EkhoExtendedColors(
      * (`#1A1410`). Matches the foreground/background flip from design.md §2.
      */
     val onFoundation: Color = Color.Unspecified,
+    /**
+     * Foreground for event pills (bg uses foundation roles or course palette).
+     * Stays light in both themes — decoupled from [onFoundation] because pill
+     * bgs get alpha-faded for past/completed/pending states, which in dark mode
+     * blends them toward the dark surface and breaks dark-on-dark text.
+     */
+    val onEventPill: Color = Color.Unspecified,
 )
 
 internal val LightEkhoExtendedColors = EkhoExtendedColors(
@@ -36,6 +43,7 @@ internal val LightEkhoExtendedColors = EkhoExtendedColors(
     onCardinalSoft = Color(0xFF40000F),
     shale = ShaleLight,
     onFoundation = OnFoundationLight,
+    onEventPill = OnEventPillLight,
 )
 
 internal val DarkEkhoExtendedColors = EkhoExtendedColors(
@@ -44,6 +52,7 @@ internal val DarkEkhoExtendedColors = EkhoExtendedColors(
     onCardinalSoft = Color(0xFFFFD9DF),
     shale = ShaleDark,
     onFoundation = OnFoundationDark,
+    onEventPill = OnEventPillDark,
 )
 
 val LocalEkhoExtendedColors = staticCompositionLocalOf { LightEkhoExtendedColors }

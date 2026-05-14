@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.ekhonavigator.core.designsystem.theme.EkhoColors
 import com.ekhonavigator.core.designsystem.theme.LocalAssignmentDecorator
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventSource
@@ -457,6 +458,7 @@ private fun TimelineEventBlock(
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
+    val onEventPill = EkhoColors.current.onEventPill
     // ASSIGNMENT type wins first (matches EkhoEventRow's toRowState logic).
     // LocalAssignmentDecorator overrides the bg per-course when known; primary
     // garnet stays the fallback for course-less assignments and Canvas rows
@@ -468,18 +470,18 @@ private fun TimelineEventBlock(
     }
     val (bgColor, textColor) = when {
         event.type == EventType.ASSIGNMENT ->
-            (courseColor ?: colors.primary) to colors.onPrimary
+            (courseColor ?: colors.primary) to onEventPill
 
         event.source == EventSource.ICAL_FEED && event.isBookmarked ->
-            colors.tertiary to colors.onTertiary
+            colors.tertiary to onEventPill
 
         event.source == EventSource.ICAL_FEED ->
             colors.surfaceContainerHighest to colors.onSurfaceVariant
 
         event.source == EventSource.USER_CREATED || event.source == EventSource.SHARED ->
-            colors.secondary to colors.onSecondary
+            colors.secondary to onEventPill
 
-        else -> colors.primary to colors.onPrimary
+        else -> colors.primary to onEventPill
     }
 
     val isPendingInvite = event.myRsvpStatus == RsvpStatus.PENDING

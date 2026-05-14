@@ -89,6 +89,13 @@ internal val OnSurfaceDimDark = Color(0xFF7E756B)
 internal val OnFoundationLight = Color(0xFFFFFFFF)
 internal val OnFoundationDark = DarkSurface
 
+// Event-pill foreground stays light in both themes. Pills get alpha-faded for
+// past/completed/pending — in dark mode that blends bg toward DarkSurface, and
+// the standard dark-on-bright `onFoundation` token would collide with the
+// darkened pill. Keeping pill text light side-steps the blend entirely.
+internal val OnEventPillLight = Color(0xFFFFFFFF)
+internal val OnEventPillDark = Color(0xFFF5F0E8)
+
 // ── Error (standard M3 — distinct from brand red) ──
 internal val ErrorLight = Color(0xFFBA1A1A)
 internal val ErrorDark = Color(0xFFFFB4AB)

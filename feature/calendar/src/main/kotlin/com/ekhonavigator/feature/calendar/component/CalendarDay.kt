@@ -78,16 +78,16 @@ fun DayContent(
     //   ICAL_FEED                     → muted neutral (no other tag).
     //   ICAL_FEED + bookmarked        → Horizon (tertiary).
     val cardinal = EkhoColors.current.cardinal
-    val onFoundation = EkhoColors.current.onFoundation
+    val onEventPill = EkhoColors.current.onEventPill
     val calendarPillColor = cardinal
     val customPillColor = MaterialTheme.colorScheme.secondary
     val campusMutedPillColor = MaterialTheme.colorScheme.surfaceContainerHighest
     val campusBookmarkedPillColor = MaterialTheme.colorScheme.tertiary
 
-    val onCalendarPillColor = onFoundation
-    val onCustomPillColor = MaterialTheme.colorScheme.onSecondary
+    val onCalendarPillColor = onEventPill
+    val onCustomPillColor = onEventPill
     val onCampusMutedPillColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val onCampusBookmarkedPillColor = MaterialTheme.colorScheme.onTertiary
+    val onCampusBookmarkedPillColor = onEventPill
 
     val cellColor = MaterialTheme.colorScheme.surfaceContainer
 
