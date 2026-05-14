@@ -371,6 +371,7 @@ fun MapScreen(
                                 markerState.showInfoWindow()
                             }
                         }
+                        val markerIcon = rememberMarkerIcon(place.category)
                         MarkerInfoWindow(
                             state = markerState,
                             icon = markerIcon,
