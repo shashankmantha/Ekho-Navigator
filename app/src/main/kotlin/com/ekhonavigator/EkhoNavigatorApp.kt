@@ -306,7 +306,6 @@ fun EkhoNavigatorApp(
                                             ),
                                         )
                                     },
-                                    // Phase 7.A2 per-class detail screen.
                                     onCourseClick = { courseId -> navigator.navigateToCourseDetail(courseId) },
                                     focusPlaceId = key.focusPlaceId,
                                     initialTab = key.initialTab,

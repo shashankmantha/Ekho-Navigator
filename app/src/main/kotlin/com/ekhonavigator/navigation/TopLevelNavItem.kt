@@ -11,7 +11,6 @@ import com.ekhonavigator.feature.home.navigation.HomeNavKey
 import com.ekhonavigator.feature.map.navigation.MapNavKey
 import com.ekhonavigator.feature.social.navigation.SocialNavKey
 
-/** UI metadata for a top-level navigation destination. */
 data class TopLevelNavItem(
     val selectedIcon: ImageVector,
     val unselectedIcon: ImageVector,
@@ -31,10 +30,8 @@ val CALENDAR = TopLevelNavItem(
     label = "Calendar",
 )
 
-// Renamed Discover → Campus in Phase 7.A1 to reflect the tab's evolved scope
-// (My Courses + study + iCal events). NavKey stays `DiscoverNavKey` so we
-// don't break the saved-back-stack from older installs; A3 will do the deeper
-// rename if/when the layout collapses to a single Campus screen.
+// "Discover" was renamed to "Campus" — NavKey stays DiscoverNavKey so saved
+// back-stacks from older installs still resolve.
 val DISCOVER = TopLevelNavItem(
     selectedIcon = EkhoIcons.EventsFilled,
     unselectedIcon = EkhoIcons.EventsOutlined,

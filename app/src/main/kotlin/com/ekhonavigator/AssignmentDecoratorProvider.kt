@@ -22,14 +22,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
-/**
- * Provides the app-root [AssignmentDecorator] into composition.
- *
- * Combines the cached Canvas course list with all cached planner items into a single
- * lookup table — keeps every render site (calendar, day, mini-month, event row) free
- * of Canvas knowledge. When Canvas isn't connected both flows emit empty and the
- * decorator collapses to [AssignmentDecorator.Empty].
- */
+// Keeps render sites (calendar, day, mini-month, event row) free of Canvas knowledge.
 @Composable
 fun AssignmentDecoratorProvider(
     viewModel: AssignmentDecoratorViewModel = hiltViewModel(),
@@ -52,9 +45,7 @@ class AssignmentDecoratorViewModel @Inject constructor(
     val decorator: StateFlow<AssignmentDecorator> = combine(
         courseRepository.observeCourses(),
         plannerRepository.observeAllItems(),
-        // Personal events whose user toggled isCompleted — folded into the same
-        // completedEventIds set as Canvas's submitted/graded/excused so the
-        // strikethrough render sites stay source-agnostic.
+        // Folded into the same completed set as Canvas — strikethrough stays source-agnostic.
         calendarRepository.observeEvents(),
     ) { courses, plannerItems, allEvents ->
         if (courses.isEmpty() && plannerItems.isEmpty() && allEvents.none { it.isCompleted }) {

@@ -31,8 +31,7 @@ class EkhoNavigatorApplication : Application(), Configuration.Provider {
 
         chatNotificationObserver.start()
 
-        // Fan out per-user setup/teardown reactively to Firebase auth state.
-        // Replaces the old imperative cleanup chain in MainActivity/AccountScreen.
+        // Reactive per-user setup/teardown on Firebase auth state changes.
         authLifecycleObserver.start()
 
         val feedUrl = "https://25livepub.collegenet.com/calendars/csuci-calendar-of-events.ics"
@@ -42,7 +41,7 @@ class EkhoNavigatorApplication : Application(), Configuration.Provider {
             feedUrl = feedUrl,
         )
 
-        // Fire an immediate sync on every app launch so data is fresh right away
+        // Immediate sync on launch — periodic schedule's first fire is too far out.
         SyncInitializer.requestImmediateSync(
             context = this,
             feedUrl = feedUrl,

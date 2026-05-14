@@ -17,11 +17,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
-/**
- * Provides [LocalSignedIn] into composition. Wraps the auth state so any
- * descendant can gate sign-in-required affordances (create-event FAB, future
- * profile-edit entry points, etc.) behind a single read.
- */
 @Composable
 fun SignedInProvider(
     viewModel: SignedInViewModel = hiltViewModel(),

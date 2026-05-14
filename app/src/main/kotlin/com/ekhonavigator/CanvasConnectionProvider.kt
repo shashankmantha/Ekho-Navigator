@@ -16,11 +16,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
-/**
- * Provides [LocalCanvasConnected] into composition. Wraps the unified Canvas
- * connection signal (auth + institution + PAT) so any descendant can gate
- * Canvas-only UI behind a single read.
- */
 @Composable
 fun CanvasConnectionProvider(
     viewModel: CanvasConnectionViewModel = hiltViewModel(),
