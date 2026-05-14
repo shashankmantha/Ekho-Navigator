@@ -46,10 +46,6 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-/**
- * Navigational DayScreen — shows a single day timeline for a specific date.
- * Reached from month day cell click or week view "+N" overflow tap.
- */
 @Composable
 fun DayScreen(
     epochDay: Long,
@@ -64,7 +60,6 @@ fun DayScreen(
     val selectedDate by viewModel.selectedDate.collectAsStateWithLifecycle()
     var snapToTodayTrigger by remember { mutableIntStateOf(0) }
 
-    // Initialize filters from the parent calendar screen's active selections (one-shot)
     LaunchedEffect(Unit) {
         val sourceTypes = sourceTypeNames.mapNotNull { name ->
             EventSourceType.entries.find { it.name == name }
@@ -98,9 +93,7 @@ fun DayScreen(
                 }
 
                 val signedIn = LocalSignedIn.current
-                // Greyed when signed-out (matches CalendarScreen's pattern). The
-                // create-event flow needs an ownerUid; the FAB stays visible as a
-                // discovery hint but the click is suppressed.
+                // Visible but disabled when signed-out — create needs ownerUid.
                 FloatingActionButton(
                     onClick = {
                         if (!signedIn) return@FloatingActionButton
@@ -137,10 +130,6 @@ fun DayScreen(
     }
 }
 
-/**
- * Day timeline content — used by both the Day tab and the routed DayScreen.
- * Shows a date header with collapsible mini-month and a swipeable single-column timeline.
- */
 private const val DAY_PAGE_RANGE = 365
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -169,7 +158,6 @@ fun DayTimelineContent(
     )
     val scope = rememberCoroutineScope()
 
-    // Update ViewModel when page changes (swipe)
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.currentPage }.collect { page ->
             val offset = page - DAY_PAGE_RANGE
@@ -177,18 +165,15 @@ fun DayTimelineContent(
         }
     }
 
-    // Snap to today when triggered
     LaunchedEffect(snapToTodayTrigger) {
         if (snapToTodayTrigger > 0) {
             pagerState.animateScrollToPage(DAY_PAGE_RANGE)
         }
     }
 
-    // Mini-month expand/collapse state
     var miniMonthExpanded by remember { mutableStateOf(false) }
 
     Column(modifier = modifier.fillMaxSize()) {
-        // Day header with chevron toggle for mini-month
         val currentDate = remember(pagerState.currentPage) {
             today.plusDays((pagerState.currentPage - DAY_PAGE_RANGE).toLong())
         }
@@ -226,7 +211,6 @@ fun DayTimelineContent(
             )
         }
 
-        // Collapsible mini-month calendar
         AnimatedVisibility(
             visible = miniMonthExpanded,
             enter = expandVertically(),
@@ -244,7 +228,6 @@ fun DayTimelineContent(
             )
         }
 
-        // Swipeable day pages — single-column timeline
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxSize(),

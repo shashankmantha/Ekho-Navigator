@@ -65,7 +65,6 @@ internal fun WeekTab(
         pageCount = { WEEK_PAGE_RANGE * 2 + 1 },
     )
 
-    // Update ViewModel when page changes (swipe)
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.currentPage }.collect { page ->
             val weekOffset = page - WEEK_PAGE_RANGE
@@ -73,7 +72,6 @@ internal fun WeekTab(
         }
     }
 
-    // Snap to current week when triggered
     LaunchedEffect(snapToTodayTrigger) {
         if (snapToTodayTrigger > 0) {
             pagerState.animateScrollToPage(WEEK_PAGE_RANGE)
@@ -84,7 +82,6 @@ internal fun WeekTab(
 
     var miniMonthExpanded by remember { mutableStateOf(false) }
 
-    // Current week's dates derived from pager position
     val currentWeekStart = remember(pagerState.currentPage) {
         todayWeekStart.plusWeeks((pagerState.currentPage - WEEK_PAGE_RANGE).toLong())
     }
@@ -92,7 +89,6 @@ internal fun WeekTab(
         (0L until 7L).map { currentWeekStart.plusDays(it) }
     }
 
-    // Week label: "Mar 30 – Apr 5"
     val weekLabel = remember(currentWeekStart) {
         val end = currentWeekStart.plusDays(6)
         val startFmt = DateTimeFormatter.ofPattern("MMM d")
@@ -105,7 +101,6 @@ internal fun WeekTab(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Week header with chevron toggle
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -130,7 +125,6 @@ internal fun WeekTab(
             )
         }
 
-        // Collapsible mini-month
         AnimatedVisibility(
             visible = miniMonthExpanded,
             enter = expandVertically(),
@@ -152,7 +146,6 @@ internal fun WeekTab(
             )
         }
 
-        // Campus event counts per day (unbookmarked iCal feed events)
         val zone = remember { ZoneId.systemDefault() }
         val campusCountByDate = remember(eventsForWeek) {
             eventsForWeek
@@ -161,11 +154,10 @@ internal fun WeekTab(
                 .mapValues { (_, events) -> events.size }
         }
 
-        // Day-of-week column headers — clickable to navigate to day view
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 48.dp), // align with timeline grid (TimeLabelWidth)
+                .padding(start = 48.dp), // matches TimelineGrid's TimeLabelWidth
         ) {
             columnDates.forEach { date ->
                 val isToday = date == today
@@ -210,13 +202,12 @@ internal fun WeekTab(
             }
         }
 
-        // Swipeable week pages
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxSize(),
         ) { page ->
             if (page == pagerState.currentPage) {
-                // Exclude unbookmarked campus events — shown as +N in header instead
+                // Unbookmarked campus events surface as the +N header count, not pills.
                 val timelineEvents = remember(eventsForWeek) {
                     eventsForWeek.filter { event ->
                         !(event.source == EventSource.ICAL_FEED && !event.isBookmarked)

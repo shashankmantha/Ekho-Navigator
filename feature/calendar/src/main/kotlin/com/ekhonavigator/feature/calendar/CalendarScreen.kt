@@ -46,9 +46,6 @@ import com.ekhonavigator.core.model.EventSourceType
 import com.ekhonavigator.feature.event.component.FilterSheetContent
 import kotlinx.coroutines.launch
 
-/**
- * Internal tab indices for the Calendar screen pager.
- */
 private enum class CalendarTab(val title: String) {
     DAY("Day"),
     WEEK("Week"),
@@ -76,16 +73,13 @@ fun CalendarScreen(
     var monthSnapTrigger by remember { mutableIntStateOf(0) }
 
     var showFilterSheet by remember { mutableStateOf(false) }
-    // skipPartiallyExpanded so the sheet uses content's intrinsic height and re-measures
-    // when collapsible sections grow — otherwise the partial-expand peek height is locked
-    // to the initial composition and later expansions get clipped.
+    // skipPartiallyExpanded — peek height otherwise locks on first compose.
     val filterSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val activeSourceTypes by viewModel.activeSourceTypes.collectAsStateWithLifecycle()
     val selectedCategories by viewModel.selectedCategories.collectAsStateWithLifecycle()
     val availableCourses by viewModel.availableCourses.collectAsStateWithLifecycle()
     val selectedCourseIds by viewModel.selectedCourseIds.collectAsStateWithLifecycle()
 
-    // Wrap onDayClick to forward current filter state to the DayScreen
     val onDayClickWithFilters: (Long) -> Unit = { epochDay ->
         onDayClick(epochDay, activeSourceTypes, selectedCategories)
     }
@@ -117,10 +111,7 @@ fun CalendarScreen(
 
                 val selectedDate by viewModel.selectedDate.collectAsStateWithLifecycle()
                 val signedIn = LocalSignedIn.current
-                // Greyed when signed-out: event creation requires an ownerUid for
-                // sharing/sync. The DefaultCustomEventRepository would throw
-                // NotSignedInException if reached anyway — disable here so the
-                // user gets a visual hint instead of a silent no-op.
+                // Greyed when signed-out — repo throws NotSignedInException downstream.
                 val fabContainer = if (signedIn) {
                     MaterialTheme.colorScheme.primary
                 } else {
@@ -178,12 +169,11 @@ fun CalendarScreen(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // Filter icon — opens bottom sheet
                 val allSourcesActive = activeSourceTypes.size == EventSourceType.entries.size
                 val hasActiveFilters = selectedCategories.isNotEmpty() || !allSourcesActive
                 IconButton(
                     onClick = { showFilterSheet = true },
-                    modifier = Modifier.size(48.dp) // Fixed touch target size
+                    modifier = Modifier.size(48.dp),
                 ) {
                     Icon(
                         imageVector = EkhoIcons.Tune,
@@ -201,7 +191,7 @@ fun CalendarScreen(
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
             )
 
-            // Pager content — tap-only tab switching, no swipe
+            // Tab-only switching; inner grids claim horizontal swipe.
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize(),

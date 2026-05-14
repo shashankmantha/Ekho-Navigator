@@ -68,38 +68,21 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-/** Height of each hour row in the timeline. */
 private val HourHeight: Dp = 60.dp
 
-/**
- * Trailing scroll padding so the grid's bottom-most pills (e.g. 11:59 PM
- * assignment dues) clear the FAB stack rather than getting visually clipped
- * behind it. Sized to fit two stacked 56dp FABs + breathing room.
- */
+// Clears the two-FAB stack at the bottom of the scroll viewport.
 private val ScrollBottomPadding: Dp = 144.dp
 
-/** Width of the time label column on the left. */
 private val TimeLabelWidth: Dp = 48.dp
 
-/** Number of hours to display (full day). */
 private const val HourCount = 24
 
-/**
- * Floor for an event pill's rendered height. Generic events get a small floor so
- * tiny-duration items still show readable text; ASSIGNMENT rows are due-time-only
- * (start == end) and benefit from a full-hour block so the title + course tag have
- * enough room to read at a glance — assignments dominate calendar attention,
- * shrinking them to a sliver buries the most actionable item on the day.
- */
+// ASSIGNMENT pills are due-time-only (start == end) — a small floor would bury
+// them as slivers. Full-hour floor keeps them legible; generic events keep 28dp.
 private val MinBlockHeight: Dp = 28.dp
 private val MinAssignmentBlockHeight: Dp = HourHeight
 
-/**
- * Reusable timeline grid for day and week views.
- *
- * @param columnCount 1 for day view, 7 for week view
- * @param maxVisibleOverlaps Max concurrent events shown side-by-side. 0 = unlimited.
- */
+// columnCount: 1 = day, 7 = week. maxVisibleOverlaps: 0 = unlimited.
 @Composable
 fun TimelineGrid(
     columnCount: Int,
@@ -113,12 +96,10 @@ fun TimelineGrid(
 ) {
     val zone = remember { ZoneId.systemDefault() }
 
-    // Group events by date
     val eventsByDate = remember(events) {
         events.groupBy { it.startTime.atZone(zone).toLocalDate() }
     }
 
-    // Lay out overlapping events per column
     val layoutsByDate = remember(eventsByDate, columnDates) {
         columnDates.associateWith { date ->
             layoutEventsForDay(eventsByDate[date].orEmpty(), zone)
@@ -129,9 +110,7 @@ fun TimelineGrid(
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
 
-    // Live "now" line — re-emits every minute so the indicator drifts down through
-    // the day in real time. Per-minute granularity is plenty for a 60dp/hour grid
-    // (one minute = 1 dp), and avoids a battery hit from per-second ticks.
+    // 1-min tick — grid is 60dp/hour, finer is just battery churn.
     val nowInstant by produceState(initialValue = Instant.now()) {
         while (true) {
             value = Instant.now()
@@ -144,11 +123,7 @@ fun TimelineGrid(
 
     val totalHeight = HourHeight * HourCount
 
-    // Earliest rendered-top / latest rendered-bottom hour across visible columns,
-    // used by the off-screen hint chips. ASSIGNMENT pills render bottom-anchored
-    // (top = start - 1hr), so we must use rendered bounds rather than raw start
-    // times — otherwise a 10 AM-due assignment whose pill spans 9–10 AM would
-    // be reported as "earliest = 10" and the hint would mis-fire.
+    // Use rendered top/bottom — ASSIGNMENT pills bottom-anchor, raw start skews hint detection.
     val (earliestEventHour, latestEventHour) = remember(layoutsByDate) {
         val bounds = layoutsByDate.values.flatten().map { layout ->
             val startZoned = layout.event.startTime.atZone(zone)
@@ -156,7 +131,6 @@ fun TimelineGrid(
             val startHour = startZoned.hour + startZoned.minute / 60f
             val endHour = endZoned.hour + endZoned.minute / 60f
             if (layout.event.type == EventType.ASSIGNMENT) {
-                // Pill spans [start - 1hr, start]; clamp top to grid top.
                 (startHour - 1f).coerceAtLeast(0f) to startHour
             } else {
                 startHour to endHour
@@ -175,13 +149,10 @@ fun TimelineGrid(
         val viewportHeightPx = with(density) { maxHeight.toPx() }
         val hourHeightPx = with(density) { HourHeight.toPx() }
 
-        // Initial scroll and trigger logic
         LaunchedEffect(snapToTodayTrigger) {
             val isTodayVisible = columnDates.contains(today)
 
-            // If the user clicked "Jump to Today" OR this grid contains Today, center "Now".
-            // Otherwise, for other days (swipes), default to centering 7:00 AM so the 
-            // user lands on the start of the morning instead of a random evening hour.
+            // 7AM fallback for non-today swipes — beats whatever hour was last scrolled.
             val targetHourFraction = if (isTodayVisible || snapToTodayTrigger > 0) {
                 nowZoned.hour + nowZoned.minute / 60f
             } else {
@@ -191,7 +162,7 @@ fun TimelineGrid(
             val targetCenterPx = targetHourFraction * hourHeightPx
             val targetScrollPx = (targetCenterPx - (viewportHeightPx / 2)).toInt()
 
-            // Pre-calculate max scroll to avoid clamping to 0 before first layout.
+            // Compute maxScroll explicitly — scrollState.maxValue is 0 pre-layout.
             val maxScrollPx = (hourHeightPx * HourCount) + with(density) { ScrollBottomPadding.toPx() } - viewportHeightPx
             val finalTarget = targetScrollPx.coerceIn(0, maxScrollPx.toInt())
 
@@ -202,10 +173,7 @@ fun TimelineGrid(
             }
         }
 
-        // Hours currently visible in the scrollport — drives the hint chips.
-        // derivedStateOf throttles recomputation to actual visibility flips.
-        // Keys are required so the lambda re-captures fresh values when events
-        // load asynchronously after first composition.
+        // Keys MUST include earliest/latest — derivedStateOf otherwise captures stale nulls.
         val showAboveHint by remember(earliestEventHour, hourHeightPx) {
             derivedStateOf {
                 val earliest = earliestEventHour ?: return@derivedStateOf false
@@ -231,7 +199,6 @@ fun TimelineGrid(
                     .fillMaxWidth()
                     .height(totalHeight),
             ) {
-                // Hour grid lines and labels
                 repeat(HourCount) { hour ->
                     val yOffset = HourHeight * hour
 
@@ -255,7 +222,6 @@ fun TimelineGrid(
                     )
                 }
 
-                // Per-column rendering
                 columnDates.forEachIndexed { colIndex, date ->
                     val xOffset = TimeLabelWidth + (columnWidth * colIndex)
 
@@ -274,11 +240,7 @@ fun TimelineGrid(
                         val isAssignment = event.type == EventType.ASSIGNMENT
                         val minHeight = if (isAssignment) MinAssignmentBlockHeight else MinBlockHeight
                         val blockHeight = (HourHeight * durationFraction).coerceAtLeast(minHeight)
-                        // Assignments are due-time-only: anchor the pill's BOTTOM edge at the
-                        // due time so it reads as "ends when due" rather than "starts when due"
-                        // (a 10 AM-due assignment showing 10–11 AM looks like it runs through
-                        // 11). For early-morning dues, clamp the top to 0 so we don't bleed off
-                        // the grid; for late-day dues, the same clamp keeps it on-screen.
+                        // Anchor ASSIGNMENT bottom at due time — top-anchor reads as "starts at due."
                         val rawY = if (isAssignment) {
                             (HourHeight * startFraction - blockHeight).coerceAtLeast(0.dp)
                         } else {
@@ -287,7 +249,6 @@ fun TimelineGrid(
                         val maxY = (totalHeight - blockHeight).coerceAtLeast(0.dp)
                         val yOffset = rawY.coerceAtMost(maxY)
 
-                        // Overflow cap
                         if (maxVisibleOverlaps > 0 && layout.indexInGroup >= maxVisibleOverlaps) {
                             overflowSlots[startFraction] =
                                 (overflowSlots[startFraction] ?: 0) + 1
@@ -314,7 +275,6 @@ fun TimelineGrid(
                         )
                     }
 
-                    // "+N" overflow badges
                     if (onDayClick != null) {
                         overflowSlots.forEach { (startFraction, count) ->
                             OverflowBadge(
@@ -331,9 +291,7 @@ fun TimelineGrid(
                     }
                 }
 
-                // "Now" indicator — horizontal line + leading dot on today's column.
-                // Renders only on the column whose date == today; week view scopes
-                // it to one column, day view either shows it (today) or doesn't.
+                // Scopes the now-line to today's column only (not all seven in week view).
                 val todayColIndex = columnDates.indexOf(today)
                 if (todayColIndex >= 0) {
                     val nowXOffset = TimeLabelWidth + (columnWidth * todayColIndex)
@@ -357,13 +315,11 @@ fun TimelineGrid(
                     )
                 }
             }
-            // Trailing scroll spacer so late-day pills clear the FAB stack.
+            // Bottom spacer so late-day pills clear the FAB stack.
             Spacer(Modifier.height(ScrollBottomPadding))
         }
 
-        // Off-screen-event hint chips. Sit fixed inside the BoxWithConstraints
-        // (above the scrolling column) and only appear when there's an event
-        // outside the current viewport in that direction.
+        // Fixed above the scroller; appear only when off-viewport events exist. Tap scrolls in.
         AnimatedVisibility(
             visible = showAboveHint,
             enter = fadeIn() + slideInVertically { -it },
@@ -379,8 +335,7 @@ fun TimelineGrid(
                 onClick = {
                     val target = earliestEventHour ?: return@OffscreenHintChip
                     coroutineScope.launch {
-                        // Land scroll so the event sits ~1 hour below the top edge
-                        // — gives breathing room above. Clamp to grid limits.
+                        // Land ~1hr below top edge for breathing room.
                         val targetPx = ((target - 1f) * hourHeightPx).toInt()
                         scrollState.animateScrollTo(
                             targetPx.coerceIn(0, scrollState.maxValue),
@@ -405,9 +360,7 @@ fun TimelineGrid(
                     val target = latestEventHour ?: return@OffscreenHintChip
                     coroutineScope.launch {
                         val scrollBottomPaddingPx = with(density) { ScrollBottomPadding.toPx() }
-                        // Land scroll so the event sits ~1 hour above the FAB stack
-                        // rather than just the viewport bottom — ensures the pill
-                        // clears the navigation/FAB area.
+                        // Subtract FAB padding — raw viewport bottom would hide pill behind FABs.
                         val targetBottomPx = (target + 1f) * hourHeightPx
                         val targetTopPx = (targetBottomPx - (viewportHeightPx - scrollBottomPaddingPx)).toInt()
                         scrollState.animateScrollTo(
@@ -459,10 +412,8 @@ private fun TimelineEventBlock(
 ) {
     val colors = MaterialTheme.colorScheme
     val onEventPill = EkhoColors.current.onEventPill
-    // ASSIGNMENT type wins first (matches EkhoEventRow's toRowState logic).
-    // LocalAssignmentDecorator overrides the bg per-course when known; primary
-    // garnet stays the fallback for course-less assignments and Canvas rows
-    // whose courseId hasn't been bridged yet.
+    // ASSIGNMENT wins before source branches (mirrors EkhoEventRow). primary
+    // is the fallback for course-less or unbridged Canvas rows.
     val courseColor = if (event.type == EventType.ASSIGNMENT) {
         LocalAssignmentDecorator.current.courseColorFor(event.id)
     } else {
@@ -486,10 +437,7 @@ private fun TimelineEventBlock(
 
     val isPendingInvite = event.myRsvpStatus == RsvpStatus.PENDING
     val pendingBorder = colors.error
-    // Pill alpha priority: pending (needs attention, strongest dim) → completed
-    // (struck-through, dim) → past (subtle dim, no strike — the user can still
-    // tell it's past via context). Past + completed collapse to the completed
-    // treatment so completed history reads uniformly across weeks.
+    // Alpha priority: pending > completed > past. Past+completed → completed.
     val isCompletedPill = LocalAssignmentDecorator.current.isCompleted(event.id)
     val isPastEvent = event.isPast()
     val effectiveBg = when {
@@ -527,9 +475,7 @@ private fun TimelineEventBlock(
             .clickable { onClick() }
             .padding(horizontal = 4.dp, vertical = 2.dp),
     ) {
-        // Strikethrough completed assignments — same source of truth as the
-        // detail screen and event rows. effectiveText is already alpha-dimmed
-        // when isCompletedPill so we don't double-dim here.
+        // effectiveText is already dimmed for completed — don't double-dim here.
         Column {
             Text(
                 text = event.eventName.ifEmpty { event.title },
@@ -579,17 +525,13 @@ private fun OverflowBadge(
     }
 }
 
-// ══════════════════════════════════════════════════
-// Overlap layout algorithm
-// ══════════════════════════════════════════════════
-
 internal data class EventLayout(
     val event: CalendarEvent,
     val indexInGroup: Int,
     val totalInGroup: Int,
 )
 
-/** Floor for an event's effective end time in layout — keeps degenerate ranges from escaping overlap detection. */
+// Floor so zero-duration events still register as overlapping when stacked.
 private val MinLayoutDuration: Duration = Duration.ofMinutes(15)
 
 private val CalendarEvent.layoutEndTime: Instant
@@ -598,10 +540,6 @@ private val CalendarEvent.layoutEndTime: Instant
         return if (endTime.isAfter(floor)) endTime else floor
     }
 
-/**
- * Assigns horizontal positions to events that overlap in time.
- * Events that don't overlap get the full column width.
- */
 internal fun layoutEventsForDay(
     events: List<CalendarEvent>,
     zone: ZoneId,

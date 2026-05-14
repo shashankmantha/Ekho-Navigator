@@ -42,23 +42,13 @@ import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Locale
 
-/**
- * One dot rendered under a date. Canvas events with a known course render as
- * [CourseSlot] (per-course palette color); everything else falls back to the
- * generic [Source] type color so a single garnet "Canvas" dot doesn't paper
- * over the per-course identity already shown in timeline pills.
- */
+// Per-course palette when courseId is known; source-type fallback otherwise.
+// Keeps dot identity aligned with the timeline pills.
 sealed interface DayDot {
     data class Source(val type: EventSourceType) : DayDot
     data class CourseSlot(val slot: Int) : DayDot
 }
 
-/**
- * Compact horizontal-swipe month calendar for day/week navigation.
- * Shows small date numbers with colored dots for days that have events.
- * Tapping a day fires [onDayClick]. Includes a scrollable month tab row at
- * the bottom.
- */
 @Composable
 fun MiniMonthCalendar(
     selectedDate: LocalDate,
@@ -80,14 +70,12 @@ fun MiniMonthCalendar(
         outDateStyle = OutDateStyle.EndOfGrid,
     )
 
-    // Notify parent when visible month changes
     LaunchedEffect(calendarState) {
         snapshotFlow { calendarState.firstVisibleMonth.yearMonth }
             .distinctUntilChanged()
             .collect { month -> onMonthChanged(month) }
     }
 
-    // Scroll to selected date's month when it changes externally
     LaunchedEffect(selectedDate) {
         val targetMonth = YearMonth.from(selectedDate)
         if (calendarState.firstVisibleMonth.yearMonth != targetMonth) {
@@ -102,7 +90,7 @@ fun MiniMonthCalendar(
             .fillMaxWidth()
             .padding(top = 4.dp)
     ) {
-        // Calendar grid — day-of-week header is inside monthHeader so columns align
+        // Header nested in monthHeader so its columns align with the date grid.
         HorizontalCalendar(
             state = calendarState,
             monthHeader = {
@@ -140,18 +128,13 @@ fun MiniMonthCalendar(
     }
 }
 
-/**
- * Maps a [DayDot] to its rendered color. Source dots resolve from the current
- * theme; CourseSlot dots resolve from the per-course rotation palette so the
- * mini-calendar's dots match the colors users see on the timeline pills.
- */
 @Composable
 private fun dotColorFor(dot: DayDot): Color = when (dot) {
     is DayDot.Source -> when (dot.type) {
         EventSourceType.CUSTOM -> MaterialTheme.colorScheme.secondary
         EventSourceType.CAMPUS -> MaterialTheme.colorScheme.onSurfaceVariant
         EventSourceType.BOOKMARKED -> MaterialTheme.colorScheme.tertiary
-        // Canvas LMS identity, NOT brand chrome — design.md §5.
+        // Cardinal is LMS-identity, not brand chrome (design.md §5).
         EventSourceType.CANVAS -> EkhoColors.current.cardinal
     }
     is DayDot.CourseSlot -> {
@@ -181,8 +164,7 @@ private fun MiniDayCell(
     val todayBg = MaterialTheme.colorScheme.onSurface
     val selectedBg = MaterialTheme.colorScheme.surfaceContainerHighest
 
-    // Resolve dot colors while in composable scope. Cap dot count to avoid
-    // overflow on dense days (>4 distinct dots gets visually noisy).
+    // Resolve here — dotColorFor is @Composable but drawBehind isn't. Cap at 4 for density.
     val dotColors = if (isCurrentMonth && dots.isNotEmpty()) {
         dots.take(4).map { dotColorFor(it) }
     } else {
@@ -197,7 +179,6 @@ private fun MiniDayCell(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        // Date number with selection/today circle
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
@@ -218,7 +199,6 @@ private fun MiniDayCell(
             )
         }
 
-        // Colored event dot indicators — one dot per source type present
         Row(
             horizontalArrangement = Arrangement.spacedBy(2.dp),
             modifier = Modifier.padding(top = 1.dp),
@@ -233,7 +213,7 @@ private fun MiniDayCell(
                     )
                 }
             } else {
-                // Spacer to keep consistent height
+                // Spacer keeps empty-day row height equal to busy-day rows.
                 Box(modifier = Modifier.size(4.dp))
             }
         }

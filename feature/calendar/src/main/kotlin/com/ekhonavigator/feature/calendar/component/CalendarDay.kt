@@ -36,19 +36,12 @@ import com.ekhonavigator.core.model.isPast
 import com.kizitonwose.calendar.core.CalendarDay
 import com.kizitonwose.calendar.core.DayPosition
 
-/** Fixed height for each day cell. Fits date number + up to 5 event pills. */
+// Fits date number + MaxVisibleSlots pills at labelSmall sizing.
 val DayCellHeight: Dp = 100.dp
 
-/** Max visible event slots per cell. The last slot becomes "..." if there's overflow. */
+// Last slot becomes "…" on overflow.
 private const val MaxVisibleSlots = 5
 
-/**
- * A single day cell in the month calendar grid.
- *
- * Fixed height. Shows the date number at top, then event title previews as
- * colored pills (source-type colors). If more events than fit, shows "..."
- * overflow indicator.
- */
 @Composable
 fun DayContent(
     day: CalendarDay,
@@ -70,13 +63,6 @@ fun DayContent(
         else -> MaterialTheme.colorScheme.onSurface
     }
 
-    // Event taxonomy → pill colors (design.md §5):
-    //   Canvas / assignment fallback → Cardinal (Canvas-LMS identity).
-    //                                  Course-tagged rows override per-course
-    //                                  via LocalAssignmentDecorator (§6 palette).
-    //   USER_CREATED / SHARED         → Sage (secondary).
-    //   ICAL_FEED                     → muted neutral (no other tag).
-    //   ICAL_FEED + bookmarked        → Horizon (tertiary).
     val cardinal = EkhoColors.current.cardinal
     val onEventPill = EkhoColors.current.onEventPill
     val calendarPillColor = cardinal
@@ -110,7 +96,6 @@ fun DayContent(
             .padding(horizontal = 2.dp, vertical = 2.dp),
         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
     ) {
-        // Date number with today/selected highlight
         Text(
             text = day.date.dayOfMonth.toString(),
             style = MaterialTheme.typography.labelSmall,
@@ -129,12 +114,10 @@ fun DayContent(
             },
         )
 
-        // Event preview pills — only for current month dates
         if (events.isNotEmpty()) {
             Spacer(Modifier.height(1.dp))
 
             val hasOverflow = events.size > MaxVisibleSlots
-            // If overflow, the last slot becomes "..."
             val pillCount = if (hasOverflow) MaxVisibleSlots - 1 else events.size
             val visibleEvents = events.take(pillCount)
 
@@ -161,9 +144,7 @@ fun DayContent(
                     val pendingBorder = MaterialTheme.colorScheme.error
                     val isCompleted = decorator.isCompleted(event.id)
                     val isPastEvent = event.isPast()
-                    // Pill alpha priority: pending (needs attention) → completed
-                    // (struck-through) → past (subtle dim, no strike). Past + done
-                    // collapses to the completed treatment.
+                    // Alpha priority: pending > completed > past. Past+done → completed.
                     val effectivePillBg = when {
                         isPendingInvite -> pillBg.copy(alpha = 0.35f)
                         isCompleted -> pillBg.copy(alpha = 0.4f)
@@ -230,11 +211,6 @@ fun DayContent(
     }
 }
 
-/**
- * Returns (background, text) color pair for an event pill based on source type.
- * Campus events are muted by default, amber when bookmarked.
- * All colors come from MaterialTheme — no hardcoded hex.
- */
 private fun eventPillColors(
     event: CalendarEvent,
     calendarPill: Color,

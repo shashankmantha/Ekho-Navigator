@@ -47,34 +47,22 @@ class CalendarViewModel @Inject constructor(
     canvasCourseRepository: CanvasCourseRepository,
 ) : ViewModel() {
 
-    // customEventRepository.startSync() and the signed-in check were removed when
-    // AuthLifecycleObserver took over the boot/teardown lifecycle. Observer fires
-    // startSync on every uid != null transition (including app launch with a
-    // restored session) so VMs no longer need to.
-
-    // ══════════════════════════════════════════════════
-    // Shared state (used across Month + Day screens)
-    // ══════════════════════════════════════════════════
-
     private val _selectedDate = MutableStateFlow(LocalDate.now())
     val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
 
-    /** Multi-select source filter: all types active by default. */
-    // calendar excluded until class calendar import is implemented
+    // CAMPUS excluded by default until class-calendar import lands.
     private val _activeSourceTypes = MutableStateFlow(
         EventSourceType.entries.toSet() - EventSourceType.CAMPUS,
     )
     val activeSourceTypes: StateFlow<Set<EventSourceType>> = _activeSourceTypes.asStateFlow()
 
-    /** Multi-select category filter: empty = show all categories. */
+    // Empty = no filter (show all). Same convention for course ids below.
     private val _selectedCategories = MutableStateFlow<Set<EventCategory>>(emptySet())
     val selectedCategories: StateFlow<Set<EventCategory>> = _selectedCategories.asStateFlow()
 
-    /** Multi-select course filter: empty = show all courses (no filtering). */
     private val _selectedCourseIds = MutableStateFlow<Set<String>>(emptySet())
     val selectedCourseIds: StateFlow<Set<String>> = _selectedCourseIds.asStateFlow()
 
-    /** Event id → owning course id, used by [applyVisibilityFilters] for course filter. */
     private val eventIdToCourseId: StateFlow<Map<String, String>> = canvasPlannerRepository
         .observeAllItems()
         .map { items ->
@@ -82,12 +70,7 @@ class CalendarViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
-    /**
-     * Course list with palette slots — driven off the cached Canvas course set.
-     * Repository already filters to current-term courses (term.endAt > now), so the
-     * Courses chip list reflects only what the user is actively enrolled in this
-     * semester. Palette slots are stable: same family always lands in the same slot.
-     */
+    // Repo filters to current-term; palette slots key on family, stable across renders.
     val availableCourses: StateFlow<List<CourseFilterOption>> = canvasCourseRepository
         .observeCourses()
         .map { courses ->
@@ -105,24 +88,13 @@ class CalendarViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    // ══════════════════════════════════════════════════
-    // Month tab state
-    // ══════════════════════════════════════════════════
-
     private val _visibleMonthRange = MutableStateFlow(
         YearMonth.now() to YearMonth.now()
     )
 
     init {
-        // Fire-and-forget Canvas sync per visible window. Pulls a generous half-semester
-        // window (2 months back, 3 months forward) so past-due assignments and far-future
-        // items both surface — the visible month is just the centerpoint, not the boundary.
-        // X-Request-Cost was ~0.12 per call in the spike, so even four months stays well
-        // under the per-token quota. NoCanvasAccountException is expected when no PAT is
-        // connected; surfacing sync state is C7 polish.
-        // Block lives here (after _visibleMonthRange's declaration) because Kotlin
-        // initializes properties in declaration order — referencing it from the
-        // top-of-class init block would NPE at construction time.
+        // Init sits AFTER _visibleMonthRange — declaration-order init would NPE.
+        // Canvas sync pulls -2/+3 months so past-due and far-future both surface.
         viewModelScope.launch {
             _visibleMonthRange.collect { (first, last) ->
                 val zone = ZoneId.systemDefault()
@@ -133,11 +105,7 @@ class CalendarViewModel @Inject constructor(
         }
     }
 
-    /**
-     * All events visible on the calendar grid (unfiltered).
-     * Spans from one week before the first visible month to one week
-     * after the last visible month, covering all bleed-in days.
-     */
+    // ±1 week bleed-in covers prev/next-month days visible at grid edges.
     private val rawEventsForMonth: StateFlow<List<CalendarEvent>> = _visibleMonthRange
         .flatMapLatest { (first, last) ->
             val zone = ZoneId.systemDefault()
@@ -147,7 +115,6 @@ class CalendarViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** Events for the month, filtered by source types + categories + courses. */
     val eventsForMonth: StateFlow<List<CalendarEvent>> = combine(
         rawEventsForMonth,
         _activeSourceTypes,
@@ -158,7 +125,6 @@ class CalendarViewModel @Inject constructor(
         events.applyVisibilityFilters(activeTypes, categories, courseIds, eventCourseMap)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** Events for the selected date, filtered by source types + categories + courses (for DayScreen). */
     val eventsForSelectedDate: StateFlow<List<CalendarEvent>> = _selectedDate
         .flatMapLatest { date ->
             val zone = ZoneId.systemDefault()
@@ -176,15 +142,10 @@ class CalendarViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    // ══════════════════════════════════════════════════
-    // Week tab state
-    // ══════════════════════════════════════════════════
-
     private val _selectedWeekStart = MutableStateFlow(weekStartFor(LocalDate.now()))
 
     val selectedWeekStart: StateFlow<LocalDate> = _selectedWeekStart.asStateFlow()
 
-    /** Events for the selected week (Sunday–Saturday), filtered. */
     val eventsForWeek: StateFlow<List<CalendarEvent>> = _selectedWeekStart
         .flatMapLatest { weekStart ->
             val zone = ZoneId.systemDefault()
@@ -202,13 +163,8 @@ class CalendarViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    // ══════════════════════════════════════════════════
-    // Mini-calendar state (Day tab / Week tab dot indicators)
-    // ══════════════════════════════════════════════════
-
     private val _miniCalendarMonth = MutableStateFlow(YearMonth.now())
 
-    /** Course id → palette slot lookup, used by mini-calendar dot derivation. */
     private val courseSlotsById: StateFlow<Map<String, Int>> = canvasCourseRepository
         .observeCourses()
         .map { courses ->
@@ -218,12 +174,8 @@ class CalendarViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
-    /**
-     * Per-date dot indicators for the mini-calendar. Canvas events with a
-     * known course render as their per-course palette slot; everything else
-     * falls back to source type. Distinct set per day so dense days show one
-     * dot per identity, not one per event.
-     */
+    // Per-course slot for Canvas-with-courseId; source-type fallback otherwise.
+    // Distinct set per day so dense days don't repeat dots.
     val miniCalendarDayDots: StateFlow<Map<LocalDate, Set<DayDot>>> =
         _miniCalendarMonth
             .flatMapLatest { month ->
@@ -268,10 +220,6 @@ class CalendarViewModel @Inject constructor(
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
-    // ══════════════════════════════════════════════════
-    // Actions — calendar source filter (Month + Day)
-    // ══════════════════════════════════════════════════
-
     fun selectDate(date: LocalDate) {
         _selectedDate.value = date
     }
@@ -310,36 +258,26 @@ class CalendarViewModel @Inject constructor(
         _selectedCourseIds.value = emptySet()
     }
 
-    /**
-     * One-shot initializer: sets the source-type and category filters to match
-     * the parent calendar screen's active selections. Called when the DayScreen
-     * is first composed with filter params from the nav key.
-     */
     fun initializeFilters(
         sourceTypes: Set<EventSourceType>,
         categories: Set<EventCategory>,
     ) {
+        // Empty sourceTypes = keep defaults. Empty categories = show all (always apply).
         if (sourceTypes.isNotEmpty()) {
             _activeSourceTypes.value = sourceTypes
         }
-        // Empty categories = show all, which is already the default,
-        // so we always apply what was passed.
         _selectedCategories.value = categories
     }
 
     fun toggleSourceType(type: EventSourceType) {
         val current = _activeSourceTypes.value
-        // Don't allow deselecting all — at least one must stay active
+        // At least one source type must stay active.
         if (type in current && current.size > 1) {
             _activeSourceTypes.value = current - type
         } else if (type !in current) {
             _activeSourceTypes.value = current + type
         }
     }
-
-    // ══════════════════════════════════════════════════
-    // Actions — Shared
-    // ══════════════════════════════════════════════════
 
     fun toggleBookmark(eventId: String) {
         viewModelScope.launch {
@@ -348,11 +286,7 @@ class CalendarViewModel @Inject constructor(
     }
 }
 
-/**
- * Applies the calendar's visibility rules. Past pending invites are hidden so
- * stale "going?" cards don't clutter days the user already lived through; the
- * Invites screen still surfaces them via its own "Show past" toggle.
- */
+// Past pending invites are hidden here; the Invites screen has its own "Show past" toggle.
 private fun List<CalendarEvent>.applyVisibilityFilters(
     activeTypes: Set<EventSourceType>,
     categories: Set<EventCategory>,
@@ -364,9 +298,7 @@ private fun List<CalendarEvent>.applyVisibilityFilters(
         val isStalePendingInvite = event.source == EventSource.SHARED &&
             event.myRsvpStatus == RsvpStatus.PENDING &&
             event.isPast(now)
-        // Course filter only applies to ASSIGNMENT events; an empty set means
-        // "no filter" (show all). When non-empty, ASSIGNMENT events without a
-        // bridged courseId are hidden — they belong to no selected course.
+        // Course filter scopes to ASSIGNMENTs only; unbridged ones drop when set is non-empty.
         val coursePasses = selectedCourseIds.isEmpty() ||
             event.type != EventType.ASSIGNMENT ||
             eventIdToCourseId[event.id] in selectedCourseIds
@@ -377,7 +309,6 @@ private fun List<CalendarEvent>.applyVisibilityFilters(
     }
 }
 
-/** Map a [CalendarEvent] to its display [EventSourceType] for dot coloring. */
 private fun CalendarEvent.toSourceType(): EventSourceType = when {
     source == EventSource.ICAL_FEED && isBookmarked -> EventSourceType.BOOKMARKED
     source == EventSource.ICAL_FEED -> EventSourceType.CAMPUS
@@ -386,6 +317,5 @@ private fun CalendarEvent.toSourceType(): EventSourceType = when {
     else -> EventSourceType.CAMPUS
 }
 
-/** Get the Sunday that starts the week containing [date]. */
 internal fun weekStartFor(date: LocalDate): LocalDate =
     date.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))

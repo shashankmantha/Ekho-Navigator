@@ -15,10 +15,6 @@ import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 
-/**
- * Compact month/year label used as a section divider in the vertical calendar.
- * Navigation is handled by vertical scroll and horizontal swipe gesture on the grid.
- */
 @Composable
 fun CalendarTitle(
     month: YearMonth,
@@ -34,9 +30,6 @@ fun CalendarTitle(
     )
 }
 
-/**
- * Row of day-of-week abbreviations (S M T W T F S) shown above the calendar grid.
- */
 @Composable
 fun DaysOfWeekHeader(
     daysOfWeek: List<DayOfWeek>,

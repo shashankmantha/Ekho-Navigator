@@ -6,14 +6,7 @@ import com.ekhonavigator.core.model.EventSourceType
 import com.ekhonavigator.core.navigation.Navigator
 import kotlinx.serialization.Serializable
 
-/**
- * Navigation key for the day detail screen.
- * @param epochDay The day as [java.time.LocalDate.toEpochDay] for serialization.
- * @param sourceTypes Active source-type filter names from the parent calendar screen.
- *   Empty list means "use ViewModel defaults".
- * @param categories Active category filter names from the parent calendar screen.
- *   Empty list means "no category filter" (show all).
- */
+// Empty sourceTypes = use ViewModel defaults. Empty categories = show all.
 @Serializable
 data class DayNavKey(
     val epochDay: Long,

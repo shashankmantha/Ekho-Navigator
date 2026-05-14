@@ -70,13 +70,12 @@ internal fun MonthTab(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Pinned day-of-week header (doesn't scroll)
             DaysOfWeekHeader(
                 daysOfWeek = daysOfWeek,
                 modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
             )
 
-            // Vertically scrolling calendar grid — horizontal swipe jumps months
+            // Horizontal swipe jumps month — overrides VerticalCalendar's default gesture.
             VerticalCalendar(
                 state = calendarState,
                 modifier = Modifier.pointerInput(Unit) {
