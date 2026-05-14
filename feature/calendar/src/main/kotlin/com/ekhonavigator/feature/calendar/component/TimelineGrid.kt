@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -440,11 +441,14 @@ private fun TimelineEventBlock(
     // Alpha priority: pending > completed > past. Past+completed → completed.
     val isCompletedPill = LocalAssignmentDecorator.current.isCompleted(event.id)
     val isPastEvent = event.isPast()
+    // Dark-mode palette runs bright — knock current pills back so white text
+    // reads on top. Past/completed/pending tier down from there.
+    val baseAlpha = if (isSystemInDarkTheme()) 0.8f else 1f
     val effectiveBg = when {
         isPendingInvite -> bgColor.copy(alpha = 0.35f)
         isCompletedPill -> bgColor.copy(alpha = 0.4f)
-        isPastEvent -> bgColor.copy(alpha = 0.65f)
-        else -> bgColor
+        isPastEvent -> bgColor.copy(alpha = 0.55f)
+        else -> bgColor.copy(alpha = baseAlpha)
     }
     val effectiveText = when {
         isPendingInvite -> textColor.copy(alpha = 0.75f)

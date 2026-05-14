@@ -2,6 +2,7 @@ package com.ekhonavigator.feature.calendar.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -144,12 +145,13 @@ fun DayContent(
                     val pendingBorder = MaterialTheme.colorScheme.error
                     val isCompleted = decorator.isCompleted(event.id)
                     val isPastEvent = event.isPast()
-                    // Alpha priority: pending > completed > past. Past+done → completed.
+                    // Knock dark-mode pills back so white text reads on top.
+                    val baseAlpha = if (isSystemInDarkTheme()) 0.8f else 1f
                     val effectivePillBg = when {
                         isPendingInvite -> pillBg.copy(alpha = 0.35f)
                         isCompleted -> pillBg.copy(alpha = 0.4f)
-                        isPastEvent -> pillBg.copy(alpha = 0.65f)
-                        else -> pillBg
+                        isPastEvent -> pillBg.copy(alpha = 0.55f)
+                        else -> pillBg.copy(alpha = baseAlpha)
                     }
 
                     Box(

@@ -34,10 +34,10 @@ internal val CoursePaletteLight: List<Color> = listOf(
 internal val CoursePaletteDark: List<Color> = listOf(
     Color(0xFF7AA8C0), // 1 — Islands Blue   200°
     Color(0xFFC4A8D0), // 2 — Charoite       290°
-    Color(0xFFE8D195), // 3 — Citrine         46° — lifted from #DBC176 to keep
-                       //                            dark-text legibility once
-                       //                            past-event fade lowers the pill
-                       //                            toward the dark surface.
+    Color(0xFFB8965A), // 3 — Citrine         46° — kept darker than the rest of
+                       //                            the dark palette so white text
+                       //                            reads on top; yellow is bright
+                       //                            no matter what.
     Color(0xFF8FA8DD), // 4 — Mariner        220°
     Color(0xFF7DBFBD), // 5 — Tidepool       178°
     Color(0xFF998BB5), // 6 — Plum           265°
