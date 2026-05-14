@@ -6,22 +6,12 @@ import com.ekhonavigator.core.database.model.CanvasPlannerItemEntity
 import com.ekhonavigator.core.model.EventSource
 import com.ekhonavigator.core.model.EventType
 
-/** Source-type discriminator for calendar_events rows mirrored from canvas_planner_items. */
 internal const val CANVAS_PLANNER_ITEM_SOURCE = "canvas_planner_item"
 
-/**
- * Projects a Canvas planner item onto the unified calendar surface, or returns null
- * for plannable kinds users don't want on a calendar (calendar_events are typically
- * instructor-authored office-hours / nice-to-know items — they live in the planner
- * table for a future opt-in toggle but stay off the calendar by default), or kinds
- * we surface elsewhere (announcements / discussions go to the notifications bell).
- *
- * `description` stays empty here — Canvas's planner endpoint doesn't include the
- * assignment body. Phase 7.A2 backfills `description` from the per-course
- * assignments endpoint after sync, so EventScreen will get richer text without
- * any change to this mapper. `location` has no Canvas equivalent at all, and
- * `categories` is empty by design — Canvas doesn't carry our category taxonomy.
- */
+// Returns null for plannable kinds we surface elsewhere (announcements →
+// bell) or hide by default (calendar_events are usually instructor noise).
+// description stays empty — the planner endpoint doesn't include the body;
+// it gets backfilled from the per-course assignments endpoint after sync.
 internal fun CanvasPlannerItemEntity.toCalendarEventOrNull(): CalendarEventEntity? {
     val kind = PlannerKind.fromCanvasType(plannableType)
     val instant = when (kind) {
@@ -48,9 +38,6 @@ internal fun CanvasPlannerItemEntity.toCalendarEventOrNull(): CalendarEventEntit
         pendingSync = false,
         eventName = title,
         organization = contextName.orEmpty(),
-        // Surface the plannable kind ("Assignment" / "Quiz") as the eventType
-        // ribbon on EventScreen — was empty before, leaving the detail screen
-        // saying nothing about what kind of Canvas thing the user is looking at.
         eventType = kind.displayName(),
         placeId = null,
         externalSourceId = id,

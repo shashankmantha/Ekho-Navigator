@@ -41,11 +41,8 @@ internal class DefaultCanvasAssignmentRepository @Inject constructor(
             groupDao.observeForCourse(courseId),
             assignmentDao.observeForCourse(courseId),
         ) { groupEntities, assignmentEntities ->
-            // Read-side join via the foreign-id column. The domain model
-            // doesn't surface assignmentGroupId, so build the id→groupId
-            // lookup from the entities up-front and groupBy against it. Any
-            // assignment with a null groupId drops into the synthetic
-            // "Other" bucket composed below.
+            // Read-side join via the entity's foreign-id column (the domain
+            // model doesn't surface assignmentGroupId).
             val groupIdByAssignment = assignmentEntities.associate { it.id to it.assignmentGroupId }
             val assignmentsByGroup = assignmentEntities
                 .map(CanvasAssignmentEntity::toDomainModel)
@@ -53,8 +50,7 @@ internal class DefaultCanvasAssignmentRepository @Inject constructor(
             val knownGroups = groupEntities.map { entity ->
                 entity.toDomainModel(assignmentsByGroup[entity.id].orEmpty())
             }
-            // Synthetic group catches ungrouped assignments; only included when
-            // non-empty so a fully-categorized course doesn't grow an empty bucket.
+            // Synthetic "Other" bucket — only added when actually populated.
             val ungrouped = assignmentsByGroup[null].orEmpty()
             if (ungrouped.isEmpty()) knownGroups
             else knownGroups + CanvasAssignmentGroup(
@@ -85,18 +81,16 @@ internal class DefaultCanvasAssignmentRepository @Inject constructor(
 
             val domain = accountSource.currentOrNull()?.domain
 
-            // Group entities first — they hold the weights the UI joins to.
+            // Groups first — they hold the weights the UI joins to.
             val groupEntities = groupDtos.map { it.toEntity(courseId = courseId) }
             groupDao.upsertAll(groupEntities)
             groupDao.deleteForCourseExcept(courseId, groupEntities.map { it.id })
 
-            // Assignment entities second; tag each with its parent group so the
-            // read-side join on the foreign-id column works regardless of whether
-            // Canvas duplicated the field on the assignment payload.
+            // Tag each assignment with its parent group so the read-side join
+            // works even if Canvas omits the field on the assignment payload.
             val assignmentEntities = flatAssignments.map { (dto, groupId) ->
                 val entity = dto.toEntity(overrideGroupId = groupId)
-                // Local-val capture for cross-module smart-cast on htmlUrl —
-                // same workaround as the planner + course sync paths.
+                // Local val — cross-module properties don't smart-cast.
                 val rawUrl = entity.htmlUrl
                 if (domain != null && !rawUrl.isNullOrBlank()) {
                     entity.copy(htmlUrl = absolutizeCanvasUrl(rawUrl, domain))
@@ -117,12 +111,8 @@ internal class DefaultCanvasAssignmentRepository @Inject constructor(
         groupDao.deleteAll()
     }
 
-    /**
-     * Walks Canvas's `Link: rel="next"` pagination chain on the
-     * assignment_groups endpoint. Per-course group counts are tiny (a handful
-     * of buckets) so multi-page responses are unlikely, but the safety cap
-     * mirrors the assignments-only path it replaces.
-     */
+    // Walks rel="next" pagination. Per-course groups are tiny so this almost
+    // never paginates — safety cap mirrors the assignments path.
     private suspend fun fetchAllPages(api: CanvasApi, courseId: String): List<CanvasAssignmentGroupDto> {
         val all = mutableListOf<CanvasAssignmentGroupDto>()
         var response = api.getAssignmentGroups(courseId)
@@ -142,23 +132,16 @@ internal class DefaultCanvasAssignmentRepository @Inject constructor(
         return all
     }
 
-    /**
-     * Backfills assignment description onto matching `calendar_events` rows so
-     * EventScreen renders rich text for Canvas events without an extra read-time
-     * join. Match key is the planner-bridged uid format: `assignment_${id}`.
-     *
-     * Logs the join hit-rate as cheap insurance — if Canvas ever changes the id
-     * shape we'll see the rate drop in logcat the first time we test.
-     */
+    // Lets EventScreen render rich text without an extra read-time join.
+    // Match key is the planner-bridged uid: assignment_<id>. Match rate is
+    // logged so we'd notice if Canvas ever changes the id shape.
     private suspend fun backfillDescriptionsToCalendarEvents(entities: List<CanvasAssignmentEntity>) {
         var matched = 0
         for (a in entities) {
             val description = a.description ?: continue
             if (description.isBlank()) continue
             val plannerBridgedUid = "assignment_${a.id}"
-            // Skip the update entirely if the row doesn't exist — UPDATE on a
-            // non-existent row would be a silent no-op anyway, but the existence
-            // check lets us count match rate honestly.
+            // Existence check lets us count match rate honestly.
             val existing = calendarEventDao.getEventById(plannerBridgedUid)
             if (existing != null) {
                 calendarEventDao.updateDescription(plannerBridgedUid, description)

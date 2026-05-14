@@ -10,15 +10,8 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Single source of truth for "is the current Firebase user actively connected to
- * Canvas?" — i.e. signed in AND has a stored institution AND has a stored PAT
- * for that account. Exposed as a Flow so any UI surface can react.
- *
- * Drives the [com.ekhonavigator.core.designsystem.theme.LocalCanvasConnected]
- * CompositionLocal at the app root, which gates Canvas-only chrome (course
- * filter chips, Canvas source toggle, future per-class detail entry points).
- */
+// Signed in AND has a stored institution AND PAT for the current account.
+// Drives LocalCanvasConnected, which gates Canvas-only chrome.
 @Singleton
 class CanvasConnectionState @Inject constructor(
     private val authRepository: AuthRepository,

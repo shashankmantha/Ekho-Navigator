@@ -45,9 +45,8 @@ internal class DefaultCanvasPlannerRepository @Inject constructor(
             val api = apiProvider.current()
                 ?: throw NoCanvasAccountException.also { Log.d(TAG, "sync skipped: no Canvas account connected") }
 
-            // Canvas's /planner/items returns only favorited-course items unless we
-            // explicitly request each course via context_codes[]. Make sure the course
-            // cache is populated so we have IDs to pass.
+            // /planner/items hides non-favorited courses unless we pass each
+            // one in context_codes[]. Populate the course cache first.
             var courses = courseRepository.observeCourses().first()
             if (courses.isEmpty()) {
                 courseRepository.sync().getOrNull()
@@ -58,11 +57,8 @@ internal class DefaultCanvasPlannerRepository @Inject constructor(
 
             val dtos = fetchAllPages(api, contextCodes, start, end)
             Log.d(TAG, "sync: Canvas returned ${dtos.size} planner items")
-            // Canvas returns `html_url` as a relative path (`/courses/.../assignments/...`).
-            // Store the absolute form so any "Open in Canvas" launch can resolve it
-            // without having to plumb the institution domain into every render site.
-            // Falls back to the relative URL if no account (shouldn't happen here —
-            // the api call above would have already 401'd — but defensive).
+            // Absolutize html_url at persist time — Canvas returns it relative,
+            // and we don't want to plumb the domain into every render site.
             val domain = accountSource.currentOrNull()?.domain
             val entities = dtos.map { dto ->
                 dto.toEntity().let { entity ->
@@ -89,12 +85,8 @@ internal class DefaultCanvasPlannerRepository @Inject constructor(
         }
     }
 
-    /**
-     * Walks Canvas's `Link: rel="next"` pagination chain until exhausted or a safety cap.
-     * Canvas's planner endpoint caps at 100 items per page, so a single call to a
-     * 5-month, 10-course window easily spills past page 1. Cap protects against runaway
-     * loops if Canvas ever returns a malformed Link header.
-     */
+    // Walks rel="next" pagination. 5-month, 10-course windows easily spill
+    // past one page. Cap protects against malformed Link headers.
     private suspend fun fetchAllPages(
         api: CanvasApi,
         contextCodes: List<String>,
@@ -125,9 +117,8 @@ internal class DefaultCanvasPlannerRepository @Inject constructor(
 
     override suspend fun clearAll() {
         plannerDao.deleteAll()
-        // The bridged rows in calendar_events are what surface as "Canvas events"
-        // on the calendar grid — wiping only the planner cache leaves zombie pills
-        // until the next sync, which never happens after disconnect.
+        // Wipe bridged calendar_events too — sync never runs again after
+        // disconnect, so leftover pills would linger.
         calendarEventDao.deleteByExternalSource(CANVAS_PLANNER_ITEM_SOURCE)
     }
 

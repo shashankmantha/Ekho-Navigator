@@ -2,24 +2,14 @@ package com.ekhonavigator.core.canvas.model
 
 import java.time.LocalDate
 
-/**
- * Parsed academic term derived from a Canvas `term.name` (e.g. "Spring 2026") or
- * a course `name` prefix (e.g. "FA25 - Advising Resources..."). Canvas's
- * `term.end_at` is the authoritative source when present, but at CSUCI it's
- * frequently null even for past-term courses — Canvas itself shows them as
- * active because there's no end timestamp. This parser is the fallback that
- * answers "is this course in the current semester?" purely from text.
- */
+// Text fallback for Canvas's term.end_at, which is frequently null at CSUCI
+// even for past-term courses. Parses "Spring 2026" or "FA25"-style markers.
 data class AcademicTerm(val season: Season, val year: Int) {
 
     enum class Season { SPRING, SUMMER, FALL, WINTER }
 
-    /**
-     * Inclusive calendar bounds of the term. CSUCI specifics aren't strict — the
-     * windows are wide enough to cover the typical semester (registration through
-     * grade-post) without bleeding into the next, so a simple `today in bounds`
-     * check produces the right answer for normal cases.
-     */
+    // Wide windows cover registration through grade-post without bleeding into
+    // the next term — strict CSUCI dates aren't needed for "is this current?"
     private fun bounds(): Pair<LocalDate, LocalDate> = when (season) {
         Season.SPRING -> LocalDate.of(year, 1, 1) to LocalDate.of(year, 5, 31)
         Season.SUMMER -> LocalDate.of(year, 6, 1) to LocalDate.of(year, 8, 14)
@@ -33,17 +23,8 @@ data class AcademicTerm(val season: Season, val year: Int) {
     }
 }
 
-/**
- * Best-effort parser for term markers embedded in Canvas-supplied strings.
- *
- * Recognized formats:
- * - Long: "Spring 2026", "Fall 2025", "Summer 2024" — case-insensitive, optional trailing words
- * - Short: "SP26", "FA25", "SU24", "WI25" — case-insensitive, 2-digit year (assumed 20xx)
- * - Embedded: "FA25 - Advising Resources...", "Spring 2026 Term"
- *
- * Returns null when no term marker is present (treat caller as "term unknown" —
- * usually safer to include the course than to hide it incorrectly).
- */
+// Accepts "Spring 2026", "FA25", and embedded variants. Null = "term unknown" —
+// callers should usually include the course rather than hide it incorrectly.
 object TermNameParser {
 
     private val LONG_FORM = Regex(
@@ -51,8 +32,7 @@ object TermNameParser {
         RegexOption.IGNORE_CASE,
     )
 
-    // Word-boundary on the left so "SPACE 26" doesn't match the "SP" prefix.
-    // Two-digit year only — four-digit years are caught by LONG_FORM.
+    // Word-boundary so "SPACE 26" doesn't match "SP". Long form catches 4-digit years.
     private val SHORT_FORM = Regex(
         "\\b(sp|su|fa|fall|wi)(\\d{2})\\b",
         RegexOption.IGNORE_CASE,

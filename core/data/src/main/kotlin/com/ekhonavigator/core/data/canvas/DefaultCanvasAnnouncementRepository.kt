@@ -50,17 +50,15 @@ internal class DefaultCanvasAnnouncementRepository @Inject constructor(
             )
             Log.d(TAG, "sync: Canvas returned ${dtos.size} announcements for course $courseId")
 
-            // Preserve per-row readAt — `@Upsert` rewrites every column, so
-            // grab the current state once and merge it into the inbound DTOs
-            // before we hand them to the upsert.
+            // @Upsert rewrites every column — snapshot readAt first and merge
+            // it back so the user's read state survives the sync.
             val priorReadState = announcementDao.getReadStateForCourse(courseId)
                 .associate { it.id to it.readAt }
 
             val domain = accountSource.currentOrNull()?.domain
             val entities = dtos.map { dto ->
                 val entity = dto.toEntity(now = now, preservedReadAt = priorReadState[dto.id])
-                // Local-val capture for cross-module smart-cast on htmlUrl —
-                // same workaround as the planner / assignment / course paths.
+                // Local val — cross-module properties don't smart-cast.
                 val rawUrl = entity.htmlUrl
                 if (domain != null && !rawUrl.isNullOrBlank()) {
                     entity.copy(htmlUrl = absolutizeCanvasUrl(rawUrl, domain))
@@ -83,11 +81,7 @@ internal class DefaultCanvasAnnouncementRepository @Inject constructor(
         announcementDao.deleteAll()
     }
 
-    /**
-     * Walks Canvas's `Link: rel="next"` pagination chain. Per-course
-     * announcement counts are tiny (5-30 typical), but the safety cap matches
-     * the assignments path it mirrors.
-     */
+    // rel="next" pagination — almost never spills past page 1 in practice.
     private suspend fun fetchAllPages(
         api: CanvasApi,
         courseId: String,
@@ -118,10 +112,7 @@ internal class DefaultCanvasAnnouncementRepository @Inject constructor(
 
     private data class AnnouncementWindow(val start: String, val end: String)
 
-    /**
-     * Trailing 90-day window for the announcements query — Canvas's
-     * `start_date`/`end_date` parameters are required.
-     */
+    // Canvas requires start_date/end_date — 90-day trailing window.
     private fun announcementWindow(now: Instant): AnnouncementWindow {
         val start = now.minus(WINDOW_DAYS_BACK, ChronoUnit.DAYS)
         return AnnouncementWindow(
