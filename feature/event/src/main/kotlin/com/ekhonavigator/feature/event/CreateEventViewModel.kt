@@ -37,33 +37,27 @@ import javax.inject.Inject
 private val EventZone: ZoneId = ZoneId.of("America/Los_Angeles")
 
 data class CreateEventUiState(
-    /** EVENT = start+end span. ASSIGNMENT = single due moment (no end picker). */
     val type: EventType = EventType.EVENT,
     val title: String = "",
     val description: String = "",
     val location: String = "",
     val placeId: String? = null,
-    /** Captured at suggestion-pick time for custom (user-marker) locations so the save can
-     *  denormalize a SharedLocation onto the event — recipients can resolve the place
-     *  even though they don't own the source marker. Null for campus or free-text. */
+    // Captured at suggestion-pick time for custom (user-marker) locations so the
+    // save denormalizes a SharedLocation onto the event for recipients.
     val pickedCustomLocation: SharedLocation? = null,
     val date: LocalDate? = null,
     val startTime: LocalTime? = null,
     val endTime: LocalTime? = null,
     val category: EventCategory = EventCategory.GENERAL,
-    /** Free-text course tag (e.g. "COMP-262"). Stays raw in state so the user
-     *  sees exactly what they typed; normalized via [normalizeCourseLabel] at
-     *  save time. Empty = no course tag. */
+    // Raw user input; normalized via normalizeCourseLabel at save time.
     val courseLabel: String = "",
-    /** Carried through edit mode so save() doesn't reset a user's existing
-     *  completion state. The toggle itself lives on EventScreen, not the form. */
+    // Carried through edit mode so save() doesn't reset existing completion.
     val isCompleted: Boolean = false,
     val friends: List<FriendUser> = emptyList(),
     val selectedFriendUids: Set<String> = emptySet(),
-    /** Non-null when editing — drives Save vs Create label, branches the save() path,
-     *  and gates the one-shot pre-population so user edits aren't clobbered by Firestore syncs. */
+    // Non-null when editing — also gates the one-shot load so Firestore syncs
+    // can't clobber the user's in-progress edits.
     val editingEventId: String? = null,
-    /** Snapshot of attendees at load time, used to compute add/remove diffs on save. */
     val existingAttendees: Map<String, String> = emptyMap(),
     val isSaving: Boolean = false,
     val isSaved: Boolean = false,
@@ -75,12 +69,11 @@ data class CreateEventUiState(
             else -> title.isNotBlank() && date != null && startTime != null && endTime != null && !endBeforeStart
         }
 
-    /** True once both times are picked but end is not strictly after start. Shown immediately (not gated by save attempt).
-     *  Only meaningful for EVENT type — ASSIGNMENT has no end picker. */
+    // Shown live (not gated by a save attempt). EVENT-only — ASSIGNMENT has no end.
     val endBeforeStart: Boolean
         get() = type != EventType.ASSIGNMENT && startTime != null && endTime != null && !endTime.isAfter(startTime)
 
-    /** True when the chosen start moment is already behind us. Soft warning, not a hard block — matches Google Calendar. */
+    // Soft warning, not a hard block — matches Google Calendar.
     val startsInPast: Boolean
         get() {
             val d = date ?: return false
@@ -91,7 +84,6 @@ data class CreateEventUiState(
     val titleError: Boolean get() = showValidationErrors && title.isBlank()
     val dateError: Boolean get() = showValidationErrors && date == null
     val startTimeError: Boolean get() = showValidationErrors && startTime == null
-    /** ASSIGNMENT has no end-time picker — never raise an end-time validation error for it. */
     val endTimeError: Boolean get() = showValidationErrors && type != EventType.ASSIGNMENT && endTime == null
 }
 
@@ -115,14 +107,8 @@ class CreateEventViewModel @Inject constructor(
         .map { places -> places.map { it.toSuggestion() } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** Course-code suggestions for the Course autocomplete field — extracted to
-     *  the family-key form (e.g. "COMP-262") so the dropdown shows clean codes
-     *  rather than Canvas's verbose `course.code` (which often equals the full
-     *  course name). Family-key extraction also collapses lab+lecture sections
-     *  (`COMP-262 Sec 001` and `COMP-262 Sec 01L`) into a single suggestion —
-     *  they share a course, and a personal event tagged "COMP-262" should match
-     *  both via the same family-key palette mapping anyway.
-     *  Empty when Canvas isn't connected — field falls back to free-text only. */
+    // Family-key form so the dropdown shows clean codes ("COMP-262") and
+    // lab+lecture sections collapse into one suggestion.
     val courseSuggestions: StateFlow<List<String>> = canvasCourseRepository
         .observeCourses()
         .map { courses ->
@@ -136,8 +122,7 @@ class CreateEventViewModel @Inject constructor(
         loadFriends()
     }
 
-    /** One-shot load of an existing event for edit mode. Subsequent calls and
-     *  remote Firestore updates are ignored so the user's in-progress edits aren't clobbered. */
+    // One-shot — later calls and Firestore updates are ignored so user edits stick.
     fun setEventId(eventId: String) {
         if (didLoadEvent) return
         didLoadEvent = true
@@ -158,8 +143,7 @@ class CreateEventViewModel @Inject constructor(
                     pickedCustomLocation = event.customLocation,
                     date = zoned.toLocalDate(),
                     startTime = zoned.toLocalTime(),
-                    // ASSIGNMENT events have endTime == startTime by construction;
-                    // null it out in state so the form's end-picker stays hidden.
+                    // ASSIGNMENT stores endTime == startTime; null out in state so the picker hides.
                     endTime = if (event.type == EventType.ASSIGNMENT) null else zonedEnd.toLocalTime(),
                     category = event.categories.firstOrNull() ?: EventCategory.GENERAL,
                     courseLabel = event.courseLabel.orEmpty(),
@@ -178,7 +162,7 @@ class CreateEventViewModel @Inject constructor(
                 val friends = socialRepository.getFriends(uid)
                 _uiState.update { it.copy(friends = friends) }
             } catch (_: Exception) {
-                // Friends list unavailable — sharing section just won't show
+                // Friends unavailable — sharing section just won't show.
             }
         }
     }
@@ -192,14 +176,13 @@ class CreateEventViewModel @Inject constructor(
     fun setCourseLabel(value: String) = _uiState.update { it.copy(courseLabel = value) }
     fun setType(value: EventType) = _uiState.update { it.copy(type = value) }
 
-    /** Free-text edit clears any previously-chosen suggestion id — typing past a selected
-     *  place implies the user is no longer pinning it to that exact location. */
+    // Typing past a selected place unpins it.
     fun setLocationText(value: String) = _uiState.update {
         it.copy(location = value, placeId = null, pickedCustomLocation = null)
     }
 
     fun selectLocationSuggestion(suggestion: LocationSuggestion) = _uiState.update {
-        // Local vals avoid the cross-module public-property smart-cast restriction.
+        // Local vals — cross-module properties don't smart-cast.
         val lat = suggestion.latitude
         val lng = suggestion.longitude
         val custom = if (suggestion.isCustom && lat != null && lng != null) {
@@ -234,9 +217,7 @@ class CreateEventViewModel @Inject constructor(
         }
 
         val startInstant = state.date!!.atTime(state.startTime!!).atZone(EventZone).toInstant()
-        // ASSIGNMENT collapses to a single moment — end == start so the existing
-        // bottom-anchored ASSIGNMENT pill renderer just works, and downstream
-        // duration logic stays a no-op for due-time-driven items.
+        // ASSIGNMENTs collapse to one moment — end == start.
         val endInstant = if (state.type == EventType.ASSIGNMENT) {
             startInstant
         } else {
@@ -246,15 +227,12 @@ class CreateEventViewModel @Inject constructor(
         _uiState.update { it.copy(isSaving = true) }
 
         viewModelScope.launch {
-            // Last-chance resolution: if the user typed a known place name without
-            // tapping the suggestion, still pin the event to that place id.
+            // Catches users who typed a known place name without tapping the suggestion.
             val resolvedPlaceId = state.placeId
                 ?: state.location.takeIf { it.isNotBlank() }
                     ?.let { placeRepository.resolveFromText(it) }
 
-            // If the resolution landed on a custom marker but the user never tapped a
-            // suggestion (typed the name freehand), fetch the marker's coords now so the
-            // event still carries a customLocation snapshot for recipients.
+            // Same idea — fetch marker coords now so recipients still get a snapshot.
             val resolvedCustomLocation = state.pickedCustomLocation
                 ?: resolvedPlaceId
                     ?.takeIf { it.startsWith("marker_") }
@@ -341,10 +319,9 @@ class CreateEventViewModel @Inject constructor(
         resolvedPlaceId: String?,
         resolvedCustomLocation: SharedLocation?,
     ): CalendarEvent {
-        // Only attach a SharedLocation snapshot when the event is pinned to a custom marker
-        // (placeId namespaced as marker_*). Campus place IDs are stable cross-user, so denormalizing
-        // their coords would just be storage waste. On edits, also re-sync the snapshot's title to
-        // the current location text so a renamed marker propagates to recipients.
+        // SharedLocation snapshots only for custom markers — campus place IDs are
+        // stable cross-user, so denormalizing them is just storage waste. Re-sync
+        // the title on edits so renamed markers propagate to recipients.
         val customLocation = resolvedCustomLocation
             ?.takeIf { resolvedPlaceId?.startsWith("marker_") == true }
             ?.copy(title = state.location.trim())
@@ -367,11 +344,9 @@ class CreateEventViewModel @Inject constructor(
             placeId = resolvedPlaceId,
             customLocation = customLocation,
             type = state.type,
-            // Mirror startInstant onto dueAt so render sites that prefer dueAt
-            // (assignment pills, timeline ordering) don't need a fallback.
+            // Mirror onto dueAt so sites that prefer it don't need a fallback.
             dueAt = if (state.type == EventType.ASSIGNMENT) startInstant else null,
-            // Normalize at the boundary so storage stays canonical (`comp 262` →
-            // `COMP-262`) and the family-key extractor matches consistently.
+            // Normalize at the boundary so storage stays canonical.
             courseLabel = normalizeCourseLabel(state.courseLabel),
             isCompleted = state.isCompleted,
         )

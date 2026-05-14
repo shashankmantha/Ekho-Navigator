@@ -36,10 +36,8 @@ class InvitesViewModel @Inject constructor(
 ) : ViewModel() {
 
     init {
-        // Background fan-out: opening the bell screen implies the user wants
-        // fresh notifications. Same dedupe-by-seen-id pattern as
-        // CoursesHomeViewModel — the two are independent triggers; whichever
-        // surface the user lands on first kicks off the per-course sync.
+        // Same per-course announcement fan-out as CoursesHomeViewModel —
+        // whichever surface the user opens first kicks it off.
         viewModelScope.launch {
             val seen = mutableSetOf<String>()
             canvasCourseRepository.observeCourses().collect { courses ->
@@ -74,13 +72,11 @@ class InvitesViewModel @Inject constructor(
         }
     }
 
-    /** Cross-course announcement feed for the bell's Announcements section. */
     val announcements: StateFlow<List<CanvasAnnouncement>> =
         canvasAnnouncementRepository.observeAll()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** Lookup so each row can render its originating course's family-key
-     *  label without spinning up a second VM or duplicating the course flow. */
+    // Lookup so each row can show its course label without a second VM.
     val courseCodeById: StateFlow<Map<String, String>> =
         canvasCourseRepository.observeCourses()
             .map { it.associate { course -> course.id to course.code } }

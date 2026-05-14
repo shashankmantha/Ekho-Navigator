@@ -77,8 +77,7 @@ fun CreateEventScreen(
         if (eventId != null) viewModel.setEventId(eventId)
     }
 
-    // initialEpochDay is a create-mode shortcut from "tap a calendar day to create"; it would
-    // overwrite the loaded event's date in edit mode, so suppress it when editing.
+    // Suppress in edit mode — would otherwise overwrite the loaded event's date.
     LaunchedEffect(initialEpochDay, eventId) {
         if (eventId == null && initialEpochDay != null) {
             viewModel.setDate(LocalDate.ofEpochDay(initialEpochDay))
@@ -135,9 +134,7 @@ fun CreateEventScreen(
         )
 
         if (uiState.type == EventType.ASSIGNMENT) {
-            // Single "Due" picker — assignments are a moment, not a span. Internally
-            // the save path collapses endTime = startTime so the entity stays valid
-            // and the existing bottom-anchored ASSIGNMENT pill renderer still works.
+            // Assignments are a moment — save path collapses endTime = startTime.
             PickerField(
                 value = uiState.startTime?.format(timeFormatter) ?: "",
                 label = "Due",
@@ -209,9 +206,8 @@ fun CreateEventScreen(
             )
         }
 
-        // Categories don't make sense for assignments — General has no contextual
-        // meaning on a homework or test. Skipped entirely; contextual category
-        // sets per type (test/quiz/etc) is parked for next sprint.
+        // Hidden for assignments — the current category set has no meaningful
+        // option for homework/tests. Per-type category sets are deferred.
         if (uiState.type != EventType.ASSIGNMENT) {
             CategoryDropdown(
                 selected = uiState.category,
@@ -423,9 +419,7 @@ private fun TypeSelector(
     selected: EventType,
     onSelected: (EventType) -> Unit,
 ) {
-    // Limited to the two types the create form supports — EVENT and ASSIGNMENT.
-    // Other EventType values (CANVAS imports, etc.) come from sync, never from
-    // user creation, so they're intentionally not surfaced as selectable options.
+    // Only EVENT and ASSIGNMENT are user-creatable; other types come from sync.
     val options = listOf(
         EventType.EVENT to "Event",
         EventType.ASSIGNMENT to "Assignment",
@@ -447,9 +441,7 @@ private fun CourseField(
 ) {
     var expanded by remember { mutableStateOf(false) }
 
-    // Filter suggestions by case-insensitive substring on the typed value, so
-    // "comp" matches "COMP-262", "COMP-360", etc. Hide menu when no matches
-    // (still accepts free-text — the OutlinedTextField is always editable).
+    // Substring match, case-insensitive. Free-text always accepted.
     val filteredSuggestions = remember(value, suggestions) {
         if (value.isBlank()) suggestions
         else suggestions.filter { it.contains(value, ignoreCase = true) }

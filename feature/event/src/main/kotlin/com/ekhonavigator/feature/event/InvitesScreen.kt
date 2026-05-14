@@ -70,8 +70,7 @@ fun InvitesScreen(
     val canvasConnected = LocalCanvasConnected.current
 
     var showDeclined by rememberSaveable { mutableStateOf(false) }
-    // Section collapse state — keyed per section so each remembers
-    // independently across recomposition + process death.
+    // Per-section so collapse survives recomp + process death independently.
     var friendRequestsExpanded by rememberSaveable { mutableStateOf(true) }
     var eventInvitesExpanded by rememberSaveable { mutableStateOf(true) }
     var announcementsExpanded by rememberSaveable { mutableStateOf(true) }
@@ -183,11 +182,6 @@ fun InvitesScreen(
     }
 }
 
-/**
- * Pending invites rendered in the LazyColumn — extracted so the section's
- * expanded/collapsed branch in the screen body stays readable. Returns no
- * value; emits items into the surrounding LazyListScope.
- */
 private fun androidx.compose.foundation.lazy.LazyListScope.renderEventInviteRows(
     pending: List<CalendarEvent>,
     declined: List<CalendarEvent>,
@@ -264,12 +258,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.renderEventInviteRows
     }
 }
 
-/**
- * Now collapsible — chevron rotates 90° when expanded. Caller owns the state
- * via `rememberSaveable` keyed on the section id, so collapse survives both
- * recomposition and process-death. Trailing slot is hidden when collapsed
- * (the toggle was usually only meaningful with the section visible).
- */
+// Caller owns expanded state via rememberSaveable so collapse survives process death.
 @Composable
 private fun CategoryHeader(
     icon: ImageVector,
@@ -328,11 +317,6 @@ private fun CategoryHeader(
     }
 }
 
-/**
- * Bell-screen row for a Canvas announcement. Mirrors the per-class detail
- * row's vocabulary (unread dot + course label + title + author·date caption)
- * but stays compact — no inline body expansion here. First click marks read.
- */
 @Composable
 private fun BellAnnouncementRow(
     announcement: CanvasAnnouncement,
@@ -422,9 +406,7 @@ private fun PastToggle(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.size(6.dp))
-        // Default unchecked track sits on `surfaceContainerHighest` and disappears
-        // against light surfaces — pin to outlineVariant so the affordance reads
-        // as a toggle in both color schemes.
+        // Default unchecked track vanishes against light surfaces — pin a darker outline.
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,

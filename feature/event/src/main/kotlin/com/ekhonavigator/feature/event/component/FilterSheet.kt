@@ -34,12 +34,7 @@ import com.ekhonavigator.core.designsystem.theme.coursePalette
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSourceType
 
-/**
- * Maps a [EventSourceType] to its (accent, onAccent) color pair. Mirrors the
- * event-taxonomy mapping in [com.ekhonavigator.core.designsystem.component.EkhoEventRow]
- * and [com.ekhonavigator.feature.calendar.component.CalendarDay] — Canvas uses
- * Cardinal (not chrome primary) per design.md §5.
- */
+// Mirrors EkhoEventRow + CalendarDay — Canvas uses Cardinal, not chrome primary.
 @androidx.compose.runtime.Composable
 @androidx.compose.runtime.ReadOnlyComposable
 internal fun sourceTypeThemeColors(
@@ -53,10 +48,6 @@ internal fun sourceTypeThemeColors(
     EventSourceType.BOOKMARKED -> colors.tertiary to colors.onTertiary
 }
 
-/**
- * One row in the Courses filter section. Index into the course palette so the
- * leading dot matches what the calendar pill renders.
- */
 data class CourseFilterOption(
     val id: String,
     val displayLabel: String,
@@ -79,10 +70,7 @@ fun FilterSheetContent(
 ) {
     val colors = MaterialTheme.colorScheme
     val canvasConnected = LocalCanvasConnected.current
-    // Hide the CANVAS source chip when no Canvas connection — without a PAT
-    // there are no Canvas events anyway, so the chip would just toggle "show
-    // events that don't exist". Re-appears automatically the moment a PAT is
-    // saved (CanvasTokenStore.changes() drives the holder).
+    // Hide the CANVAS chip when no PAT — there'd be nothing to filter.
     val visibleSourceTypes = EventSourceType.entries.filter { type ->
         type != EventSourceType.CANVAS || canvasConnected
     }
@@ -129,10 +117,7 @@ fun FilterSheetContent(
                                     imageVector = EkhoIcons.Bookmark,
                                     contentDescription = "Bookmarked",
                                     modifier = Modifier.size(16.dp),
-                                    // Horizon (tertiary) is the bookmark identity
-                                    // color (design.md §5) — applied when active so
-                                    // the icon "glows" the same color the bookmark
-                                    // accent uses on calendar pills + event rows.
+                                    // Horizon = bookmark identity color (design.md §5).
                                     tint = if (isActive) {
                                         colors.tertiary
                                     } else {
@@ -173,9 +158,7 @@ fun FilterSheetContent(
 
         HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.3f))
 
-        // Courses sit above Categories and start expanded — they're the most-used
-        // filter once Canvas is connected, so opening the sheet should land the
-        // user inside the chip list, not on a collapsed header.
+        // Courses sit above Categories and start expanded — most-used filter once Canvas is connected.
         if (courses.isNotEmpty()) {
             val palette = coursePalette()
             CollapsibleMultiSelectSection(

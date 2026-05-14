@@ -63,22 +63,16 @@ class EventDetailViewModel @Inject constructor(
         .flatMapLatest { id -> customEventRepository.observeAttendees(id) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** Canvas-bridged planner item matching this event id, if any. Null for
-     *  iCal/personal events. Drives the EventScreen "Canvas details" section
-     *  (points possible, submission status badge) — fields the bridged
-     *  calendar_events row doesn't carry but the planner table does. */
+    // Drives the EventScreen "Canvas details" section — fields the bridged
+    // calendar_events row doesn't carry but the planner table does.
     @OptIn(ExperimentalCoroutinesApi::class)
     val canvasContext: StateFlow<PlannerItem?> = _eventId
         .filter { it.isNotEmpty() }
         .flatMapLatest { id -> canvasPlannerRepository.observeById(id) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    /** Read-time join from the planner item to its full assignment record.
-     *  Also opportunistically triggers a per-course assignment sync the first
-     *  time a calendar→event tap lands on an ASSIGNMENT — that's how the
-     *  description (which the planner DTO doesn't carry) gets populated
-     *  without requiring the user to drill into the per-class detail screen
-     *  first. Tracked per-courseId so we don't hammer Canvas on repeated taps. */
+    // Per-courseId one-shot — backfills the assignment description (which the
+    // planner DTO doesn't carry) the first time an event tap lands here.
     private val syncedCourseIds = mutableSetOf<String>()
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -98,20 +92,14 @@ class EventDetailViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    /** Resolves to a place id the user can navigate to. Falls through three checks:
-     *   1. Direct match (campus or owner's own marker).
-     *   2. Coord match against any of the user's own markers — covers recipients who already
-     *      saved this customLocation as a marker; their local marker id won't equal the event's
-     *      original `marker_<ownerId>` but the coordinates do, so the WHERE row navs straight
-     *      to their copy without re-prompting "Save to map?".
-     *   3. Otherwise null — WHERE row degrades to un-linked styling. */
+    // Direct-id match, then coord-match against the user's own markers, then null.
+    // Coord-match handles recipients who saved this shared location as their own marker.
     val effectivePlaceId: StateFlow<String?> = combine(event, placeRepository.observePlaces()) { ev, places ->
         ev?.resolveTargetPlaceId(places)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    /** Non-null when the event was pinned to a custom marker the current user does NOT own
-     *  (recipient case, or owner whose marker was deleted) AND the user has not already saved
-     *  the customLocation as a personal marker. Drives the one-shot "Save to map?" prompt. */
+    // Drives the one-shot "Save to map?" prompt — fires only when the user
+    // doesn't already own the underlying marker or a coord-matching copy.
     val customLocationOffer: StateFlow<SharedLocation?> = combine(event, placeRepository.observePlaces()) { ev, places ->
         val pid = ev?.placeId ?: return@combine null
         val custom = ev.customLocation ?: return@combine null
@@ -123,7 +111,6 @@ class EventDetailViewModel @Inject constructor(
     private val _navigateToMarker = MutableSharedFlow<String>(replay = 0, extraBufferCapacity = 1)
     val navigateToMarker: SharedFlow<String> = _navigateToMarker.asSharedFlow()
 
-    /** Current user's RSVP status for this event, or null if not an attendee. */
     val currentUserRsvp: StateFlow<RsvpStatus?> = attendees
         .map { list ->
             val uid = authRepository.getCurrentUserUid() ?: return@map null
@@ -144,20 +131,16 @@ class EventDetailViewModel @Inject constructor(
             return event.source == EventSource.USER_CREATED && event.ownerUid == uid
         }
 
-    /** Same gate as [canDelete] today — owner of a user-created event. Kept as a distinct
-     *  property so a future policy change (e.g. allow edit but not delete) doesn't have to
-     *  fork the call sites. */
+    // Kept distinct from canDelete so a future "edit but not delete" policy lands cheaply.
     val canEdit: Boolean
         get() = canDelete
 
-    /** True for any custom event with attendees — shows attendee section for both owner and invitees. */
     val hasAttendees: Boolean
         get() {
             val e = event.value ?: return false
             return e.source == EventSource.SHARED || (e.source == EventSource.USER_CREATED && attendees.value.isNotEmpty())
         }
 
-    /** True when the current user is an invitee (not the owner) — shows RSVP buttons. */
     val canRsvp: Boolean
         get() = event.value?.source == EventSource.SHARED
 
@@ -171,9 +154,8 @@ class EventDetailViewModel @Inject constructor(
     val canShare: Boolean
         get() = isOwner && event.value?.source == EventSource.USER_CREATED
 
-    /** Personal ASSIGNMENT events get a manual completion toggle. Canvas-derived
-     *  ASSIGNMENT events get their completion from `submitted/graded/excused`
-     *  on the planner item, so we don't expose a manual toggle for those. */
+    // Canvas-derived assignments source completion from planner submission state;
+    // only personal assignments need the manual toggle.
     val canMarkComplete: Boolean
         get() {
             val e = event.value ?: return false
@@ -222,8 +204,7 @@ class EventDetailViewModel @Inject constructor(
         if (id.isNotEmpty()) {
             viewModelScope.launch {
                 customEventRepository.deleteEvent(id)
-                // No explicit navigation — the Room Flow emits null after delete,
-                // which the screen's hadEvent detection catches and calls onBack().
+                // No nav call — Room emits null, screen's hadEvent watcher fires onBack().
             }
         }
     }
@@ -250,9 +231,7 @@ class EventDetailViewModel @Inject constructor(
         }
     }
 
-    /** Saves the event's customLocation as a personal marker, dedup-by-coords (mirrors
-     *  ChatViewModel.saveSharedLocationToMap), then emits a focusPlaceId so the screen can
-     *  navigate to the map and pan to it. */
+    // Dedup-by-coords (same pattern as ChatViewModel.saveSharedLocationToMap).
     fun saveCustomLocationToMyMarkers() {
         val offer = customLocationOffer.value ?: return
         val uid = authRepository.getCurrentUserUid() ?: return
@@ -281,19 +260,19 @@ class EventDetailViewModel @Inject constructor(
             try {
                 _friends.value = socialRepository.getFriends(uid)
             } catch (_: Exception) {
-                // Friends list unavailable — sheet just shows empty state
+                // Friends unavailable — sheet shows empty state.
             }
         }
     }
 }
 
-// Must match DefaultPlaceRepository's namespacing scheme for user-marker Place ids.
+// Must match DefaultPlaceRepository's user-marker namespacing.
 private const val MARKER_ID_PREFIX = "marker_"
 
 private fun CalendarEvent.resolveTargetPlaceId(places: List<com.ekhonavigator.core.model.Place>): String? {
     val pid = placeId ?: return null
     if (places.any { it.id == pid }) return pid
-    // Coord-match fallback: matches the recipient's saved-marker copy of a shared customLocation.
+    // Coord-match fallback — recipient may have saved this shared location locally.
     val custom = customLocation ?: return null
     return places.firstOrNull {
         it.isCustom && it.latitude == custom.latitude && it.longitude == custom.longitude

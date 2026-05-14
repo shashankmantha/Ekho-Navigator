@@ -79,7 +79,6 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-/** Loads the event reactively from Room — navigates back if the event is deleted remotely. */
 @Composable
 fun EventScreen(
     eventId: String,
@@ -109,8 +108,7 @@ fun EventScreen(
     val canvasContext by viewModel.canvasContext.collectAsStateWithLifecycle()
     val assignmentContext by viewModel.assignmentContext.collectAsStateWithLifecycle()
 
-    // The VM emits the new (or deduped existing) marker placeId after save; route it
-    // through the same nav callback the campus path uses so the camera-pan animation runs.
+    // Reuses the campus nav callback so the camera-pan animation runs.
     LaunchedEffect(viewModel) {
         viewModel.navigateToMarker.collect { placeId ->
             onLocationClick(placeId)
@@ -119,15 +117,14 @@ fun EventScreen(
 
     var showSaveMarkerPrompt by remember { mutableStateOf(false) }
 
-    // Track whether we ever loaded an event — if it disappears after loading,
-    // the event was deleted (by owner, by self, or by remote sync) and we navigate back.
-    // Also handles navigating back to a deleted event from the nav stack.
+    // hadEvent flips true once Room emits — if it later returns null the event
+    // was deleted (owner, self, or remote sync) and we navigate back.
     var hadEvent by remember { mutableStateOf(false) }
     if (event != null) hadEvent = true
     LaunchedEffect(event, hadEvent) {
         if (hadEvent && event == null) onBack()
     }
-    // If event never loads (deleted before we got here), bail after a short delay
+    // Bail if we never load — event was deleted before we got here.
     LaunchedEffect(eventId) {
         kotlinx.coroutines.delay(500)
         if (!hadEvent) onBack()
@@ -248,11 +245,7 @@ private fun EventDetailContent(
 ) {
     val zone = remember { ZoneId.systemDefault() }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
-    // For Canvas assignments the live read-time join via `assignmentContext`
-    // is the source of truth — the previously-used `calendar_events` backfill
-    // got wiped on the next planner sync (planner DTO carries no body), which
-    // made descriptions disappear after the user navigated calendar→back→tap.
-    // Falling back to `event.description` keeps non-assignment events working.
+    // Read-time join — planner sync would otherwise wipe a backfilled description.
     val rawDescription = assignmentContext?.description?.takeIf { it.isNotBlank() }
         ?: event.description
     val cleanedDescription = remember(rawDescription) {
@@ -266,7 +259,6 @@ private fun EventDetailContent(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
-        // ── Top action chrome ───────────────────────────
         ActionRow(
             isBookmarked = event.isBookmarked,
             showBookmark = event.source == EventSource.ICAL_FEED,
@@ -282,13 +274,11 @@ private fun EventDetailContent(
             onToggleCompleteClick = onToggleCompleteClick,
         )
 
-        // ── State ribbon (only when event has a state) ─
         StateRibbon(
             source = event.source,
             isBookmarked = event.isBookmarked,
         )
 
-        // ── Date eyebrow ───────────────────────────────
         DateEyebrow(
             startTime = event.startTime,
             zone = zone,
@@ -297,10 +287,8 @@ private fun EventDetailContent(
 
         Spacer(Modifier.height(14.dp))
 
-        // ── Title ──────────────────────────────────────
-        // Strikethrough completed assignments (Canvas: submitted/graded/excused;
-        // personal: isCompleted toggle). Single source of truth lives on the
-        // decorator so the visual stays consistent with row + pill render sites.
+        // Decorator is the single source of truth for completed — keeps title,
+        // row, and pill strikethrough in sync.
         val isCompleted = LocalAssignmentDecorator.current.isCompleted(event.id)
         Text(
             text = event.title,
@@ -322,7 +310,6 @@ private fun EventDetailContent(
             EventTypeBadge(event.eventType)
         }
 
-        // ── Meta rail ──────────────────────────────────
         Spacer(Modifier.height(18.dp))
         ThinDivider()
         Spacer(Modifier.height(10.dp))
@@ -332,9 +319,7 @@ private fun EventDetailContent(
             MetaTextRow(label = "HOSTED BY", value = event.organization.prettifyAllCaps())
         }
         if (event.location.isNotBlank()) {
-            // Three states: existing place id resolves → nav directly; offer available
-            // (recipient or owner-with-deleted-marker) → prompt to save first; otherwise
-            // no click and the row stays in its un-linked styling.
+            // Resolved place → nav directly; offer → prompt save first; else no click.
             val locationClick: (() -> Unit)? = when {
                 effectivePlaceId != null -> { -> onLocationClick(effectivePlaceId) }
                 customLocationOfferAvailable -> onLocationSaveOfferClick
@@ -353,7 +338,6 @@ private fun EventDetailContent(
             )
         }
 
-        // ── Attendees / RSVP ───────────────────────────
         if (hasAttendees) {
             Spacer(Modifier.height(14.dp))
             ThinDivider()
@@ -486,7 +470,6 @@ private fun EventDetailContent(
             }
         }
 
-        // ── About / Description ────────────────────────
         if (cleanedDescription.isNotBlank()) {
             Spacer(Modifier.height(18.dp))
             ThinDivider()
@@ -501,13 +484,11 @@ private fun EventDetailContent(
             )
         }
 
-        // ── Meta rail ──────────────────────────────────
         Spacer(Modifier.height(18.dp))
         ThinDivider()
         Spacer(Modifier.height(10.dp))
 
-        // Skip the TAGGED row on assignments — General has no contextual meaning
-        // on a homework. Per-type contextual categories deferred to next sprint.
+        // Hidden on assignments — General has no contextual meaning on homework.
         if (event.categories.isNotEmpty() && event.type != EventType.ASSIGNMENT) {
             MetaChipsRow(label = "TAGGED", categories = event.categories)
         }
@@ -553,8 +534,6 @@ private fun EventDetailContent(
     }
 }
 
-// ── Helpers ────────────────────────────────────────────
-
 @Composable
 private fun ActionRow(
     isBookmarked: Boolean,
@@ -579,9 +558,7 @@ private fun ActionRow(
                 Icon(
                     imageVector = EkhoIcons.Check,
                     contentDescription = if (isCompleted) "Mark incomplete" else "Mark complete",
-                    // Sage secondary when complete (matches the YOUR EVENT ribbon),
-                    // muted onSurfaceVariant when not — same dim/active treatment as
-                    // the bookmark toggle for visual consistency.
+                    // Mirrors the bookmark toggle's dim/active treatment.
                     tint = if (isCompleted) {
                         MaterialTheme.colorScheme.secondary
                     } else {
@@ -840,10 +817,8 @@ private fun CanvasDetailsRow(
     item: com.ekhonavigator.core.canvas.model.PlannerItem,
     assignment: com.ekhonavigator.core.canvas.model.CanvasAssignment? = null,
 ) {
-    // Canvas-only meta the bridged calendar_events row doesn't carry: status
-    // badge (submitted/late/missing/graded/excused) + points possible + the
-    // numeric grade when the per-class detail screen has populated the
-    // assignments cache (read-time join, no schema change).
+    // Pulls fields the bridged calendar_events row doesn't carry — status,
+    // points, and grade (read-time join, no schema change).
     val (statusLabel, statusColor) = canvasStatus(item)
     val points = item.pointsPossible
     val gradeText = assignment?.let(::gradeChipLabel)
@@ -905,12 +880,8 @@ private fun CanvasDetailsRow(
     }
 }
 
-/**
- * Numeric-grade chip text. Returns null when there's nothing the user would
- * value seeing — Canvas might know the assignment exists but not have a grade
- * yet. Format priorities match the Past Assignments row pill so the same
- * assignment reads identically on both surfaces.
- */
+// Format matches the Past Assignments row pill so the same assignment reads
+// identically on both surfaces. Null when there's nothing meaningful to show.
 private fun gradeChipLabel(assignment: com.ekhonavigator.core.canvas.model.CanvasAssignment): String? {
     val score = assignment.submission.score
     val points = assignment.pointsPossible
@@ -924,13 +895,8 @@ private fun gradeChipLabel(assignment: com.ekhonavigator.core.canvas.model.Canva
 private fun formatPoints(value: Double): String =
     if (value % 1.0 == 0.0) value.toInt().toString() else "%.1f".format(value)
 
-/**
- * Picks the most user-meaningful status from the planner item's submission
- * flags. Priority order matches what a student wants to see at a glance:
- * Excused (it's done, don't worry) > Graded > Submitted > Late > Missing.
- * "Needs grading" gets folded into Submitted since the user already submitted —
- * the grading wait is the instructor's problem, not actionable from the user side.
- */
+// Priority: Excused > Graded > Submitted > Late > Missing. "Needs grading"
+// folds into Submitted — the wait is on the instructor, not the student.
 @Composable
 private fun canvasStatus(item: com.ekhonavigator.core.canvas.model.PlannerItem): Pair<String?, androidx.compose.ui.graphics.Color?> {
     val submission = item.submission
@@ -947,11 +913,8 @@ private fun canvasStatus(item: com.ekhonavigator.core.canvas.model.PlannerItem):
 
 @Composable
 private fun OpenInCanvasButton(url: String) {
-    // Hide the button entirely if the URL isn't launchable — Canvas's planner
-    // endpoint historically returned relative paths (`/courses/123/...`) that
-    // crash startActivity with ActivityNotFoundException. The data layer now
-    // absolutizes via `absolutizeCanvasUrl`, so this guard is belt-and-suspenders
-    // for any entity rows already in Room from before that fix landed.
+    // Belt-and-suspenders for old rows: planner used to return relative URLs
+    // that crashed startActivity. The data layer absolutizes now.
     val isLaunchable = url.startsWith("http://", ignoreCase = true) ||
         url.startsWith("https://", ignoreCase = true)
     if (!isLaunchable) return
@@ -959,10 +922,7 @@ private fun OpenInCanvasButton(url: String) {
     val context = LocalContext.current
     OutlinedButton(
         onClick = {
-            // runCatching defends against odd device configurations (no browser
-            // installed, no Custom Tabs provider, malformed URI sneaking through).
-            // Better to silently no-op than crash the app — A2's per-class
-            // detail screen will give users another path to course content.
+            // Guards against devices with no browser / Custom Tabs provider.
             runCatching {
                 CustomTabsIntent.Builder()
                     .setShowTitle(true)
@@ -988,9 +948,7 @@ private fun OpenInCanvasButton(url: String) {
 
 @Composable
 private fun CourseChipRow(label: String) {
-    // Color resolved through the same family-key map the calendar pills + My
-    // Courses tiles use; falls back to onSurfaceVariant when the user typed a
-    // course not in the cached Canvas list (signed out / not connected).
+    // Falls back to onSurfaceVariant for free-text courses with no Canvas match.
     val decorator = LocalAssignmentDecorator.current
     val courseColor = decorator.courseColorForLabel(label)
         ?: MaterialTheme.colorScheme.onSurfaceVariant
@@ -1070,12 +1028,8 @@ private val trumbaHeaderPattern = Regex(
     RegexOption.IGNORE_CASE,
 )
 
-/**
- * Trumba pastes structured metadata ("Event Name: …", "Organization: …",
- * "Organizer: …", "Categories: …") as the first lines of DESCRIPTION. We now
- * surface those fields at the top of the detail screen, so stripping the
- * leading matching lines avoids showing them twice.
- */
+// Trumba pastes Event Name / Organization / Organizer / Categories as the
+// first lines of DESCRIPTION; we surface those fields up top, so strip here.
 private fun stripTrumbaHeaderLines(description: String): String {
     if (description.isBlank()) return description
     val normalized = description.replace(Regex("<br\\s*/?>", RegexOption.IGNORE_CASE), "\n")
@@ -1084,11 +1038,6 @@ private fun stripTrumbaHeaderLines(description: String): String {
     return kept.joinToString("\n").trim()
 }
 
-/**
- * Renders an HTML string using Android's [TextView] + [Html.fromHtml]. Handles
- * `<p>`, `<br>`, `<b>`, `<a href>` and HTML entities the feed embeds. Links
- * are tappable via [LinkMovementMethod].
- */
 @Composable
 private fun HtmlDescription(
     html: String,
