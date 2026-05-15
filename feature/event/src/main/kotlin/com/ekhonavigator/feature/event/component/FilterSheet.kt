@@ -29,19 +29,18 @@ import androidx.compose.ui.unit.dp
 import com.ekhonavigator.core.designsystem.component.CollapsibleMultiSelectSection
 import com.ekhonavigator.core.designsystem.component.EkhoMonogramBadge
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
-import com.ekhonavigator.core.designsystem.theme.LocalCanvasConnected
 import com.ekhonavigator.core.designsystem.theme.coursePalette
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSourceType
 
-// Mirrors EkhoEventRow + CalendarDay — Canvas uses Cardinal, not chrome primary.
+// Cardinal is the assignment-identity color (design.md §5 / §6).
 @androidx.compose.runtime.Composable
 @androidx.compose.runtime.ReadOnlyComposable
 internal fun sourceTypeThemeColors(
     type: EventSourceType,
     colors: androidx.compose.material3.ColorScheme,
 ): Pair<Color, Color> = when (type) {
-    EventSourceType.CANVAS -> com.ekhonavigator.core.designsystem.theme.EkhoColors.current.cardinal to
+    EventSourceType.ASSIGNMENT -> com.ekhonavigator.core.designsystem.theme.EkhoColors.current.cardinal to
             com.ekhonavigator.core.designsystem.theme.EkhoColors.current.onFoundation
     EventSourceType.CUSTOM -> colors.secondary to colors.onSecondary
     EventSourceType.CAMPUS -> colors.onSurfaceVariant to colors.surface
@@ -69,11 +68,8 @@ fun FilterSheetContent(
     onClearCourses: () -> Unit = {},
 ) {
     val colors = MaterialTheme.colorScheme
-    val canvasConnected = LocalCanvasConnected.current
-    // Hide the CANVAS chip when no PAT — there'd be nothing to filter.
-    val visibleSourceTypes = EventSourceType.entries.filter { type ->
-        type != EventSourceType.CANVAS || canvasConnected
-    }
+    // Assignment chip is always shown — personal assignments exist without Canvas.
+    val visibleSourceTypes = EventSourceType.entries.toList()
 
     Column(
         modifier = modifier

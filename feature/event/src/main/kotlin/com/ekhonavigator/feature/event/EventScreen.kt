@@ -67,6 +67,7 @@ import com.ekhonavigator.core.designsystem.component.FriendPickerSheet
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventAttendee
+import com.ekhonavigator.core.designsystem.theme.EkhoColors
 import com.ekhonavigator.core.designsystem.theme.LocalAssignmentDecorator
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventType
@@ -280,6 +281,7 @@ private fun EventDetailContent(
         StateRibbon(
             source = event.source,
             isBookmarked = event.isBookmarked,
+            type = event.type,
         )
 
         DateEyebrow(
@@ -633,10 +635,14 @@ private fun ActionRow(
 private fun StateRibbon(
     source: EventSource,
     isBookmarked: Boolean,
+    type: EventType,
 ) {
+    val isPersonalAssignment = source == EventSource.USER_CREATED && type == EventType.ASSIGNMENT
     val (label, color) = when {
         source == EventSource.ICAL_FEED && isBookmarked ->
             "SAVED TO MY SCHEDULE" to MaterialTheme.colorScheme.tertiary
+        isPersonalAssignment ->
+            "YOUR ASSIGNMENT" to EkhoColors.current.cardinal
         source == EventSource.USER_CREATED ->
             "YOUR EVENT" to MaterialTheme.colorScheme.secondary
         source == EventSource.SHARED ->

@@ -310,10 +310,11 @@ private fun List<CalendarEvent>.applyVisibilityFilters(
 }
 
 private fun CalendarEvent.toSourceType(): EventSourceType = when {
+    // ASSIGNMENT identity wins over source — same chip catches Canvas + personal assignments.
+    type == EventType.ASSIGNMENT -> EventSourceType.ASSIGNMENT
     source == EventSource.ICAL_FEED && isBookmarked -> EventSourceType.BOOKMARKED
     source == EventSource.ICAL_FEED -> EventSourceType.CAMPUS
     source == EventSource.USER_CREATED || source == EventSource.SHARED -> EventSourceType.CUSTOM
-    source == EventSource.CANVAS -> EventSourceType.CANVAS
     else -> EventSourceType.CAMPUS
 }
 

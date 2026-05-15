@@ -224,6 +224,10 @@ private fun eventPillColors(
     onCampusMuted: Color,
     onCampusBookmarked: Color,
 ): Pair<Color, Color> = when {
+    // Mirrors TimelineGrid — ASSIGNMENT identity beats source so personal
+    // assignments read red instead of sage-green.
+    event.type == EventType.ASSIGNMENT -> calendarPill to onCalendar
+
     event.source == EventSource.ICAL_FEED && event.isBookmarked ->
         campusBookmarkedPill to onCampusBookmarked
 

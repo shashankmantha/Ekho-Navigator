@@ -134,8 +134,8 @@ private fun dotColorFor(dot: DayDot): Color = when (dot) {
         EventSourceType.CUSTOM -> MaterialTheme.colorScheme.secondary
         EventSourceType.CAMPUS -> MaterialTheme.colorScheme.onSurfaceVariant
         EventSourceType.BOOKMARKED -> MaterialTheme.colorScheme.tertiary
-        // Cardinal is LMS-identity, not brand chrome (design.md §5).
-        EventSourceType.CANVAS -> EkhoColors.current.cardinal
+        // Cardinal is assignment-identity (design.md §5).
+        EventSourceType.ASSIGNMENT -> EkhoColors.current.cardinal
     }
     is DayDot.CourseSlot -> {
         val palette = coursePalette()

@@ -413,8 +413,8 @@ private fun TimelineEventBlock(
 ) {
     val colors = MaterialTheme.colorScheme
     val onEventPill = EkhoColors.current.onEventPill
-    // ASSIGNMENT wins before source branches (mirrors EkhoEventRow). primary
-    // is the fallback for course-less or unbridged Canvas rows.
+    val cardinal = EkhoColors.current.cardinal
+    // ASSIGNMENT wins before source branches (mirrors EkhoEventRow + month grid).
     val courseColor = if (event.type == EventType.ASSIGNMENT) {
         LocalAssignmentDecorator.current.courseColorFor(event.id)
     } else {
@@ -422,7 +422,7 @@ private fun TimelineEventBlock(
     }
     val (bgColor, textColor) = when {
         event.type == EventType.ASSIGNMENT ->
-            (courseColor ?: colors.primary) to onEventPill
+            (courseColor ?: cardinal) to onEventPill
 
         event.source == EventSource.ICAL_FEED && event.isBookmarked ->
             colors.tertiary to onEventPill
