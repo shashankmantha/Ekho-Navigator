@@ -91,11 +91,33 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.Canvas as ComposeCanvas
 
 
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.LocalParking
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.ui.graphics.vector.ImageVector
+
 data class UserMarker(
     val id: Long,
     val droppedMarkerLocation: LatLng,
-    val markerLabelComment: String = ""
+    val markerLabelComment: String = "",
+    val iconType: MarkerIconType = MarkerIconType.PIN
 )
+
+enum class MarkerIconType(val icon: ImageVector) {
+    PIN(Icons.Default.Place),
+    HOME(Icons.Default.Home),
+    FOOD(Icons.Default.Restaurant),
+    PARKING(Icons.Default.LocalParking),
+    STAR(Icons.Default.Star),
+    FAVORITE(Icons.Default.Favorite),
+    FLAG(Icons.Default.Flag)
+}
 
 private const val MARKER_FOCUS_PREFIX = "marker_"
 
@@ -371,7 +393,10 @@ fun MapScreen(
                                 markerState.showInfoWindow()
                             }
                         }
-                        val markerIcon = rememberMarkerIcon(place.category)
+                        val markerIcon = rememberMarkerIcon(
+                            imageVector = place.category.icon,
+                            color = place.category.color
+                        )
                         MarkerInfoWindow(
                             state = markerState,
                             icon = markerIcon,
@@ -406,9 +431,13 @@ fun MapScreen(
                             markerState.showInfoWindow()
                         }
                     }
+                    val markerIcon = rememberMarkerIcon(
+                        imageVector = droppedMarker.iconType.icon,
+                        color = Color(0xFF2196F3) // Azure Blue for custom markers
+                    )
                     MarkerInfoWindow(
                         state = markerState,
-                        icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE),
+                        icon = markerIcon,
                         onInfoWindowClick = {
                             selectedDroppedMarkerForOptions = droppedMarker
                         },
@@ -615,7 +644,10 @@ fun MapScreen(
         }
 
         if (selectedDroppedMarkerForOptions != null) {
-            val selectedMarker = selectedDroppedMarkerForOptions!!
+            val selectedMarkerId = selectedDroppedMarkerForOptions!!.id
+            val selectedMarker = droppedMarkers.find { it.id == selectedMarkerId }
+                ?: selectedDroppedMarkerForOptions!!
+
             AlertDialog(
                 onDismissRequest = { selectedDroppedMarkerForOptions = null },
                 title = { Text("Marker options") },
@@ -626,6 +658,41 @@ fun MapScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
+
+                        Text(
+                            text = "Choose Icon:",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            items(MarkerIconType.entries) { iconType ->
+                                AssistChip(
+                                    onClick = {
+                                        viewModel.updateMarkerIcon(selectedMarker.id, iconType)
+                                    },
+                                    label = {
+                                        Icon(
+                                            imageVector = iconType.icon,
+                                            contentDescription = iconType.name,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    },
+                                    colors = AssistChipDefaults.assistChipColors(
+                                        containerColor = if (selectedMarker.iconType == iconType) {
+                                            MaterialTheme.colorScheme.primaryContainer
+                                        } else {
+                                            Color.Transparent
+                                        }
+                                    )
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(7.dp))
 
                         TextButton(onClick = {
                             selectedDroppedMarkerForOptions = null
@@ -784,15 +851,15 @@ fun MapScreen(
 }
 
 @Composable
-fun rememberMarkerIcon(category: PlaceCategory): com.google.android.gms.maps.model.BitmapDescriptor {
+fun rememberMarkerIcon(
+    imageVector: ImageVector,
+    color: Color
+): com.google.android.gms.maps.model.BitmapDescriptor {
     val density = androidx.compose.ui.platform.LocalDensity.current
-    val imageVector = category.icon
-    val color = category.color
-
     val painter = androidx.compose.ui.graphics.vector.rememberVectorPainter(imageVector)
 
     return androidx.compose.runtime.remember(imageVector, color) {
-        val sizePx = with(density) { 26.dp.toPx() }        //size of icons
+        val sizePx = with(density) { 26.dp.toPx() }
 
         val bitmap = Bitmap.createBitmap(
             sizePx.toInt(),
@@ -817,6 +884,6 @@ fun rememberMarkerIcon(category: PlaceCategory): com.google.android.gms.maps.mod
             }
         }
 
-        BitmapDescriptorFactory.fromBitmap(bitmap)
+        com.google.android.gms.maps.model.BitmapDescriptorFactory.fromBitmap(bitmap)
     }
 }
