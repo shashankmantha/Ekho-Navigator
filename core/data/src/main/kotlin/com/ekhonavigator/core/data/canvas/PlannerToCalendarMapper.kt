@@ -12,7 +12,11 @@ internal const val CANVAS_PLANNER_ITEM_SOURCE = "canvas_planner_item"
 // bell) or hide by default (calendar_events are usually instructor noise).
 // description stays empty — the planner endpoint doesn't include the body;
 // it gets backfilled from the per-course assignments endpoint after sync.
-internal fun CanvasPlannerItemEntity.toCalendarEventOrNull(): CalendarEventEntity? {
+// courseCode is resolved by the repo from the already-synced courses list;
+// it lights up the EventScreen course chip on Canvas-bridged rows.
+internal fun CanvasPlannerItemEntity.toCalendarEventOrNull(
+    courseCode: String? = null,
+): CalendarEventEntity? {
     val kind = PlannerKind.fromCanvasType(plannableType)
     val instant = when (kind) {
         PlannerKind.ASSIGNMENT, PlannerKind.QUIZ -> dueAt ?: plannableDate
@@ -44,6 +48,7 @@ internal fun CanvasPlannerItemEntity.toCalendarEventOrNull(): CalendarEventEntit
         externalSourceType = CANVAS_PLANNER_ITEM_SOURCE,
         dueAt = dueAt,
         type = mappedType,
+        courseLabel = courseCode,
     )
 }
 

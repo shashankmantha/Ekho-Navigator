@@ -19,6 +19,9 @@ data class AssignmentDecorator(
     // Drives color resolution for personal events tagged with a user-typed
     // courseLabel — same mapping the Canvas course list uses.
     val familyKeyToSlot: Map<String, Int> = emptyMap(),
+    // Lets personal events with a courseLabel resolve to a Canvas course
+    // for tap-to-detail nav. Sibling sections collapse to one courseId.
+    val familyKeyToCourseId: Map<String, String> = emptyMap(),
 ) {
     @Composable
     @ReadOnlyComposable
@@ -40,6 +43,11 @@ data class AssignmentDecorator(
     fun isCompleted(eventId: String): Boolean = eventId in completedEventIds
 
     fun courseIdFor(eventId: String): String? = courseIdByEventId[eventId]
+
+    fun courseIdForLabel(label: String?): String? {
+        if (label.isNullOrBlank()) return null
+        return familyKeyToCourseId[CourseColorAssigner.familyKey(label)]
+    }
 
     companion object {
         val Empty = AssignmentDecorator()

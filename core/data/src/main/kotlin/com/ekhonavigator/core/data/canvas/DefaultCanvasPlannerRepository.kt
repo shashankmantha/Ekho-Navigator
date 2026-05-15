@@ -69,7 +69,10 @@ internal class DefaultCanvasPlannerRepository @Inject constructor(
             plannerDao.upsertAll(entities)
             plannerDao.deleteInRangeExcept(start, end, entities.map { it.id })
 
-            val calendarEntities = entities.mapNotNull { it.toCalendarEventOrNull() }
+            val codeByCourseId = courses.associate { it.id to it.code }
+            val calendarEntities = entities.mapNotNull { entity ->
+                entity.toCalendarEventOrNull(courseCode = entity.courseId?.let(codeByCourseId::get))
+            }
             Log.d(TAG, "sync: bridged ${calendarEntities.size}/${entities.size} into calendar_events")
             calendarEventDao.upsertEvents(calendarEntities)
             calendarEventDao.deleteByExternalSourceInRangeExcept(

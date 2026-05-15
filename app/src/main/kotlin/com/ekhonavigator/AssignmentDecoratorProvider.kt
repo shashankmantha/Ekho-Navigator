@@ -55,6 +55,13 @@ class AssignmentDecoratorViewModel @Inject constructor(
         val courseInputs = courses.map { CourseColorInput(id = it.id, code = it.code) }
         val courseSlots = CourseColorAssigner.assign(courseInputs)
         val familyKeyToSlot = CourseColorAssigner.familySlots(courseInputs)
+        // Sort-by-code so lab + lecture siblings pick the same deterministic id;
+        // groupBy + first prefers the alphabetically earliest section (lecture
+        // before lab — "Sec 001" beats "Sec 01L").
+        val familyKeyToCourseId = courseInputs
+            .sortedBy { it.code }
+            .groupBy { CourseColorAssigner.familyKey(it.code) }
+            .mapValues { (_, group) -> group.first().id }
 
         val itemsWithCourse = plannerItems.mapNotNull { item ->
             val courseId = item.courseId ?: return@mapNotNull null
@@ -83,6 +90,7 @@ class AssignmentDecoratorViewModel @Inject constructor(
             completedEventIds = completedEventIds,
             courseIdByEventId = courseIdByEventId,
             familyKeyToSlot = familyKeyToSlot,
+            familyKeyToCourseId = familyKeyToCourseId,
         )
     }.stateIn(
         scope = viewModelScope,

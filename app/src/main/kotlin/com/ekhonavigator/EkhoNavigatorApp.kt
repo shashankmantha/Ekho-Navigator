@@ -565,6 +565,7 @@ fun EkhoNavigatorApp(
                                         )
                                     },
                                     onEditClick = navigator::navigateToEditEvent,
+                                    onCourseClick = navigator::navigateToCourseDetail,
                                 )
                             }
                         }

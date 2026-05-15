@@ -85,6 +85,7 @@ fun EventScreen(
     onBack: () -> Unit = {},
     onLocationClick: (placeId: String) -> Unit = {},
     onEditClick: (eventId: String) -> Unit = {},
+    onCourseClick: (courseId: String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: EventDetailViewModel = hiltViewModel(
         checkNotNull(
@@ -161,6 +162,7 @@ fun EventScreen(
             onRsvp = viewModel::rsvp,
             onLocationClick = onLocationClick,
             onLocationSaveOfferClick = { showSaveMarkerPrompt = true },
+            onCourseClick = onCourseClick,
             modifier = modifier,
         )
 
@@ -241,6 +243,7 @@ private fun EventDetailContent(
     onRsvp: (RsvpStatus) -> Unit = {},
     onLocationClick: (placeId: String) -> Unit = {},
     onLocationSaveOfferClick: () -> Unit = {},
+    onCourseClick: (courseId: String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val zone = remember { ZoneId.systemDefault() }
@@ -305,9 +308,27 @@ private fun EventDetailContent(
             },
         )
 
-        if (event.eventType.isNotBlank()) {
+        val courseLabel = event.courseLabel
+        val courseChipCourseId = if (!courseLabel.isNullOrBlank()) {
+            LocalAssignmentDecorator.current.courseIdForLabel(courseLabel)
+        } else null
+
+        if (event.eventType.isNotBlank() || !courseLabel.isNullOrBlank()) {
             Spacer(Modifier.height(10.dp))
-            EventTypeBadge(event.eventType)
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                if (event.eventType.isNotBlank()) {
+                    EventTypeBadge(event.eventType)
+                }
+                if (!courseLabel.isNullOrBlank()) {
+                    CourseHeaderChip(
+                        label = courseLabel,
+                        onClick = courseChipCourseId?.let { { onCourseClick(it) } },
+                    )
+                }
+            }
         }
 
         Spacer(Modifier.height(18.dp))
@@ -315,7 +336,10 @@ private fun EventDetailContent(
         Spacer(Modifier.height(10.dp))
 
         MetaTextRow(label = "WHEN", value = formatTimeRange(event.startTime, event.endTime, zone), monoValue = true)
-        if (event.organization.isNotBlank()) {
+        // Canvas's contextName duplicates the course chip — drop it to avoid restating.
+        val showHostedBy = event.organization.isNotBlank() &&
+            !(event.source == EventSource.CANVAS && !courseLabel.isNullOrBlank())
+        if (showHostedBy) {
             MetaTextRow(label = "HOSTED BY", value = event.organization.prettifyAllCaps())
         }
         if (event.location.isNotBlank()) {
@@ -491,11 +515,6 @@ private fun EventDetailContent(
         // Hidden on assignments — General has no contextual meaning on homework.
         if (event.categories.isNotEmpty() && event.type != EventType.ASSIGNMENT) {
             MetaChipsRow(label = "TAGGED", categories = event.categories)
-        }
-
-        val courseLabel = event.courseLabel
-        if (!courseLabel.isNullOrBlank()) {
-            CourseChipRow(label = courseLabel)
         }
 
         if (canvasContext != null) {
@@ -946,42 +965,38 @@ private fun OpenInCanvasButton(url: String) {
     }
 }
 
+// Matches EventTypeBadge dimensions so the two sit cleanly side-by-side under the title.
 @Composable
-private fun CourseChipRow(label: String) {
-    // Falls back to onSurfaceVariant for free-text courses with no Canvas match.
+private fun CourseHeaderChip(label: String, onClick: (() -> Unit)? = null) {
     val decorator = LocalAssignmentDecorator.current
     val courseColor = decorator.courseColorForLabel(label)
         ?: MaterialTheme.colorScheme.onSurfaceVariant
-    Row(
-        modifier = Modifier.padding(vertical = 5.dp),
-        verticalAlignment = Alignment.Top,
+    val clickMod = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
+    Surface(
+        color = courseColor.copy(alpha = 0.12f),
+        contentColor = courseColor,
+        shape = RoundedCornerShape(4.dp),
+        modifier = clickMod,
     ) {
-        MetaLabel("COURSE", Modifier.width(MetaLabelWidth).padding(top = 6.dp))
-        AssistChip(
-            onClick = { /* clickable course-detail nav lands in Phase 7.A2 */ },
-            label = {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelSmall,
-                )
-            },
-            leadingIcon = {
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .clip(CircleShape)
-                        .background(courseColor),
-                )
-            },
-            colors = AssistChipDefaults.assistChipColors(
-                containerColor = courseColor.copy(alpha = 0.12f),
-                labelColor = courseColor,
-            ),
-            border = AssistChipDefaults.assistChipBorder(
-                enabled = true,
-                borderColor = courseColor.copy(alpha = 0.3f),
-            ),
-        )
+        Row(
+            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(courseColor),
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 10.sp,
+                    letterSpacing = 0.04.em,
+                ),
+            )
+        }
     }
 }
 
