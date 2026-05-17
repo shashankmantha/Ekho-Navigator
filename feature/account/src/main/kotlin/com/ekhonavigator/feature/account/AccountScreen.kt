@@ -45,6 +45,7 @@ import kotlinx.coroutines.launch
 fun AccountScreen(
     onConnectCanvasClick: () -> Unit = {},
     onManageEventsClick: () -> Unit = {},
+    onImportEventsClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: AccountViewModel = hiltViewModel(),
     forceSignedOutUi: Boolean = false,
@@ -271,6 +272,7 @@ fun AccountScreen(
                         },
                         onConnectCanvasClick = onConnectCanvasClick,
                         onManageEventsClick = onManageEventsClick,
+                        onImportEventsClick = onImportEventsClick,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }

@@ -39,6 +39,8 @@ dependencies {
     implementation(projects.core.model)
     implementation(projects.core.data)
     implementation(projects.core.designsystem)
+    // ICS import — file picker drops a Uri here, parser turns it into staging DTOs.
+    implementation(projects.core.network)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.tooling.preview)

@@ -77,6 +77,7 @@ fun EditProfileScreen(
     onSignOutClick: () -> Unit,
     onConnectCanvasClick: () -> Unit,
     onManageEventsClick: () -> Unit = {},
+    onImportEventsClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var displayName by rememberSaveable { mutableStateOf(initialDisplayName) }
@@ -323,6 +324,12 @@ fun EditProfileScreen(
             title = "Manage events",
             description = "Review and bulk-delete events you've created.",
             onClick = onManageEventsClick,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        IntegrationCard(
+            title = "Import calendar (.ics)",
+            description = "Pull class schedules from CI Records or any other calendar export.",
+            onClick = onImportEventsClick,
         )
 
         Spacer(modifier = Modifier.height(24.dp))

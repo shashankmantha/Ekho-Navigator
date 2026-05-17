@@ -61,16 +61,19 @@ import com.ekhonavigator.feature.discover.DiscoverTab
 import com.ekhonavigator.feature.discover.navigation.DiscoverNavKey
 import com.ekhonavigator.feature.event.CreateEventScreen
 import com.ekhonavigator.feature.event.EventScreen
+import com.ekhonavigator.feature.event.ImportEventsScreen
 import com.ekhonavigator.feature.event.InvitesActionIcon
 import com.ekhonavigator.feature.event.InvitesScreen
 import com.ekhonavigator.feature.event.ManageEventsScreen
 import com.ekhonavigator.feature.event.navigation.CreateEventNavKey
 import com.ekhonavigator.feature.event.navigation.EventNavKey
+import com.ekhonavigator.feature.event.navigation.ImportEventsNavKey
 import com.ekhonavigator.feature.event.navigation.InvitesNavKey
 import com.ekhonavigator.feature.event.navigation.ManageEventsNavKey
 import com.ekhonavigator.feature.event.navigation.navigateToCreateEvent
 import com.ekhonavigator.feature.event.navigation.navigateToEditEvent
 import com.ekhonavigator.feature.event.navigation.navigateToEvent
+import com.ekhonavigator.feature.event.navigation.navigateToImportEvents
 import com.ekhonavigator.feature.event.navigation.navigateToInvites
 import com.ekhonavigator.feature.event.navigation.navigateToManageEvents
 import com.ekhonavigator.feature.home.HomeScreen
@@ -527,6 +530,7 @@ fun EkhoNavigatorApp(
                                 AccountScreen(
                                     onConnectCanvasClick = navigator::navigateToConnectCanvas,
                                     onManageEventsClick = navigator::navigateToManageEvents,
+                                    onImportEventsClick = navigator::navigateToImportEvents,
                                 )
                             }
                         }
@@ -534,6 +538,12 @@ fun EkhoNavigatorApp(
                         is ManageEventsNavKey -> {
                             NavEntry(key) {
                                 ManageEventsScreen()
+                            }
+                        }
+
+                        is ImportEventsNavKey -> {
+                            NavEntry(key) {
+                                ImportEventsScreen(onDone = navigator::goBack)
                             }
                         }
 
