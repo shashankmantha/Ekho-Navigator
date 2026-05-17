@@ -41,6 +41,10 @@ data class CalendarEvent(
      *  only for USER_CREATED + type=ASSIGNMENT — Canvas assignments use
      *  submitted/graded/excused on the planner item table for the same purpose. */
     val isCompleted: Boolean = false,
+    /** Set when this event repeats weekly until [RecurrenceRule.endDate]. Null
+     *  for one-off events. Expansion happens at observation time so we keep one
+     *  row per series in storage rather than thousands of instances. */
+    val recurrence: RecurrenceRule? = null,
 ) {
     val primaryCategory: EventCategory
         get() = categories.firstOrNull() ?: EventCategory.GENERAL

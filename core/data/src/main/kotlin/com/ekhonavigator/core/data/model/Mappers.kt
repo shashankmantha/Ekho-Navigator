@@ -64,6 +64,10 @@ fun CalendarEvent.toCustomEventEntity(
     type = type,
     courseLabel = courseLabel,
     isCompleted = isCompleted,
+    recurrenceDaysOfWeek = recurrence?.daysOfWeek
+        ?.joinToString(",") { it.name }
+        ?.takeIf { it.isNotBlank() },
+    recurrenceEndDateEpochDay = recurrence?.endDate?.toEpochDay(),
 )
 
 /** [source] defaults to SHARED but is overridden when an owner's second device receives their own event back through the listener. */
@@ -133,5 +137,14 @@ internal fun firestoreDataToEntity(
         } ?: EventType.EVENT,
         courseLabel = data["courseLabel"] as? String,
         isCompleted = data["isCompleted"] as? Boolean ?: false,
+        recurrenceDaysOfWeek = (data["recurrence"] as? Map<*, *>)
+            ?.get("daysOfWeek")
+            ?.let { it as? List<*> }
+            ?.filterIsInstance<String>()
+            ?.joinToString(",")
+            ?.takeIf { it.isNotBlank() },
+        recurrenceEndDateEpochDay = ((data["recurrence"] as? Map<*, *>)
+            ?.get("endDateEpochDay") as? Number)
+            ?.toLong(),
     )
 }

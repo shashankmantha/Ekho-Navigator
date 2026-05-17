@@ -8,4 +8,7 @@ package com.ekhonavigator.core.model
 enum class EventType {
     EVENT,
     ASSIGNMENT,
+    /** Recurring lecture/lab block. Carries a [RecurrenceRule] so the calendar
+     *  expands one stored row into a weekly series until the term ends. */
+    CLASS_MEETING,
 }

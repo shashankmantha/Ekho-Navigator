@@ -6,9 +6,12 @@ import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSource
 import com.ekhonavigator.core.model.EventType
+import com.ekhonavigator.core.model.RecurrenceRule
 import com.ekhonavigator.core.model.RsvpStatus
 import com.ekhonavigator.core.model.SharedLocation
+import java.time.DayOfWeek
 import java.time.Instant
+import java.time.LocalDate
 
 @Entity(tableName = "calendar_events")
 data class CalendarEventEntity(
@@ -52,6 +55,11 @@ data class CalendarEventEntity(
      *  `canvas_planner_items` instead — this column is meaningful only for
      *  USER_CREATED rows with `type = ASSIGNMENT`. Drives strikethrough render. */
     val isCompleted: Boolean = false,
+    // Flat columns rather than @Embedded — same reason as customLocation: Room
+    // rejects nested optional Embedded and CSV-of-day-names + epoch-day round
+    // trip into a RecurrenceRule cheaply. Null on both = one-off event.
+    val recurrenceDaysOfWeek: String? = null,
+    val recurrenceEndDateEpochDay: Long? = null,
 )
 
 fun CalendarEventEntity.isPast(now: Instant = Instant.now()): Boolean = endTime <= now
@@ -90,4 +98,14 @@ fun CalendarEventEntity.toDomainModel(
     type = type,
     courseLabel = courseLabel,
     isCompleted = isCompleted,
+    recurrence = parseRecurrenceRule(recurrenceDaysOfWeek, recurrenceEndDateEpochDay),
 )
+
+private fun parseRecurrenceRule(daysCsv: String?, endEpochDay: Long?): RecurrenceRule? {
+    if (daysCsv.isNullOrBlank() || endEpochDay == null) return null
+    val days = daysCsv.split(",")
+        .mapNotNull { runCatching { DayOfWeek.valueOf(it.trim()) }.getOrNull() }
+        .toSet()
+    if (days.isEmpty()) return null
+    return RecurrenceRule(days, LocalDate.ofEpochDay(endEpochDay))
+}

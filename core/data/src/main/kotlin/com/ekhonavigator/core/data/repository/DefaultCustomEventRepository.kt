@@ -288,6 +288,7 @@ class DefaultCustomEventRepository @Inject constructor(
             "type" to event.type.name,
             "courseLabel" to event.courseLabel,
             "isCompleted" to event.isCompleted,
+            "recurrence" to event.recurrence?.toFirestoreMap(),
         )
         firestore.collection("events").document(eventId).set(data).await()
     }
@@ -308,6 +309,7 @@ class DefaultCustomEventRepository @Inject constructor(
             "type" to event.type.name,
             "courseLabel" to event.courseLabel,
             "isCompleted" to event.isCompleted,
+            "recurrence" to event.recurrence?.toFirestoreMap(),
         )
         firestore.collection("events").document(eventId).update(data).await()
     }
@@ -316,6 +318,11 @@ class DefaultCustomEventRepository @Inject constructor(
         "title" to title,
         "latitude" to latitude,
         "longitude" to longitude,
+    )
+
+    private fun com.ekhonavigator.core.model.RecurrenceRule.toFirestoreMap(): Map<String, Any> = mapOf(
+        "daysOfWeek" to daysOfWeek.map { it.name },
+        "endDateEpochDay" to endDate.toEpochDay(),
     )
 
     override fun startSync(scope: CoroutineScope) {

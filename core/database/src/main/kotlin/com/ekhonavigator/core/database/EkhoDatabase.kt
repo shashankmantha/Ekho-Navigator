@@ -33,7 +33,7 @@ import com.ekhonavigator.core.database.model.EventAttendeeEntity
         CanvasAssignmentGroupEntity::class,
         CanvasAnnouncementEntity::class,
     ],
-    version = 16,
+    version = 17,
     exportSchema = false,
 )
 @TypeConverters(
