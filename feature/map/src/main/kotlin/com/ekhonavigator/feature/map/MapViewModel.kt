@@ -32,6 +32,9 @@ class MapViewModel @Inject constructor(
     private val _activeRoutePoints = MutableStateFlow<List<LatLng>>(emptyList())
     val activeRoutePoints = _activeRoutePoints.asStateFlow()
 
+    private val _activeTravelMode = MutableStateFlow<TravelMode?>(null)
+    val activeTravelMode = _activeTravelMode.asStateFlow()
+
     private val _isRouteLoading = MutableStateFlow(false)
     val isRouteLoading = _isRouteLoading.asStateFlow()
 
@@ -123,7 +126,8 @@ class MapViewModel @Inject constructor(
             id = newMarkerId,
             latitude = newMarkerLocation.latitude,
             longitude = newMarkerLocation.longitude,
-            comment = ""
+            comment = "",
+            iconType = "PIN"
         )
 
         droppedMarkers.add(newDroppedMarker.toUserMarker())
@@ -149,6 +153,22 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    fun updateMarkerIcon(markerIdToUpdate: Long, newIconType: MarkerIconType) {
+        val userId = currentUserId ?: return
+        val markerIndexToUpdate =
+            droppedMarkers.indexOfFirst { currentMarker -> currentMarker.id == markerIdToUpdate }
+
+        if (markerIndexToUpdate != -1) {
+            val updatedMarker =
+                droppedMarkers[markerIndexToUpdate].copy(iconType = newIconType)
+            droppedMarkers[markerIndexToUpdate] = updatedMarker
+
+            viewModelScope.launch {
+                markerRepository.saveMarker(userId, updatedMarker.toRemoteMarker())
+            }
+        }
+    }
+
     fun removeMarker(markerForRemoval: UserMarker) {
         val userId = currentUserId ?: return
 
@@ -162,14 +182,16 @@ class MapViewModel @Inject constructor(
     private fun UserDroppedMarker.toUserMarker() = UserMarker(
         id = id.toLongOrNull() ?: 0L,
         droppedMarkerLocation = LatLng(latitude, longitude),
-        markerLabelComment = comment
+        markerLabelComment = comment,
+        iconType = MarkerIconType.entries.find { it.name == iconType } ?: MarkerIconType.PIN
     )
 
     private fun UserMarker.toRemoteMarker() = UserDroppedMarker(
         id = id.toString(),
         latitude = droppedMarkerLocation.latitude,
         longitude = droppedMarkerLocation.longitude,
-        comment = markerLabelComment
+        comment = markerLabelComment,
+        iconType = iconType.name
     )
 
     fun getDirectionsToDestination(
@@ -179,6 +201,7 @@ class MapViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             _isRouteLoading.value = true
+            _activeTravelMode.value = travelMode
 
             // Use user's real location if available, otherwise fallback to CSUCI center
             val origin = userLocation ?: LatLng(34.162134342787105, -119.04400892418893)
@@ -201,6 +224,7 @@ class MapViewModel @Inject constructor(
 
     fun clearActiveRoute() {
         _activeRoutePoints.value = emptyList()
+        _activeTravelMode.value = null
     }
 
     override fun onCleared() {

@@ -37,7 +37,7 @@ object CampusPlacesData {
             id = "sage_hall",
             name = "Sage Hall/Enrollment Center",
             position = LatLng(34.16409704291065, -119.04221707938154),
-            category = PlaceCategory.BUILDINGS,
+            category = PlaceCategory.SERVICES,
             fullLocationDescription = "Enrollment Center building still used on current CSUCI Registrar pages",
             quickPreviewSummary = "Registrar, records, enrollment help",
             studentVisitReasons = "Students may go here for registration, records, transcripts, transfer credit questions, or other Registrar-related help.",
@@ -200,14 +200,19 @@ object CampusPlacesData {
             id = "yuba_hall",
             name = "Yuba Hall/Student Health Services",
             position = LatLng(34.16399732962278, -119.04108401027618),
-            category = PlaceCategory.BUILDINGS,
+            category = PlaceCategory.SERVICES,
             fullLocationDescription = "Student health services building for basic medical care and wellness support",
             quickPreviewSummary = "Health care, appointments, wellness support",
             studentVisitReasons = "Students may go here for medical appointments, basic health care, physical exams, immunization-related help, or general wellness support.",
             keyServicesOffered = "Basic health care services, appointments, physical exams, immunization support, health education, and prescription-related support.",
             studentProTip = "Useful to know anytime you need non-emergency health support on campus.",
             campusOfficePhoneNumber = "Contact: 805-437-8828",
-            aliases = listOf("Yuba Hall", "Student Health Services", "Student Health Center", "Health Services"),
+            aliases = listOf(
+                "Yuba Hall",
+                "Student Health Services",
+                "Student Health Center",
+                "Health Services"
+            ),
         ),
         CampusPlace(
             id = "ironwood_hall",
@@ -434,7 +439,12 @@ object CampusPlacesData {
             keyServicesOffered = "University Police support, Transportation and Parking Services, lost and found, police records requests, and Live Scan services.",
             studentProTip = "Useful to know for safety concerns, parking questions, or if you need help with a lost item.",
             campusOfficePhoneNumber = "Contact: 805-437-8444",
-            aliases = listOf("Placer Hall", "University Police", "CSUCI Police", "Parking Services"),
+            aliases = listOf(
+                "Placer Hall",
+                "University Police",
+                "CSUCI Police",
+                "Parking Services"
+            ),
         ),
         CampusPlace(
             id = "sage_hall",
@@ -460,7 +470,12 @@ object CampusPlacesData {
             keyServicesOffered = "Basic health care services, appointments, physical exams, immunization support, health education, and prescription-related support.",
             studentProTip = "Useful to know anytime you need non-emergency health support on campus.",
             campusOfficePhoneNumber = "Contact: 805-437-8828",
-            aliases = listOf("Yuba Hall", "Student Health Services", "Student Health Center", "Health Services"),
+            aliases = listOf(
+                "Yuba Hall",
+                "Student Health Services",
+                "Student Health Center",
+                "Health Services"
+            ),
         ),
 
         // HOUSING

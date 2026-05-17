@@ -1,4 +1,15 @@
+
 [
+  {
+    "featureType": "poi",
+    "elementType": "labels.icon",
+    "stylers": [{"visibility": "off"}]
+  },
+  {
+    "featureType": "transit",
+    "elementType": "labels.icon",
+    "stylers": [{"visibility": "off"}]
+  },
   {
     "elementType": "geometry",
     "stylers": [{ "color": "#242f3e" }]

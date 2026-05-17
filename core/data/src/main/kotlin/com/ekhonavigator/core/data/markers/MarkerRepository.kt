@@ -11,7 +11,8 @@ data class UserDroppedMarker(
     val id: String = "",
     val latitude: Double = 0.0,
     val longitude: Double = 0.0,
-    val comment: String = ""
+    val comment: String = "",
+    val iconType: String = "PIN"
 )
 
 class MarkerRepository @Inject constructor() {

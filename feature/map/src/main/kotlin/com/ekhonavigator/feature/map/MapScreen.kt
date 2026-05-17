@@ -1,11 +1,11 @@
 package com.ekhonavigator.feature.map
 
-import androidx.compose.foundation.isSystemInDarkTheme
-import com.google.android.gms.maps.model.MapStyleOptions
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -13,6 +13,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,8 +55,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -67,7 +73,11 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.Dot
+import com.google.android.gms.maps.model.Gap
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.MapStyleOptions
+import com.google.android.gms.maps.model.RoundCap
 import com.google.maps.android.compose.CameraPositionState
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
@@ -78,17 +88,37 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.ui.graphics.Canvas as ComposeCanvas
 
+
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.LocalParking
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.ui.graphics.vector.ImageVector
 
 data class UserMarker(
     val id: Long,
     val droppedMarkerLocation: LatLng,
-    val markerLabelComment: String = ""
+    val markerLabelComment: String = "",
+    val iconType: MarkerIconType = MarkerIconType.PIN
 )
 
-// Must match the prefix used by DefaultPlaceRepository when wrapping
-// UserDroppedMarkers as Place entries — the navigated focusPlaceId arrives
-// from the event WHERE row in that namespaced form.
+enum class MarkerIconType(val icon: ImageVector) {
+    PIN(Icons.Default.Place),
+    HOME(Icons.Default.Home),
+    FOOD(Icons.Default.Restaurant),
+    PARKING(Icons.Default.LocalParking),
+    STAR(Icons.Default.Star),
+    FAVORITE(Icons.Default.Favorite),
+    FLAG(Icons.Default.Flag)
+}
+
 private const val MARKER_FOCUS_PREFIX = "marker_"
 
 // - MAP CONTROLS
@@ -163,9 +193,10 @@ fun MapScreen(
     val context = LocalContext.current
 
     val activeRoutePoints by viewModel.activeRoutePoints.collectAsStateWithLifecycle()
+    val activeTravelMode by viewModel.activeTravelMode.collectAsStateWithLifecycle()
     val isRouteLoading by viewModel.isRouteLoading.collectAsStateWithLifecycle()
 
-    val csuciCenter = LatLng(34.162134342787105, -119.04400892418893)
+    val csuciCenter = LatLng(34.162039205474755, -119.04347659500405)
 
     val focusedPlace = remember(focusPlaceId) {
         focusPlaceId?.let { id -> CampusPlacesData.places.firstOrNull { it.id == id } }
@@ -193,7 +224,7 @@ fun MapScreen(
     val mapStyle = if (isSystemInDarkTheme()) {
         MapStyleOptions.loadRawResourceStyle(context, R.raw.map_style_dark)
     } else {
-        null
+        MapStyleOptions.loadRawResourceStyle(context, R.raw.map_style_light)
     }
 
     var isMapLoaded by remember { mutableStateOf(false) }
@@ -348,6 +379,7 @@ fun MapScreen(
             key("csuci-main") {
                 Marker(
                     state = rememberMarkerState(position = csuciCenter),
+                    alpha = 0f,
                     title = "CSUCI Central Mall"
                 )
             }
@@ -362,8 +394,13 @@ fun MapScreen(
                                 markerState.showInfoWindow()
                             }
                         }
+                        val markerIcon = rememberMarkerIcon(
+                            imageVector = place.category.icon,
+                            color = place.category.color
+                        )
                         MarkerInfoWindow(
                             state = markerState,
+                            icon = markerIcon,
                             onClick = {
                                 isAnyMarkerInfoShowing = true
                                 false
@@ -395,9 +432,13 @@ fun MapScreen(
                             markerState.showInfoWindow()
                         }
                     }
+                    val markerIcon = rememberMarkerIcon(
+                        imageVector = droppedMarker.iconType.icon,
+                        color = Color(0xFF2196F3) // Azure Blue for custom markers
+                    )
                     MarkerInfoWindow(
                         state = markerState,
-                        icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE),
+                        icon = markerIcon,
                         onInfoWindowClick = {
                             selectedDroppedMarkerForOptions = droppedMarker
                         },
@@ -436,7 +477,14 @@ fun MapScreen(
                 com.google.maps.android.compose.Polyline(
                     points = activeRoutePoints,
                     color = androidx.compose.ui.graphics.Color(0xFF2196F3),
-                    width = 12f
+                    width = 12f,
+                    pattern = if (activeTravelMode == TravelMode.WALK) {
+                        listOf(Dot(), Gap(20f))
+                    } else {
+                        null
+                    },
+                    startCap = RoundCap(),
+                    endCap = RoundCap()
                 )
             }
         }
@@ -524,14 +572,24 @@ fun MapScreen(
                         Spacer(modifier = Modifier.height(10.dp))
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             items(PlaceCategory.entries) { category ->
+                                val categoryColor = category.color
                                 FilterChip(
                                     selected = (selectedCategory == category),
                                     onClick = { selectedCategory = category },
                                     label = { Text(category.label) },
                                     colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        selectedContainerColor = categoryColor,
+                                        selectedLabelColor = Color.White,
+                                        containerColor = Color.Transparent,
+                                        labelColor = categoryColor
                                     ),
+                                    border = FilterChipDefaults.filterChipBorder(
+                                        enabled = true,
+                                        selected = selectedCategory == category,
+                                        borderColor = categoryColor,
+                                        selectedBorderColor = Color.Transparent,
+                                        borderWidth = 1.dp
+                                    )
                                 )
                             }
                         }
@@ -563,7 +621,10 @@ fun MapScreen(
                         ) {
                             Text(
                                 text = "Zoom in to see points of interest. Click filters to see even more.",
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, lineHeight = 14.sp),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = 11.sp,
+                                    lineHeight = 14.sp
+                                ),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.fillMaxWidth()
@@ -584,7 +645,10 @@ fun MapScreen(
         }
 
         if (selectedDroppedMarkerForOptions != null) {
-            val selectedMarker = selectedDroppedMarkerForOptions!!
+            val selectedMarkerId = selectedDroppedMarkerForOptions!!.id
+            val selectedMarker = droppedMarkers.find { it.id == selectedMarkerId }
+                ?: selectedDroppedMarkerForOptions!!
+
             AlertDialog(
                 onDismissRequest = { selectedDroppedMarkerForOptions = null },
                 title = { Text("Marker options") },
@@ -595,6 +659,41 @@ fun MapScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
+
+                        Text(
+                            text = "Choose Icon:",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            items(MarkerIconType.entries) { iconType ->
+                                AssistChip(
+                                    onClick = {
+                                        viewModel.updateMarkerIcon(selectedMarker.id, iconType)
+                                    },
+                                    label = {
+                                        Icon(
+                                            imageVector = iconType.icon,
+                                            contentDescription = iconType.name,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    },
+                                    colors = AssistChipDefaults.assistChipColors(
+                                        containerColor = if (selectedMarker.iconType == iconType) {
+                                            MaterialTheme.colorScheme.primaryContainer
+                                        } else {
+                                            Color.Transparent
+                                        }
+                                    )
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(7.dp))
 
                         TextButton(onClick = {
                             selectedDroppedMarkerForOptions = null
@@ -749,5 +848,43 @@ fun MapScreen(
                 }
             )
         }
+    }
+}
+
+@Composable
+fun rememberMarkerIcon(
+    imageVector: ImageVector,
+    color: Color
+): com.google.android.gms.maps.model.BitmapDescriptor {
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val painter = androidx.compose.ui.graphics.vector.rememberVectorPainter(imageVector)
+
+    return androidx.compose.runtime.remember(imageVector, color) {
+        val sizePx = with(density) { 27.dp.toPx() }
+
+        val bitmap = Bitmap.createBitmap(
+            sizePx.toInt(),
+            sizePx.toInt(),
+            Bitmap.Config.ARGB_8888
+        )
+        val canvas = Canvas(bitmap)
+
+        val drawScope = CanvasDrawScope()
+
+        drawScope.draw(
+            density = density,
+            layoutDirection = LayoutDirection.Ltr,
+            canvas = ComposeCanvas(canvas),
+            size = Size(sizePx, sizePx)
+        ) {
+            with(painter) {
+                draw(
+                    size = size,
+                    colorFilter = ColorFilter.tint(color)
+                )
+            }
+        }
+
+        com.google.android.gms.maps.model.BitmapDescriptorFactory.fromBitmap(bitmap)
     }
 }

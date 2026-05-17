@@ -180,7 +180,8 @@ private fun LocationDetailItem(label: String, value: String) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.outline
+            fontWeight = FontWeight.ExtraBold,
+            color = MaterialTheme.colorScheme.onSurface
         )
         Text(
             text = value,
