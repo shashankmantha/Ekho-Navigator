@@ -44,6 +44,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun AccountScreen(
     onConnectCanvasClick: () -> Unit = {},
+    onManageEventsClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: AccountViewModel = hiltViewModel(),
     forceSignedOutUi: Boolean = false,
@@ -269,6 +270,7 @@ fun AccountScreen(
                             viewModel.onSignOutClick()
                         },
                         onConnectCanvasClick = onConnectCanvasClick,
+                        onManageEventsClick = onManageEventsClick,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }

@@ -63,13 +63,16 @@ import com.ekhonavigator.feature.event.CreateEventScreen
 import com.ekhonavigator.feature.event.EventScreen
 import com.ekhonavigator.feature.event.InvitesActionIcon
 import com.ekhonavigator.feature.event.InvitesScreen
+import com.ekhonavigator.feature.event.ManageEventsScreen
 import com.ekhonavigator.feature.event.navigation.CreateEventNavKey
 import com.ekhonavigator.feature.event.navigation.EventNavKey
 import com.ekhonavigator.feature.event.navigation.InvitesNavKey
+import com.ekhonavigator.feature.event.navigation.ManageEventsNavKey
 import com.ekhonavigator.feature.event.navigation.navigateToCreateEvent
 import com.ekhonavigator.feature.event.navigation.navigateToEditEvent
 import com.ekhonavigator.feature.event.navigation.navigateToEvent
 import com.ekhonavigator.feature.event.navigation.navigateToInvites
+import com.ekhonavigator.feature.event.navigation.navigateToManageEvents
 import com.ekhonavigator.feature.home.HomeScreen
 import com.ekhonavigator.feature.home.navigation.HomeNavKey
 import com.ekhonavigator.feature.map.CampusPlacesData
@@ -523,7 +526,14 @@ fun EkhoNavigatorApp(
                             NavEntry(key) {
                                 AccountScreen(
                                     onConnectCanvasClick = navigator::navigateToConnectCanvas,
+                                    onManageEventsClick = navigator::navigateToManageEvents,
                                 )
+                            }
+                        }
+
+                        is ManageEventsNavKey -> {
+                            NavEntry(key) {
+                                ManageEventsScreen()
                             }
                         }
 

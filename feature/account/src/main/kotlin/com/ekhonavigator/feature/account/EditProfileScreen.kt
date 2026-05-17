@@ -76,6 +76,7 @@ fun EditProfileScreen(
     ) -> Unit,
     onSignOutClick: () -> Unit,
     onConnectCanvasClick: () -> Unit,
+    onManageEventsClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var displayName by rememberSaveable { mutableStateOf(initialDisplayName) }
@@ -306,6 +307,22 @@ fun EditProfileScreen(
             title = "Canvas",
             description = "Connect your Canvas account to surface assignments and grades.",
             onClick = onConnectCanvasClick,
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = "Data",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        Spacer(modifier = Modifier.height(4.dp))
+        IntegrationCard(
+            title = "Manage events",
+            description = "Review and bulk-delete events you've created.",
+            onClick = onManageEventsClick,
         )
 
         Spacer(modifier = Modifier.height(24.dp))
