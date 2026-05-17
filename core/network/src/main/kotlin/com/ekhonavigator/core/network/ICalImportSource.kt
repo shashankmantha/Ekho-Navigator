@@ -1,5 +1,6 @@
 package com.ekhonavigator.core.network
 
+import android.util.Log
 import com.ekhonavigator.core.network.model.StagedImportedEvent
 import net.fortuna.ical4j.data.CalendarBuilder
 import net.fortuna.ical4j.model.Component
@@ -13,6 +14,7 @@ import net.fortuna.ical4j.model.property.Location
 import net.fortuna.ical4j.model.property.RRule
 import net.fortuna.ical4j.model.property.Summary
 import net.fortuna.ical4j.model.property.Uid
+import net.fortuna.ical4j.util.CompatibilityHints
 import java.io.InputStream
 import java.io.InputStreamReader
 import java.time.DayOfWeek
@@ -35,14 +37,49 @@ import javax.inject.Singleton
 @Singleton
 class ICalImportSource @Inject constructor() {
 
-    fun parse(stream: InputStream): List<StagedImportedEvent> = try {
-        val raw = InputStreamReader(stream).use { it.readText() }
+    init {
+        // CI Records (and most third-party exports) emit broken-but-readable
+        // .ics — fold long lines wrong, drop required props, etc. Relaxed
+        // hints let the parser recover instead of giving up on the first whiff.
+        CompatibilityHints.setHintEnabled(CompatibilityHints.KEY_RELAXED_PARSING, true)
+        CompatibilityHints.setHintEnabled(CompatibilityHints.KEY_RELAXED_UNFOLDING, true)
+        CompatibilityHints.setHintEnabled(CompatibilityHints.KEY_RELAXED_VALIDATION, true)
+        CompatibilityHints.setHintEnabled(CompatibilityHints.KEY_OUTLOOK_COMPATIBILITY, true)
+    }
+
+    fun parse(stream: InputStream): List<StagedImportedEvent> {
+        val raw = try {
+            InputStreamReader(stream).use { it.readText() }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to read .ics stream", e)
+            return emptyList()
+        }
+        Log.d(TAG, "read ${raw.length} chars from .ics")
         val cleaned = vtimezonePattern.replace(raw, "")
-        val calendar = CalendarBuilder().build(cleaned.reader())
-        calendar.getComponents<VEvent>(Component.VEVENT)
-            .mapNotNull { runCatching { parseEvent(it) }.getOrNull() }
-    } catch (_: Exception) {
-        emptyList()
+        val calendar = try {
+            CalendarBuilder().build(cleaned.reader())
+        } catch (e: Exception) {
+            Log.w(TAG, "iCal4j build() rejected the file", e)
+            return emptyList()
+        }
+        val vevents = calendar.getComponents<VEvent>(Component.VEVENT)
+        Log.d(TAG, "iCal4j surfaced ${vevents.size} VEVENT components")
+        var rejected = 0
+        val staged = vevents.mapNotNull { event ->
+            try {
+                parseEvent(event)
+            } catch (e: Exception) {
+                rejected++
+                Log.w(TAG, "skipped VEVENT: ${e.message}")
+                null
+            }
+        }
+        if (rejected > 0) Log.w(TAG, "rejected $rejected of ${vevents.size} VEVENTs")
+        return staged
+    }
+
+    companion object {
+        private const val TAG = "ICalImport"
     }
 }
 
