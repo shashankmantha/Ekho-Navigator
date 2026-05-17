@@ -55,13 +55,20 @@ import com.ekhonavigator.core.designsystem.icon.EkhoIcons
 import com.ekhonavigator.core.designsystem.theme.LocalAssignmentDecorator
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventType
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -128,7 +135,7 @@ fun CreateEventScreen(
 
         PickerField(
             value = uiState.date?.format(dateFormatter) ?: "",
-            label = "Date",
+            label = if (uiState.type == EventType.CLASS_MEETING) "First meeting" else "Date",
             placeholder = "Tap to pick a date",
             onClick = { showDatePicker = true },
             isRequired = true,
@@ -183,6 +190,48 @@ fun CreateEventScreen(
             PastDateWarning()
         }
 
+        if (uiState.type == EventType.CLASS_MEETING) {
+            var showEndDatePicker by remember { mutableStateOf(false) }
+            RecurrenceDaysPicker(
+                selected = uiState.recurrenceDays,
+                onToggle = viewModel::toggleRecurrenceDay,
+                showError = uiState.showValidationErrors && uiState.recurrenceDays.isEmpty(),
+            )
+            PickerField(
+                value = uiState.recurrenceEndDate?.format(dateFormatter) ?: "",
+                label = "Repeats until",
+                placeholder = "End of term",
+                onClick = { showEndDatePicker = true },
+                isRequired = true,
+                isError = uiState.showValidationErrors && uiState.recurrenceEndDate == null,
+                errorText = "Required",
+            )
+            if (showEndDatePicker) {
+                val endDatePickerState = rememberDatePickerState()
+                DatePickerDialog(
+                    onDismissRequest = { showEndDatePicker = false },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                endDatePickerState.selectedDateMillis?.let { millis ->
+                                    val picked = Instant.ofEpochMilli(millis)
+                                        .atZone(ZoneId.of("UTC"))
+                                        .toLocalDate()
+                                    viewModel.setRecurrenceEndDate(picked)
+                                }
+                                showEndDatePicker = false
+                            },
+                        ) { Text("OK") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showEndDatePicker = false }) { Text("Cancel") }
+                    },
+                ) {
+                    DatePicker(state = endDatePickerState)
+                }
+            }
+        }
+
         LocationAutocompleteField(
             value = uiState.location,
             onValueChange = viewModel::setLocationText,
@@ -209,9 +258,9 @@ fun CreateEventScreen(
             )
         }
 
-        // Hidden for assignments — the current category set has no meaningful
-        // option for homework/tests. Per-type category sets are deferred.
-        if (uiState.type != EventType.ASSIGNMENT) {
+        // Categories only carry meaning for generic events — assignments and
+        // class meetings don't map to the campus/social category set.
+        if (uiState.type == EventType.EVENT) {
             CategoryDropdown(
                 selected = uiState.category,
                 onSelected = viewModel::setCategory,
@@ -422,10 +471,10 @@ private fun TypeSelector(
     selected: EventType,
     onSelected: (EventType) -> Unit,
 ) {
-    // Only EVENT and ASSIGNMENT are user-creatable; other types come from sync.
     val options = listOf(
         EventType.EVENT to "Event",
         EventType.ASSIGNMENT to "Assignment",
+        EventType.CLASS_MEETING to "Class",
     )
     EkhoSegmentedTabs(
         items = options,
@@ -512,6 +561,57 @@ private fun CourseField(
                     )
                 }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun RecurrenceDaysPicker(
+    selected: Set<DayOfWeek>,
+    onToggle: (DayOfWeek) -> Unit,
+    showError: Boolean,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            text = "Repeats on",
+            style = MaterialTheme.typography.labelLarge,
+            color = if (showError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+        )
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            // Mon → Sun reads naturally for class schedules and avoids the
+            // Sunday-first ordering most US calendars use elsewhere in the app.
+            val ordered = listOf(
+                DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
+                DayOfWeek.THURSDAY, DayOfWeek.FRIDAY, DayOfWeek.SATURDAY, DayOfWeek.SUNDAY,
+            )
+            ordered.forEach { day ->
+                val isSelected = day in selected
+                FilterChip(
+                    selected = isSelected,
+                    onClick = { onToggle(day) },
+                    label = {
+                        Text(
+                            text = day.getDisplayName(TextStyle.SHORT, Locale.US),
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                    },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
+                )
+            }
+        }
+        if (showError) {
+            Text(
+                text = "Pick at least one day",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+            )
         }
     }
 }

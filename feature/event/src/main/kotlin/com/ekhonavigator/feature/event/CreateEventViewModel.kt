@@ -17,7 +17,9 @@ import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSource
 import com.ekhonavigator.core.model.EventType
 import com.ekhonavigator.core.model.Place
+import com.ekhonavigator.core.model.RecurrenceRule
 import com.ekhonavigator.core.model.SharedLocation
+import java.time.DayOfWeek
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -53,6 +55,10 @@ data class CreateEventUiState(
     val courseLabel: String = "",
     // Carried through edit mode so save() doesn't reset existing completion.
     val isCompleted: Boolean = false,
+    // CLASS_MEETING only — null on other types. recurrenceDays defaults to the
+    // anchor date's weekday so the day chips look pre-selected once a date lands.
+    val recurrenceDays: Set<DayOfWeek> = emptySet(),
+    val recurrenceEndDate: LocalDate? = null,
     val friends: List<FriendUser> = emptyList(),
     val selectedFriendUids: Set<String> = emptySet(),
     // Non-null when editing — also gates the one-shot load so Firestore syncs
@@ -66,10 +72,12 @@ data class CreateEventUiState(
     val canSave: Boolean
         get() = when (type) {
             EventType.ASSIGNMENT -> title.isNotBlank() && date != null && startTime != null
-            else -> title.isNotBlank() && date != null && startTime != null && endTime != null && !endBeforeStart
+            EventType.CLASS_MEETING -> title.isNotBlank() && date != null && startTime != null &&
+                endTime != null && !endBeforeStart && recurrenceDays.isNotEmpty() && recurrenceEndDate != null
+            EventType.EVENT -> title.isNotBlank() && date != null && startTime != null && endTime != null && !endBeforeStart
         }
 
-    // Shown live (not gated by a save attempt). EVENT-only — ASSIGNMENT has no end.
+    // Shown live (not gated by a save attempt). ASSIGNMENT has no end; both EVENT and CLASS_MEETING do.
     val endBeforeStart: Boolean
         get() = type != EventType.ASSIGNMENT && startTime != null && endTime != null && !endTime.isAfter(startTime)
 
@@ -134,7 +142,10 @@ class CreateEventViewModel @Inject constructor(
             val zonedEnd = event.endTime.atZone(EventZone)
             _uiState.update {
                 it.copy(
-                    editingEventId = eventId,
+                    // event.id is the seed uid even when the nav passed a recurrence
+                    // instance id (`seedUid__epochDay`) — keeps update writes on the
+                    // real row instead of a synthetic one.
+                    editingEventId = event.id,
                     type = event.type,
                     title = event.title,
                     description = event.description,
@@ -148,6 +159,8 @@ class CreateEventViewModel @Inject constructor(
                     category = event.categories.firstOrNull() ?: EventCategory.GENERAL,
                     courseLabel = event.courseLabel.orEmpty(),
                     isCompleted = event.isCompleted,
+                    recurrenceDays = event.recurrence?.daysOfWeek.orEmpty(),
+                    recurrenceEndDate = event.recurrence?.endDate,
                     selectedFriendUids = attendeeMap.keys,
                     existingAttendees = attendeeMap,
                 )
@@ -174,7 +187,21 @@ class CreateEventViewModel @Inject constructor(
     fun setEndTime(value: LocalTime) = _uiState.update { it.copy(endTime = value) }
     fun setCategory(value: EventCategory) = _uiState.update { it.copy(category = value) }
     fun setCourseLabel(value: String) = _uiState.update { it.copy(courseLabel = value) }
-    fun setType(value: EventType) = _uiState.update { it.copy(type = value) }
+    fun setType(value: EventType) = _uiState.update { state ->
+        // Seed the recurrence chips so the first one matches the picked date.
+        val seededDays = if (value == EventType.CLASS_MEETING && state.recurrenceDays.isEmpty()) {
+            state.date?.dayOfWeek?.let(::setOf) ?: emptySet()
+        } else state.recurrenceDays
+        state.copy(type = value, recurrenceDays = seededDays)
+    }
+
+    fun toggleRecurrenceDay(day: DayOfWeek) = _uiState.update {
+        it.copy(
+            recurrenceDays = if (day in it.recurrenceDays) it.recurrenceDays - day else it.recurrenceDays + day,
+        )
+    }
+
+    fun setRecurrenceEndDate(value: LocalDate) = _uiState.update { it.copy(recurrenceEndDate = value) }
 
     // Typing past a selected place unpins it.
     fun setLocationText(value: String) = _uiState.update {
@@ -349,6 +376,12 @@ class CreateEventViewModel @Inject constructor(
             // Normalize at the boundary so storage stays canonical.
             courseLabel = normalizeCourseLabel(state.courseLabel),
             isCompleted = state.isCompleted,
+            recurrence = if (state.type == EventType.CLASS_MEETING &&
+                state.recurrenceDays.isNotEmpty() &&
+                state.recurrenceEndDate != null
+            ) {
+                RecurrenceRule(state.recurrenceDays, state.recurrenceEndDate)
+            } else null,
         )
     }
 }

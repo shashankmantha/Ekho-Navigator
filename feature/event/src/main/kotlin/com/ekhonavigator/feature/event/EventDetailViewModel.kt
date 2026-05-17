@@ -171,10 +171,13 @@ class EventDetailViewModel @Inject constructor(
     }
 
     fun setEventId(id: String) {
-        _eventId.value = id
-        if (id.isNotEmpty()) {
+        // Recurrence taps pass `seedUid__epochDay`; downstream writes (delete,
+        // bookmark, complete) need the seed row, so strip the suffix once here.
+        val seedId = id.substringBefore("__")
+        _eventId.value = seedId
+        if (seedId.isNotEmpty()) {
             viewModelScope.launch {
-                customEventRepository.syncAttendees(id)
+                customEventRepository.syncAttendees(seedId)
             }
         }
     }
