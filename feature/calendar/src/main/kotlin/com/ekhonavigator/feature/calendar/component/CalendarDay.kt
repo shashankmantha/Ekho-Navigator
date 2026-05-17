@@ -125,12 +125,12 @@ fun DayContent(
             val decorator = LocalAssignmentDecorator.current
             Column(verticalArrangement = Arrangement.spacedBy(0.5.dp)) {
                 visibleEvents.forEach { event ->
-                    val courseColor = when (event.type) {
-                        EventType.ASSIGNMENT -> decorator.courseColorFor(event.id)
-                        EventType.CLASS_MEETING -> decorator.courseColorForLabel(event.courseLabel)
+                    val courseColor = when {
+                        event.type == EventType.ASSIGNMENT -> decorator.courseColorFor(event.id)
+                        !event.courseLabel.isNullOrBlank() -> decorator.courseColorForLabel(event.courseLabel)
                         else -> null
                     }
-                    val isClassMeeting = event.type == EventType.CLASS_MEETING
+                    val isRecurring = event.recurrence != null
                     val (pillBg, pillText) = eventPillColors(
                         event = event,
                         calendarPill = courseColor ?: calendarPillColor,
@@ -142,11 +142,11 @@ fun DayContent(
                         onCampusMuted = onCampusMutedPillColor,
                         onCampusBookmarked = onCampusBookmarkedPillColor,
                     )
-                    // Class meetings render as outline-only: border + label in
-                    // the course color, transparent fill, label color forced
-                    // to the accent so it reads on the cell's background.
-                    val classMeetingAccent = courseColor ?: customPillColor
-                    val effectiveTextColor = if (isClassMeeting) classMeetingAccent else pillText
+                    // Recurring blocks render as outline-only: border + label
+                    // in the accent color, transparent fill so the cell shows
+                    // through and the repeat reads as a "ghost" of a pill.
+                    val recurringAccent = courseColor ?: customPillColor
+                    val effectiveTextColor = if (isRecurring) recurringAccent else pillText
                     val isPendingInvite = event.myRsvpStatus == RsvpStatus.PENDING
                     val pendingBorder = MaterialTheme.colorScheme.error
                     val isCompleted = decorator.isCompleted(event.id)
@@ -154,7 +154,7 @@ fun DayContent(
                     // Knock dark-mode pills back so white text reads on top.
                     val baseAlpha = if (isSystemInDarkTheme()) 0.8f else 1f
                     val effectivePillBg = when {
-                        isClassMeeting -> Color.Transparent
+                        isRecurring -> Color.Transparent
                         isPendingInvite -> pillBg.copy(alpha = 0.35f)
                         isCompleted -> pillBg.copy(alpha = 0.4f)
                         isPastEvent -> pillBg.copy(alpha = 0.55f)
@@ -167,9 +167,9 @@ fun DayContent(
                             .clip(RoundedCornerShape(2.dp))
                             .background(effectivePillBg)
                             .drawBehind {
-                                if (isClassMeeting) {
+                                if (isRecurring) {
                                     drawRoundRect(
-                                        color = classMeetingAccent,
+                                        color = recurringAccent,
                                         cornerRadius = CornerRadius(2.dp.toPx()),
                                         style = Stroke(width = 1.dp.toPx()),
                                     )

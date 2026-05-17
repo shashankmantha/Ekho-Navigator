@@ -416,19 +416,22 @@ private fun TimelineEventBlock(
     val cardinal = EkhoColors.current.cardinal
     val decorator = LocalAssignmentDecorator.current
     // ASSIGNMENT wins before source branches (mirrors EkhoEventRow + month grid).
-    val courseColor = when (event.type) {
-        EventType.ASSIGNMENT -> decorator.courseColorFor(event.id)
-        EventType.CLASS_MEETING -> decorator.courseColorForLabel(event.courseLabel)
+    // Course color resolves for any labeled event — a weekly team meeting tagged
+    // COMP-262 reads as the course, just outlined to signal it repeats.
+    val courseColor = when {
+        event.type == EventType.ASSIGNMENT -> decorator.courseColorFor(event.id)
+        !event.courseLabel.isNullOrBlank() -> decorator.courseColorForLabel(event.courseLabel)
         else -> null
     }
-    val isClassMeeting = event.type == EventType.CLASS_MEETING
+    // Outline treatment is the recurrence signal — covers class meetings AND
+    // recurring custom events (the "weekly team meeting" case).
+    val isRecurring = event.recurrence != null
     val (bgColor, textColor) = when {
         event.type == EventType.ASSIGNMENT ->
             (courseColor ?: cardinal) to onEventPill
 
-        // CLASS_MEETING renders as outline-only — bgColor used for the border
-        // and label, never a fill.
-        isClassMeeting ->
+        // Recurring renders as outline-only — bgColor doubles as border + label.
+        isRecurring ->
             (courseColor ?: colors.secondary) to (courseColor ?: colors.secondary)
 
         event.source == EventSource.ICAL_FEED && event.isBookmarked ->
@@ -453,7 +456,7 @@ private fun TimelineEventBlock(
     val baseAlpha = if (isSystemInDarkTheme()) 0.8f else 1f
     val effectiveBg = when {
         // Outline treatment — fill stays transparent regardless of state.
-        isClassMeeting -> androidx.compose.ui.graphics.Color.Transparent
+        isRecurring -> androidx.compose.ui.graphics.Color.Transparent
         isPendingInvite -> bgColor.copy(alpha = 0.35f)
         isCompletedPill -> bgColor.copy(alpha = 0.4f)
         isPastEvent -> bgColor.copy(alpha = 0.55f)
@@ -471,8 +474,8 @@ private fun TimelineEventBlock(
             .clip(RoundedCornerShape(4.dp))
             .background(effectiveBg)
             .drawBehind {
-                if (isClassMeeting) {
-                    // Solid outline distinguishes a class block from regular
+                if (isRecurring) {
+                    // Solid outline distinguishes repeating blocks from one-off
                     // filled pills at a glance.
                     drawRoundRect(
                         color = bgColor,

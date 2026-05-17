@@ -638,11 +638,14 @@ private fun StateRibbon(
     type: EventType,
 ) {
     val isPersonalAssignment = source == EventSource.USER_CREATED && type == EventType.ASSIGNMENT
+    val isPersonalClass = source == EventSource.USER_CREATED && type == EventType.CLASS_MEETING
     val (label, color) = when {
         source == EventSource.ICAL_FEED && isBookmarked ->
             "SAVED TO MY SCHEDULE" to MaterialTheme.colorScheme.tertiary
         isPersonalAssignment ->
             "YOUR ASSIGNMENT" to EkhoColors.current.cardinal
+        isPersonalClass ->
+            "YOUR CLASS" to MaterialTheme.colorScheme.primary
         source == EventSource.USER_CREATED ->
             "YOUR EVENT" to MaterialTheme.colorScheme.secondary
         source == EventSource.SHARED ->

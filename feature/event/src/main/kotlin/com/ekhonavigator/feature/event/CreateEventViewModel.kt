@@ -146,7 +146,9 @@ class CreateEventViewModel @Inject constructor(
                     // instance id (`seedUid__epochDay`) — keeps update writes on the
                     // real row instead of a synthetic one.
                     editingEventId = event.id,
-                    type = event.type,
+                    // Any event carrying a recurrence lands on the Recurring tab,
+                    // even if it was saved as plain EVENT (custom weekly meeting).
+                    type = if (event.recurrence != null) EventType.CLASS_MEETING else event.type,
                     title = event.title,
                     description = event.description,
                     location = event.location,
@@ -353,6 +355,15 @@ class CreateEventViewModel @Inject constructor(
             ?.takeIf { resolvedPlaceId?.startsWith("marker_") == true }
             ?.copy(title = state.location.trim())
 
+        // Recurring tab is the "umbrella" — class meetings live here only when
+        // the user actually labels a course. Bare recurring entries persist as
+        // EVENT so the calendar treats them as customs that happen to repeat.
+        val normalizedCourse = normalizeCourseLabel(state.courseLabel)
+        val storedType = when {
+            state.type == EventType.CLASS_MEETING && !normalizedCourse.isNullOrBlank() -> EventType.CLASS_MEETING
+            state.type == EventType.CLASS_MEETING -> EventType.EVENT
+            else -> state.type
+        }
         return CalendarEvent(
             id = id,
             title = state.title.trim(),
@@ -370,11 +381,10 @@ class CreateEventViewModel @Inject constructor(
             ownerDisplayName = authRepository.getCurrentUserDisplayName().orEmpty(),
             placeId = resolvedPlaceId,
             customLocation = customLocation,
-            type = state.type,
+            type = storedType,
             // Mirror onto dueAt so sites that prefer it don't need a fallback.
-            dueAt = if (state.type == EventType.ASSIGNMENT) startInstant else null,
-            // Normalize at the boundary so storage stays canonical.
-            courseLabel = normalizeCourseLabel(state.courseLabel),
+            dueAt = if (storedType == EventType.ASSIGNMENT) startInstant else null,
+            courseLabel = normalizedCourse,
             isCompleted = state.isCompleted,
             recurrence = if (state.type == EventType.CLASS_MEETING &&
                 state.recurrenceDays.isNotEmpty() &&

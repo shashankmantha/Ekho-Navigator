@@ -135,7 +135,7 @@ fun CreateEventScreen(
 
         PickerField(
             value = uiState.date?.format(dateFormatter) ?: "",
-            label = if (uiState.type == EventType.CLASS_MEETING) "First meeting" else "Date",
+            label = if (uiState.type == EventType.CLASS_MEETING) "First occurrence" else "Date",
             placeholder = "Tap to pick a date",
             onClick = { showDatePicker = true },
             isRequired = true,
@@ -474,7 +474,9 @@ private fun TypeSelector(
     val options = listOf(
         EventType.EVENT to "Event",
         EventType.ASSIGNMENT to "Assignment",
-        EventType.CLASS_MEETING to "Class",
+        // The "Recurring" tab covers both weekly custom events (team meetings)
+        // and class blocks — adding a Course label is what promotes it.
+        EventType.CLASS_MEETING to "Recurring",
     )
     EkhoSegmentedTabs(
         items = options,
