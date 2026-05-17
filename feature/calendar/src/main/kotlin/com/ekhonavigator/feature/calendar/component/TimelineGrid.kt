@@ -414,15 +414,22 @@ private fun TimelineEventBlock(
     val colors = MaterialTheme.colorScheme
     val onEventPill = EkhoColors.current.onEventPill
     val cardinal = EkhoColors.current.cardinal
+    val decorator = LocalAssignmentDecorator.current
     // ASSIGNMENT wins before source branches (mirrors EkhoEventRow + month grid).
-    val courseColor = if (event.type == EventType.ASSIGNMENT) {
-        LocalAssignmentDecorator.current.courseColorFor(event.id)
-    } else {
-        null
+    val courseColor = when (event.type) {
+        EventType.ASSIGNMENT -> decorator.courseColorFor(event.id)
+        EventType.CLASS_MEETING -> decorator.courseColorForLabel(event.courseLabel)
+        else -> null
     }
+    val isClassMeeting = event.type == EventType.CLASS_MEETING
     val (bgColor, textColor) = when {
         event.type == EventType.ASSIGNMENT ->
             (courseColor ?: cardinal) to onEventPill
+
+        // CLASS_MEETING renders as outline-only — bgColor used for the border
+        // and label, never a fill.
+        isClassMeeting ->
+            (courseColor ?: colors.secondary) to (courseColor ?: colors.secondary)
 
         event.source == EventSource.ICAL_FEED && event.isBookmarked ->
             colors.tertiary to onEventPill
@@ -445,6 +452,8 @@ private fun TimelineEventBlock(
     // reads on top. Past/completed/pending tier down from there.
     val baseAlpha = if (isSystemInDarkTheme()) 0.8f else 1f
     val effectiveBg = when {
+        // Outline treatment — fill stays transparent regardless of state.
+        isClassMeeting -> androidx.compose.ui.graphics.Color.Transparent
         isPendingInvite -> bgColor.copy(alpha = 0.35f)
         isCompletedPill -> bgColor.copy(alpha = 0.4f)
         isPastEvent -> bgColor.copy(alpha = 0.55f)
@@ -462,6 +471,15 @@ private fun TimelineEventBlock(
             .clip(RoundedCornerShape(4.dp))
             .background(effectiveBg)
             .drawBehind {
+                if (isClassMeeting) {
+                    // Solid outline distinguishes a class block from regular
+                    // filled pills at a glance.
+                    drawRoundRect(
+                        color = bgColor,
+                        cornerRadius = CornerRadius(4.dp.toPx()),
+                        style = Stroke(width = 1.5.dp.toPx()),
+                    )
+                }
                 if (isPendingInvite) {
                     drawRoundRect(
                         color = pendingBorder,
