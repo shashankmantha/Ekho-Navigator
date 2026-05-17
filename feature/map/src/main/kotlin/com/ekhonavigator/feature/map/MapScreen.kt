@@ -1,5 +1,7 @@
 package com.ekhonavigator.feature.map
 
+import androidx.compose.foundation.isSystemInDarkTheme
+import com.google.android.gms.maps.model.MapStyleOptions
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
@@ -71,7 +73,7 @@ import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerInfoWindowContent
+import com.google.maps.android.compose.MarkerInfoWindow
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
 import kotlinx.coroutines.delay
@@ -88,12 +90,6 @@ data class UserMarker(
 // UserDroppedMarkers as Place entries — the navigated focusPlaceId arrives
 // from the event WHERE row in that namespaced form.
 private const val MARKER_FOCUS_PREFIX = "marker_"
-
-// Google Maps' InfoWindow draws a white tooltip background regardless of app theme
-// (the SDK snapshots the content into a Bitmap, so MaterialTheme can't override it).
-// These are fixed dark text colors that read on that white in both light and dark mode.
-internal val InfoWindowPrimary = androidx.compose.ui.graphics.Color(0xFF1A1A1A)
-internal val InfoWindowSecondary = androidx.compose.ui.graphics.Color(0xFF606060)
 
 // - MAP CONTROLS
 @Composable
@@ -192,6 +188,12 @@ fun MapScreen(
 
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(csuciCenter, 15f)
+    }
+
+    val mapStyle = if (isSystemInDarkTheme()) {
+        MapStyleOptions.loadRawResourceStyle(context, R.raw.map_style_dark)
+    } else {
+        null
     }
 
     var isMapLoaded by remember { mutableStateOf(false) }
@@ -326,6 +328,7 @@ fun MapScreen(
             cameraPositionState = cameraPositionState,
             contentPadding = mapPaddingForInfoCards,
             properties = MapProperties(
+                mapStyleOptions = mapStyle,
                 isMyLocationEnabled = hasLocationPermission &&
                         !isAnyMarkerInfoShowing &&
                         selectedCampusPlace == null &&
@@ -359,7 +362,7 @@ fun MapScreen(
                                 markerState.showInfoWindow()
                             }
                         }
-                        MarkerInfoWindowContent(
+                        MarkerInfoWindow(
                             state = markerState,
                             onClick = {
                                 isAnyMarkerInfoShowing = true
@@ -367,10 +370,18 @@ fun MapScreen(
                             },
                             onInfoWindowClick = {
                                 selectedCampusPlace = place
+                            },
+                            content = {
+                                Surface(
+                                    shape = MaterialTheme.shapes.medium,
+                                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    tonalElevation = 4.dp,
+                                    shadowElevation = 4.dp
+                                ) {
+                                    CampusPlacePreviewCard(place = place)
+                                }
                             }
-                        ) {
-                            CampusPlacePreviewCard(place = place)
-                        }
+                        )
                     }
                 }
             }
@@ -384,7 +395,7 @@ fun MapScreen(
                             markerState.showInfoWindow()
                         }
                     }
-                    MarkerInfoWindowContent(
+                    MarkerInfoWindow(
                         state = markerState,
                         icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE),
                         onInfoWindowClick = {
@@ -392,29 +403,33 @@ fun MapScreen(
                         },
                         onInfoWindowLongClick = {
                             selectedDroppedMarkerForOptions = droppedMarker
+                        },
+                        content = {
+                            Surface(
+                                shape = MaterialTheme.shapes.small,
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                tonalElevation = 4.dp
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(8.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = droppedMarker.markerLabelComment.ifBlank { "Dropped Marker" },
+                                        textAlign = TextAlign.Center,
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                    )
+                                    Text(
+                                        text = "Tap bubble for options (edit/remove)",
+                                        textAlign = TextAlign.Center,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
                         }
-                    ) {
-                        // No Card wrapper — Google Maps' SDK draws the surrounding white
-                        // tooltip already, and an inner Card was rendering as a black box
-                        // on top of it in dark mode.
-                        Column(
-                            modifier = Modifier.padding(8.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = droppedMarker.markerLabelComment.ifBlank { "Dropped Marker" },
-                                textAlign = TextAlign.Center,
-                                style = MaterialTheme.typography.labelLarge,
-                                color = InfoWindowPrimary,
-                            )
-                            Text(
-                                text = "Tap bubble for options (edit/remove)",
-                                textAlign = TextAlign.Center,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = InfoWindowSecondary,
-                            )
-                        }
-                    }
+                    )
                 }
             }
             if (activeRoutePoints.isNotEmpty()) {
@@ -539,7 +554,7 @@ fun MapScreen(
                     shadowElevation = 4.dp
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(
@@ -548,15 +563,17 @@ fun MapScreen(
                         ) {
                             Text(
                                 text = "Zoom in to see points of interest. Click filters to see even more.",
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.5.sp),
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, lineHeight = 14.sp),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
                             )
                             Text(
                                 text = "Hold anywhere on the map to drop a custom marker.",
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.5.sp),
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                textAlign = TextAlign.Center
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
                             )
                         }
                         Spacer(modifier = Modifier.size(8.dp))
