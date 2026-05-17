@@ -24,6 +24,7 @@ import kotlinx.coroutines.tasks.await
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.time.Instant
+import java.time.ZoneId
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -76,18 +77,31 @@ class DefaultCalendarRepository @Inject constructor(
     override fun observeEventsByDateRange(
         start: Instant,
         end: Instant,
-    ): Flow<List<CalendarEvent>> =
-        combine(
+    ): Flow<List<CalendarEvent>> {
+        val zone = ZoneId.systemDefault()
+        val rangeStartEpochDay = start.atZone(zone).toLocalDate().toEpochDay()
+        return combine(
             calendarEventDao.observeEventsByDateRange(start, end),
+            calendarEventDao.observeRecurringEventsInRange(rangeStartEpochDay, end),
             myRsvpByEventId,
-        ) { entities, rsvps ->
-            entities.joinMyRsvp(rsvps).excludeDeclined()
+        ) { rangeEntities, recurringEntities, rsvps ->
+            // The seed row of a series shows up in BOTH queries when its anchor
+            // date is inside the window — drop it from the date-range bucket
+            // so expansion is the single source for recurring events.
+            val nonRecurring = rangeEntities.filter { it.recurrenceDaysOfWeek == null }
+            val expanded = recurringEntities.flatMap { expandSeries(it, start, end, zone) }
+            (nonRecurring + expanded).joinMyRsvp(rsvps).excludeDeclined()
         }
+    }
 
-    override fun observeEventById(id: String): Flow<CalendarEvent?> =
-        combine(calendarEventDao.observeEventById(id), myRsvpByEventId) { entity, rsvps ->
+    override fun observeEventById(id: String): Flow<CalendarEvent?> {
+        // Recurrence instances carry composite ids (`seedUid__epochDay`) so each
+        // pill has a unique LazyColumn key — strip back to the seed for lookup.
+        val seedId = id.substringBefore(RECURRENCE_INSTANCE_DELIMITER)
+        return combine(calendarEventDao.observeEventById(seedId), myRsvpByEventId) { entity, rsvps ->
             entity?.toDomainModel(myRsvpStatus = rsvps[entity.uid])
         }
+    }
 
     override fun observePendingInvites(includePast: Boolean): Flow<List<CalendarEvent>> =
         observeInvitesWithStatus(RsvpStatus.PENDING, includePast)
@@ -216,4 +230,52 @@ class DefaultCalendarRepository @Inject constructor(
             // Best-effort cleanup — will retry on next sync
         }
     }
+}
+
+private const val RECURRENCE_INSTANCE_DELIMITER = "__"
+
+// Generates one in-memory entity per day-of-week occurrence inside the window.
+// Composite uid keeps LazyColumn keys unique while observeEventById() strips
+// the suffix to navigate back to the single stored series row.
+private fun expandSeries(
+    seed: CalendarEventEntity,
+    rangeStart: Instant,
+    rangeEnd: Instant,
+    zone: ZoneId,
+): List<CalendarEventEntity> {
+    val daysCsv = seed.recurrenceDaysOfWeek ?: return listOf(seed)
+    val endEpochDay = seed.recurrenceEndDateEpochDay ?: return listOf(seed)
+    val days = daysCsv.split(",")
+        .mapNotNull { runCatching { java.time.DayOfWeek.valueOf(it.trim()) }.getOrNull() }
+        .toSet()
+    if (days.isEmpty()) return emptyList()
+
+    val seedZoned = seed.startTime.atZone(zone)
+    val seedTime = seedZoned.toLocalTime()
+    val durationMs = seed.endTime.toEpochMilli() - seed.startTime.toEpochMilli()
+    val seriesStartDate = seedZoned.toLocalDate()
+    val seriesEndDate = java.time.LocalDate.ofEpochDay(endEpochDay)
+    val windowStartDate = rangeStart.atZone(zone).toLocalDate()
+    val windowEndDate = rangeEnd.atZone(zone).toLocalDate()
+
+    val firstDate = if (seriesStartDate.isAfter(windowStartDate)) seriesStartDate else windowStartDate
+    val lastDate = if (seriesEndDate.isBefore(windowEndDate)) seriesEndDate else windowEndDate
+    if (firstDate.isAfter(lastDate)) return emptyList()
+
+    val instances = mutableListOf<CalendarEventEntity>()
+    var date = firstDate
+    while (!date.isAfter(lastDate)) {
+        if (date.dayOfWeek in days) {
+            val startInstant = date.atTime(seedTime).atZone(zone).toInstant()
+            if (startInstant >= rangeStart && startInstant < rangeEnd) {
+                instances += seed.copy(
+                    uid = "${seed.uid}$RECURRENCE_INSTANCE_DELIMITER${date.toEpochDay()}",
+                    startTime = startInstant,
+                    endTime = Instant.ofEpochMilli(startInstant.toEpochMilli() + durationMs),
+                )
+            }
+        }
+        date = date.plusDays(1)
+    }
+    return instances
 }

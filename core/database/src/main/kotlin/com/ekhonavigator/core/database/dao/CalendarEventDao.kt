@@ -28,6 +28,23 @@ interface CalendarEventDao {
         rangeEnd: Instant,
     ): Flow<List<CalendarEventEntity>>
 
+    // One seed row per class-meeting series; expansion happens in the repo.
+    // Series is in-range when it started before the window ends AND its end
+    // date hasn't already passed by the window start.
+    @Query(
+        """
+        SELECT * FROM calendar_events
+        WHERE recurrenceDaysOfWeek IS NOT NULL
+        AND recurrenceEndDateEpochDay >= :rangeStartEpochDay
+        AND startTime < :rangeEnd
+        ORDER BY startTime ASC
+        """
+    )
+    fun observeRecurringEventsInRange(
+        rangeStartEpochDay: Long,
+        rangeEnd: Instant,
+    ): Flow<List<CalendarEventEntity>>
+
     @Query("SELECT * FROM calendar_events WHERE uid = :id")
     fun observeEventById(id: String): Flow<CalendarEventEntity?>
 
