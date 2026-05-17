@@ -200,7 +200,7 @@ object CampusPlacesData {
             id = "yuba_hall",
             name = "Yuba Hall/Student Health Services",
             position = LatLng(34.16399732962278, -119.04108401027618),
-            category = PlaceCategory.BUILDINGS,
+            category = PlaceCategory.SERVICES,
             fullLocationDescription = "Student health services building for basic medical care and wellness support",
             quickPreviewSummary = "Health care, appointments, wellness support",
             studentVisitReasons = "Students may go here for medical appointments, basic health care, physical exams, immunization-related help, or general wellness support.",

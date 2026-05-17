@@ -196,7 +196,7 @@ fun MapScreen(
     val activeTravelMode by viewModel.activeTravelMode.collectAsStateWithLifecycle()
     val isRouteLoading by viewModel.isRouteLoading.collectAsStateWithLifecycle()
 
-    val csuciCenter = LatLng(34.162134342787105, -119.04400892418893)
+    val csuciCenter = LatLng(34.162039205474755, -119.04347659500405)
 
     val focusedPlace = remember(focusPlaceId) {
         focusPlaceId?.let { id -> CampusPlacesData.places.firstOrNull { it.id == id } }
@@ -224,7 +224,7 @@ fun MapScreen(
     val mapStyle = if (isSystemInDarkTheme()) {
         MapStyleOptions.loadRawResourceStyle(context, R.raw.map_style_dark)
     } else {
-        null
+        MapStyleOptions.loadRawResourceStyle(context, R.raw.map_style_light)
     }
 
     var isMapLoaded by remember { mutableStateOf(false) }
@@ -379,6 +379,7 @@ fun MapScreen(
             key("csuci-main") {
                 Marker(
                     state = rememberMarkerState(position = csuciCenter),
+                    alpha = 0f,
                     title = "CSUCI Central Mall"
                 )
             }
@@ -859,7 +860,7 @@ fun rememberMarkerIcon(
     val painter = androidx.compose.ui.graphics.vector.rememberVectorPainter(imageVector)
 
     return androidx.compose.runtime.remember(imageVector, color) {
-        val sizePx = with(density) { 26.dp.toPx() }
+        val sizePx = with(density) { 27.dp.toPx() }
 
         val bitmap = Bitmap.createBitmap(
             sizePx.toInt(),
