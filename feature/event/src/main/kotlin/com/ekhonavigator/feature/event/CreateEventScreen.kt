@@ -52,8 +52,11 @@ import com.ekhonavigator.core.designsystem.component.FriendPickerEntry
 import com.ekhonavigator.core.designsystem.component.FriendPickerSheet
 import com.ekhonavigator.core.designsystem.component.LocationAutocompleteField
 import com.ekhonavigator.core.designsystem.icon.EkhoIcons
+import com.ekhonavigator.core.designsystem.theme.LocalAssignmentDecorator
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventType
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -447,6 +450,8 @@ private fun CourseField(
         else suggestions.filter { it.contains(value, ignoreCase = true) }
     }
 
+    val matchedColor = LocalAssignmentDecorator.current.courseColorForLabel(value)
+
     ExposedDropdownMenuBox(
         expanded = expanded && filteredSuggestions.isNotEmpty(),
         onExpandedChange = { expanded = it },
@@ -460,6 +465,16 @@ private fun CourseField(
             label = { Text("Course (optional)") },
             placeholder = { Text("e.g. COMP-262") },
             singleLine = true,
+            leadingIcon = if (matchedColor != null) {
+                {
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .clip(CircleShape)
+                            .background(matchedColor),
+                    )
+                }
+            } else null,
             trailingIcon = if (suggestions.isNotEmpty()) {
                 { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) }
             } else {
@@ -477,8 +492,19 @@ private fun CourseField(
                 onDismissRequest = { expanded = false },
             ) {
                 filteredSuggestions.forEach { code ->
+                    val codeColor = LocalAssignmentDecorator.current.courseColorForLabel(code)
                     DropdownMenuItem(
                         text = { Text(code) },
+                        leadingIcon = if (codeColor != null) {
+                            {
+                                Box(
+                                    modifier = Modifier
+                                        .size(10.dp)
+                                        .clip(CircleShape)
+                                        .background(codeColor),
+                                )
+                            }
+                        } else null,
                         onClick = {
                             onValueChange(code)
                             expanded = false
