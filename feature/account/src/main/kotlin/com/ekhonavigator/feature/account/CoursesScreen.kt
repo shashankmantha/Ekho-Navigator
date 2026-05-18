@@ -1,6 +1,7 @@
 package com.ekhonavigator.feature.account
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,6 +41,7 @@ import com.ekhonavigator.core.designsystem.theme.coursePalette
 import com.ekhonavigator.core.model.CourseColorChoice
 import com.ekhonavigator.core.model.UserCourse
 import com.ekhonavigator.feature.account.component.AddCourseDialog
+import com.ekhonavigator.feature.account.component.EditCourseDialog
 
 @Composable
 fun CoursesScreen(
@@ -72,6 +74,7 @@ fun CoursesScreen(
 
     val activeCourses = courses.filterNot { it.archived }
     val archivedCourses = courses.filter { it.archived }
+    var editingCourse by remember { mutableStateOf<UserCourse?>(null) }
 
     Box(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -97,7 +100,7 @@ fun CoursesScreen(
             } else {
                 LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     items(activeCourses, key = { it.familyKey }) { course ->
-                        CourseRow(course = course)
+                        CourseRow(course = course, onClick = { editingCourse = course })
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
                     }
                     if (archivedCourses.isNotEmpty()) {
@@ -110,7 +113,7 @@ fun CoursesScreen(
                             )
                         }
                         items(archivedCourses, key = { it.familyKey }) { course ->
-                            CourseRow(course = course)
+                            CourseRow(course = course, onClick = { editingCourse = course })
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
                         }
                     }
@@ -147,6 +150,25 @@ fun CoursesScreen(
             onSubmit = { code, slot -> viewModel.addCourse(code, slot) },
         )
     }
+
+    editingCourse?.let { course ->
+        EditCourseDialog(
+            course = course,
+            onDismiss = { editingCourse = null },
+            onSave = { displayName, slot ->
+                viewModel.editCourse(course.familyKey, displayName, slot)
+                editingCourse = null
+            },
+            onArchiveToggle = {
+                viewModel.toggleArchive(course.familyKey)
+                editingCourse = null
+            },
+            onDelete = {
+                viewModel.deleteCourse(course.familyKey)
+                editingCourse = null
+            },
+        )
+    }
 }
 
 @Composable
@@ -175,7 +197,7 @@ private fun EmptyState(onAdd: () -> Unit) {
 }
 
 @Composable
-private fun CourseRow(course: UserCourse) {
+private fun CourseRow(course: UserCourse, onClick: () -> Unit) {
     val palette = coursePalette()
     val color = when (val choice = course.colorChoice) {
         is CourseColorChoice.Palette -> palette.getOrNull(choice.slot) ?: MaterialTheme.colorScheme.onSurfaceVariant
@@ -187,7 +209,10 @@ private fun CourseRow(course: UserCourse) {
         MaterialTheme.colorScheme.onSurface
     }
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(

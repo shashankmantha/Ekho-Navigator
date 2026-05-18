@@ -79,6 +79,35 @@ class CoursesViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Updates the editable fields on an existing course. Doc-id stays put —
+     * to "rename" a course code, the user archives + deletes + re-adds.
+     */
+    fun editCourse(familyKey: String, displayName: String, slot: Int) {
+        val current = courses.value.firstOrNull { it.familyKey == familyKey } ?: return
+        viewModelScope.launch {
+            userCourseRepository.upsert(
+                current.copy(
+                    displayName = displayName.trim().ifBlank { current.code },
+                    colorChoice = CourseColorChoice.Palette(slot.coerceIn(0, CoursePaletteSize - 1)),
+                )
+            )
+        }
+    }
+
+    fun toggleArchive(familyKey: String) {
+        val current = courses.value.firstOrNull { it.familyKey == familyKey } ?: return
+        viewModelScope.launch {
+            userCourseRepository.archive(familyKey, !current.archived)
+        }
+    }
+
+    fun deleteCourse(familyKey: String) {
+        viewModelScope.launch {
+            userCourseRepository.delete(familyKey)
+        }
+    }
+
     companion object {
         const val MaxActiveCourses = 20
         const val CoursePaletteSize = 6
