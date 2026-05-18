@@ -559,10 +559,27 @@ internal data class EventLayout(
 // Floor so zero-duration events still register as overlapping when stacked.
 private val MinLayoutDuration: Duration = Duration.ofMinutes(15)
 
+// Mirrors MinAssignmentBlockHeight — an assignment due at 3PM renders the
+// pill from 2PM, so the overlap check needs to see that visual hour too.
+private val AssignmentVisualDuration: Duration = Duration.ofHours(1)
+
+// Visual start of the pill. For assignments this is "due time minus the
+// one-hour anchor pad" so a 12–3 class correctly overlaps a 3PM-due item.
+private val CalendarEvent.layoutStartTime: Instant
+    get() = if (type == EventType.ASSIGNMENT) {
+        startTime.minus(AssignmentVisualDuration)
+    } else {
+        startTime
+    }
+
 private val CalendarEvent.layoutEndTime: Instant
-    get() {
+    get() = if (type == EventType.ASSIGNMENT) {
+        // Due time IS the visual bottom; floor by 15min so back-to-back
+        // assignments still stack column-side instead of overwriting.
+        startTime.plus(MinLayoutDuration)
+    } else {
         val floor = startTime.plus(MinLayoutDuration)
-        return if (endTime.isAfter(floor)) endTime else floor
+        if (endTime.isAfter(floor)) endTime else floor
     }
 
 internal fun layoutEventsForDay(
@@ -572,8 +589,8 @@ internal fun layoutEventsForDay(
     if (events.isEmpty()) return emptyList()
 
     val sorted = events.sortedWith(
-        compareBy<CalendarEvent> { it.startTime }
-            .thenByDescending { it.layoutEndTime.epochSecond - it.startTime.epochSecond },
+        compareBy<CalendarEvent> { it.layoutStartTime }
+            .thenByDescending { it.layoutEndTime.epochSecond - it.layoutStartTime.epochSecond },
     )
 
     val result = mutableListOf<EventLayout>()
@@ -583,7 +600,8 @@ internal fun layoutEventsForDay(
         var placed = false
         for (group in groups) {
             val overlaps = group.any { existing ->
-                event.startTime < existing.layoutEndTime && event.layoutEndTime > existing.startTime
+                event.layoutStartTime < existing.layoutEndTime &&
+                    event.layoutEndTime > existing.layoutStartTime
             }
             if (overlaps) {
                 group.add(event)
@@ -598,11 +616,11 @@ internal fun layoutEventsForDay(
 
     for (group in groups) {
         val columns = mutableListOf<MutableList<CalendarEvent>>()
-        for (event in group.sortedBy { it.startTime }) {
+        for (event in group.sortedBy { it.layoutStartTime }) {
             var placedInColumn = false
             for (column in columns) {
                 val lastInColumn = column.last()
-                if (event.startTime >= lastInColumn.layoutEndTime) {
+                if (event.layoutStartTime >= lastInColumn.layoutEndTime) {
                     column.add(event)
                     placedInColumn = true
                     break
