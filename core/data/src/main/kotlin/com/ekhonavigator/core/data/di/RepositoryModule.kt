@@ -5,7 +5,9 @@ import com.ekhonavigator.core.data.auth.FirebaseAuthRepository
 import com.ekhonavigator.core.data.profile.FirestoreProfileRepository
 import com.ekhonavigator.core.data.profile.ProfileRepository
 import com.ekhonavigator.core.data.repository.DefaultPresenceRepository
+import com.ekhonavigator.core.data.repository.DefaultUserCourseRepository
 import com.ekhonavigator.core.data.repository.PresenceRepository
+import com.ekhonavigator.core.data.repository.UserCourseRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -33,4 +35,10 @@ abstract class RepositoryModule {
     abstract fun bindProfileRepository(
         firestoreProfileRepository: FirestoreProfileRepository
     ): ProfileRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindUserCourseRepository(
+        defaultUserCourseRepository: DefaultUserCourseRepository
+    ): UserCourseRepository
 }
