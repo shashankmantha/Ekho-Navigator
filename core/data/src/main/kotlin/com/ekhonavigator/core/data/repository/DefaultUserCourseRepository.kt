@@ -1,5 +1,6 @@
 package com.ekhonavigator.core.data.repository
 
+import android.util.Log
 import com.ekhonavigator.core.data.auth.AuthRepository
 import com.ekhonavigator.core.model.CourseColorChoice
 import com.ekhonavigator.core.model.UserCourse
@@ -18,6 +19,8 @@ import kotlinx.coroutines.tasks.await
 import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
+
+private const val TAG = "UserCourseRepo"
 
 @Singleton
 class DefaultUserCourseRepository @Inject constructor(
@@ -73,7 +76,12 @@ class DefaultUserCourseRepository @Inject constructor(
     private fun snapshotsFor(uid: String): Flow<List<UserCourse>> = callbackFlow {
         val registration = coursesCollection(uid).addSnapshotListener { snapshot, error ->
             if (error != null) {
-                close(error)
+                // Don't close() — permission errors (rules not deployed yet)
+                // would otherwise crash the whole decorator combine() upstream.
+                // Degrade to empty and stay subscribed so the listener resumes
+                // once rules land.
+                Log.w(TAG, "courses snapshot listener error: ${error.message}")
+                trySend(emptyList())
                 return@addSnapshotListener
             }
             if (snapshot != null) {
