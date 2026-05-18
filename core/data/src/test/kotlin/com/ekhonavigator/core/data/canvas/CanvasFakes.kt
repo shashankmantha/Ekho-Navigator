@@ -253,3 +253,29 @@ internal class FakeCanvasPlannerItemDao : CanvasPlannerItemDao {
         state.value = emptyList()
     }
 }
+
+internal class FakeUserCourseRepository : com.ekhonavigator.core.data.repository.UserCourseRepository {
+    private val state = MutableStateFlow<List<com.ekhonavigator.core.model.UserCourse>>(emptyList())
+    val upserts = mutableListOf<com.ekhonavigator.core.model.UserCourse>()
+
+    override fun observeCourses(): Flow<List<com.ekhonavigator.core.model.UserCourse>> = state
+
+    override fun observeByFamilyKey(familyKey: String): Flow<com.ekhonavigator.core.model.UserCourse?> =
+        state.map { list -> list.firstOrNull { it.familyKey == familyKey } }
+
+    override suspend fun getByFamilyKey(familyKey: String): com.ekhonavigator.core.model.UserCourse? =
+        state.value.firstOrNull { it.familyKey == familyKey }
+
+    override suspend fun upsert(course: com.ekhonavigator.core.model.UserCourse) {
+        upserts += course
+        state.value = state.value.filterNot { it.familyKey == course.familyKey } + course
+    }
+
+    override suspend fun archive(familyKey: String, archived: Boolean) {
+        state.value = state.value.map { if (it.familyKey == familyKey) it.copy(archived = archived) else it }
+    }
+
+    override suspend fun delete(familyKey: String) {
+        state.value = state.value.filterNot { it.familyKey == familyKey }
+    }
+}

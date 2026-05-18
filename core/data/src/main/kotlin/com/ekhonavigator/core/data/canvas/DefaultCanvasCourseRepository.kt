@@ -4,20 +4,34 @@ import com.ekhonavigator.core.canvas.auth.CanvasAccountSource
 import com.ekhonavigator.core.canvas.model.CanvasCourse
 import com.ekhonavigator.core.canvas.model.TermNameParser
 import com.ekhonavigator.core.canvas.network.CanvasApiProvider
+import com.ekhonavigator.core.data.repository.UserCourseRepository
 import com.ekhonavigator.core.database.dao.CanvasCourseDao
 import com.ekhonavigator.core.database.model.CanvasCourseEntity
+import com.ekhonavigator.core.model.CourseColorChoice
+import com.ekhonavigator.core.model.UserCourse
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.time.Instant
 import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
 
+// Mirror of CourseColorAssigner.familyKey — duplicated rather than imported
+// because core/data shouldn't depend on core/designsystem (which would drag
+// Compose into the data layer). Kept in sync by convention.
+private val FAMILY_KEY_REGEX = Regex("^([A-Z]+-?\\d+)")
+private fun familyKeyOf(code: String): String =
+    FAMILY_KEY_REGEX.find(code)?.groupValues?.get(1) ?: code
+
+private const val COURSE_PALETTE_SIZE = 6
+
 @Singleton
 internal class DefaultCanvasCourseRepository @Inject constructor(
     private val apiProvider: CanvasApiProvider,
     private val accountSource: CanvasAccountSource,
     private val courseDao: CanvasCourseDao,
+    private val userCourseRepository: UserCourseRepository,
 ) : CanvasCourseRepository {
 
     // Filter happens at observe time so the cache keeps the full enrollment
@@ -58,6 +72,40 @@ internal class DefaultCanvasCourseRepository @Inject constructor(
         }
         courseDao.upsertAll(entities)
         courseDao.deleteOthers(entities.map { it.id })
+
+        enrichUserCourses(entities)
+    }
+
+    /**
+     * Additive bridge into the user's Firestore course list. Never overwrites
+     * an existing row (which would clobber a user-picked color or archive
+     * state) — only creates rows for family-keys not yet enrolled. Same family
+     * across semesters dedupes naturally because doc-id = familyKey.
+     */
+    private suspend fun enrichUserCourses(entities: List<CanvasCourseEntity>) {
+        val existing = userCourseRepository.observeCourses().first()
+            .map { it.familyKey }.toSet()
+
+        // Sort by family-key first so new rows land in a deterministic order
+        // across devices — both devices see the same "next slot" assignments.
+        val needsCreation = entities
+            .map { entity -> familyKeyOf(entity.code) to entity }
+            .filter { (familyKey, _) -> familyKey !in existing }
+            .distinctBy { (familyKey, _) -> familyKey }
+            .sortedBy { (familyKey, _) -> familyKey }
+
+        val baseSlot = existing.size
+        needsCreation.forEachIndexed { index, (familyKey, entity) ->
+            userCourseRepository.upsert(
+                UserCourse(
+                    familyKey = familyKey,
+                    code = familyKey,
+                    displayName = entity.name.ifBlank { familyKey },
+                    colorChoice = CourseColorChoice.Palette((baseSlot + index) % COURSE_PALETTE_SIZE),
+                    archived = false,
+                )
+            )
+        }
     }
 
     override suspend fun clearAll() {

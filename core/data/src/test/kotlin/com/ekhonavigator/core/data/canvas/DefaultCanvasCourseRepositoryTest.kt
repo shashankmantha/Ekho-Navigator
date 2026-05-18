@@ -20,7 +20,8 @@ class DefaultCanvasCourseRepositoryTest {
         com.ekhonavigator.core.canvas.auth.CanvasAccount("uid-1", "csuci.instructure.com"),
     )
     private val dao = FakeCanvasCourseDao()
-    private val repo = DefaultCanvasCourseRepository(provider, accountSource, dao)
+    private val userCourseRepo = FakeUserCourseRepository()
+    private val repo = DefaultCanvasCourseRepository(provider, accountSource, dao, userCourseRepo)
 
     private class StubAccountSource(
         var account: com.ekhonavigator.core.canvas.auth.CanvasAccount?,
