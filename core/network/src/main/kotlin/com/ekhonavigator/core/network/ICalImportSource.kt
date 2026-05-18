@@ -56,6 +56,7 @@ class ICalImportSource @Inject constructor() {
         }
         Log.d(TAG, "read ${raw.length} chars from .ics")
         val cleaned = vtimezonePattern.replace(raw, "")
+            .replaceUsTimezoneAbbreviations()
         val calendar = try {
             CalendarBuilder().build(cleaned.reader())
         } catch (e: Exception) {
@@ -155,6 +156,28 @@ private val vtimezonePattern = Regex(
     "BEGIN:VTIMEZONE.*?END:VTIMEZONE\\r?\\n",
     RegexOption.DOT_MATCHES_ALL,
 )
+
+// CI Records emits `TZID=PDT` and friends, which iCal4j rejects since they
+// aren't Olson IDs. PDT/PST both fold to America/Los_Angeles (the zone DB
+// handles DST internally) — same idea for the other US abbreviations.
+private val usTimezoneMap = mapOf(
+    "PDT" to "America/Los_Angeles",
+    "PST" to "America/Los_Angeles",
+    "MDT" to "America/Denver",
+    "MST" to "America/Denver",
+    "CDT" to "America/Chicago",
+    "CST" to "America/Chicago",
+    "EDT" to "America/New_York",
+    "EST" to "America/New_York",
+)
+
+private fun String.replaceUsTimezoneAbbreviations(): String {
+    var out = this
+    for ((abbrev, olson) in usTimezoneMap) {
+        out = out.replace("TZID=$abbrev", "TZID=$olson")
+    }
+    return out
+}
 
 // Course-code shapes like "COMP-262", "MATH 350", "ASL101". Anchored at start
 // so a regular event titled "262 Reasons to Love..." doesn't accidentally tag.
