@@ -46,6 +46,7 @@ fun AccountScreen(
     onConnectCanvasClick: () -> Unit = {},
     onManageEventsClick: () -> Unit = {},
     onImportEventsClick: () -> Unit = {},
+    onMyCoursesClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: AccountViewModel = hiltViewModel(),
     forceSignedOutUi: Boolean = false,
@@ -273,6 +274,7 @@ fun AccountScreen(
                         onConnectCanvasClick = onConnectCanvasClick,
                         onManageEventsClick = onManageEventsClick,
                         onImportEventsClick = onImportEventsClick,
+                        onMyCoursesClick = onMyCoursesClick,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }

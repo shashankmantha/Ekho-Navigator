@@ -78,6 +78,7 @@ fun EditProfileScreen(
     onConnectCanvasClick: () -> Unit,
     onManageEventsClick: () -> Unit = {},
     onImportEventsClick: () -> Unit = {},
+    onMyCoursesClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var displayName by rememberSaveable { mutableStateOf(initialDisplayName) }
@@ -320,6 +321,12 @@ fun EditProfileScreen(
         )
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Spacer(modifier = Modifier.height(4.dp))
+        IntegrationCard(
+            title = "My courses",
+            description = "Pick colors for your courses — used across the calendar and event tags.",
+            onClick = onMyCoursesClick,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
         IntegrationCard(
             title = "Manage events",
             description = "Review and bulk-delete events you've created.",
