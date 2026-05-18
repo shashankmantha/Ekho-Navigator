@@ -3,14 +3,13 @@ package com.ekhonavigator.feature.event
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ekhonavigator.core.data.auth.AuthRepository
-import com.ekhonavigator.core.data.canvas.CanvasCourseRepository
 import com.ekhonavigator.core.data.place.PlaceRepository
 import com.ekhonavigator.core.data.repository.CalendarRepository
 import com.ekhonavigator.core.data.repository.CustomEventRepository
+import com.ekhonavigator.core.data.repository.UserCourseRepository
 import com.ekhonavigator.core.data.social.FriendUser
 import com.ekhonavigator.core.data.social.SocialRepository
 import com.ekhonavigator.core.designsystem.component.LocationSuggestion
-import com.ekhonavigator.core.designsystem.theme.CourseColorAssigner
 import com.ekhonavigator.core.designsystem.theme.normalizeCourseLabel
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventCategory
@@ -102,7 +101,7 @@ class CreateEventViewModel @Inject constructor(
     private val customEventRepository: CustomEventRepository,
     private val socialRepository: SocialRepository,
     private val placeRepository: PlaceRepository,
-    canvasCourseRepository: CanvasCourseRepository,
+    userCourseRepository: UserCourseRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CreateEventUiState())
@@ -115,13 +114,13 @@ class CreateEventViewModel @Inject constructor(
         .map { places -> places.map { it.toSuggestion() } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    // Family-key form so the dropdown shows clean codes ("COMP-262") and
-    // lab+lecture sections collapse into one suggestion.
-    val courseSuggestions: StateFlow<List<String>> = canvasCourseRepository
+    // Pulls from the user's course profile (Firestore) — survives PAT
+    // disconnect and works without a Canvas connection at all.
+    val courseSuggestions: StateFlow<List<String>> = userCourseRepository
         .observeCourses()
         .map { courses ->
-            courses.map { CourseColorAssigner.familyKey(it.code) }
-                .distinct()
+            courses.filterNot { it.archived }
+                .map { it.familyKey }
                 .sorted()
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
