@@ -49,6 +49,7 @@ fun EditCourseDialog(
     var displayName by remember(course.familyKey) { mutableStateOf(course.displayName) }
     val initialSlot = (course.colorChoice as? CourseColorChoice.Palette)?.slot ?: 0
     var slot by remember(course.familyKey) { mutableStateOf(initialSlot) }
+    var showDeleteConfirm by remember(course.familyKey) { mutableStateOf(false) }
     val palette = coursePalette()
 
     AlertDialog(
@@ -100,15 +101,13 @@ fun EditCourseDialog(
                     ) {
                         Text(if (course.archived) "Restore" else "Archive")
                     }
-                    if (course.archived) {
-                        TextButton(
-                            onClick = onDelete,
-                            colors = ButtonDefaults.textButtonColors(
-                                contentColor = MaterialTheme.colorScheme.error,
-                            ),
-                        ) {
-                            Text("Delete")
-                        }
+                    TextButton(
+                        onClick = { showDeleteConfirm = true },
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error,
+                        ),
+                    ) {
+                        Text("Delete")
                     }
                 }
             }
@@ -123,6 +122,33 @@ fun EditCourseDialog(
             TextButton(onClick = onDismiss) { Text("Cancel") }
         },
     )
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete ${course.code}?") },
+            text = {
+                Text(
+                    text = "Existing events tagged with this code will lose their color. " +
+                        "Archive instead if you want to keep the history.",
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteConfirm = false
+                        onDelete()
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error,
+                    ),
+                ) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+            },
+        )
+    }
 }
 
 @Composable
