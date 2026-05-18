@@ -10,7 +10,10 @@ import com.ekhonavigator.core.data.repository.UserCourseRepository
 import com.ekhonavigator.core.data.social.FriendUser
 import com.ekhonavigator.core.data.social.SocialRepository
 import com.ekhonavigator.core.designsystem.component.LocationSuggestion
+import com.ekhonavigator.core.designsystem.theme.CourseColorAssigner
 import com.ekhonavigator.core.designsystem.theme.normalizeCourseLabel
+import com.ekhonavigator.core.model.CourseColorChoice
+import com.ekhonavigator.core.model.UserCourse
 import com.ekhonavigator.core.model.CalendarEvent
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSource
@@ -101,7 +104,7 @@ class CreateEventViewModel @Inject constructor(
     private val customEventRepository: CustomEventRepository,
     private val socialRepository: SocialRepository,
     private val placeRepository: PlaceRepository,
-    userCourseRepository: UserCourseRepository,
+    private val userCourseRepository: UserCourseRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CreateEventUiState())
@@ -269,6 +272,11 @@ class CreateEventViewModel @Inject constructor(
                         SharedLocation(place.name, place.latitude, place.longitude)
                     }
 
+            // Auto-claim a user-course row for any new courseLabel — keeps the
+            // event detail + calendar pill working even before the user opens
+            // the My Courses screen to customize.
+            ensureUserCourseForLabel(state.courseLabel)
+
             val editingId = state.editingEventId
             if (editingId != null) {
                 applyEdit(editingId, ownerUid, state, startInstant, endInstant, resolvedPlaceId, resolvedCustomLocation)
@@ -277,6 +285,32 @@ class CreateEventViewModel @Inject constructor(
             }
             _uiState.update { it.copy(isSaving = false, isSaved = true) }
         }
+    }
+
+    /**
+     * If the user typed a courseLabel that doesn't yet exist in their course
+     * profile, create a row for it so the family-key shows up in autocomplete
+     * and the calendar pill renders in a stable color. Skips silently when
+     * the user is at the 20-active cap — old events still color via the
+     * decorator's sort-position fallback.
+     */
+    private suspend fun ensureUserCourseForLabel(rawLabel: String) {
+        val normalized = normalizeCourseLabel(rawLabel) ?: return
+        val familyKey = CourseColorAssigner.familyKey(normalized)
+        if (userCourseRepository.getByFamilyKey(familyKey) != null) return
+
+        val active = userCourseRepository.observeCourses().first().count { !it.archived }
+        if (active >= MAX_ACTIVE_USER_COURSES) return
+
+        userCourseRepository.upsert(
+            UserCourse(
+                familyKey = familyKey,
+                code = familyKey,
+                displayName = normalized,
+                colorChoice = CourseColorChoice.Palette(active % COURSE_PALETTE_SIZE),
+                archived = false,
+            )
+        )
     }
 
     private suspend fun applyCreate(
@@ -403,3 +437,9 @@ private fun Place.toSuggestion(): LocationSuggestion = LocationSuggestion(
     latitude = latitude.takeIf { isCustom },
     longitude = longitude.takeIf { isCustom },
 )
+
+// Mirrors CoursesViewModel.MaxActiveCourses — the auto-create path stops at
+// the same cap rather than letting fresh courseLabels sneak past. Shared
+// with ImportEventsViewModel so .ics bulk-imports honor the same ceiling.
+internal const val MAX_ACTIVE_USER_COURSES = 20
+internal const val COURSE_PALETTE_SIZE = 6

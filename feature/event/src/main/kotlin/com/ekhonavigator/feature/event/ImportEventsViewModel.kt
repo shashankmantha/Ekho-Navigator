@@ -7,12 +7,16 @@ import androidx.lifecycle.viewModelScope
 import com.ekhonavigator.core.data.auth.AuthRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.ekhonavigator.core.data.repository.CustomEventRepository
+import com.ekhonavigator.core.data.repository.UserCourseRepository
+import com.ekhonavigator.core.designsystem.theme.CourseColorAssigner
 import com.ekhonavigator.core.designsystem.theme.normalizeCourseLabel
 import com.ekhonavigator.core.model.CalendarEvent
+import com.ekhonavigator.core.model.CourseColorChoice
 import com.ekhonavigator.core.model.EventCategory
 import com.ekhonavigator.core.model.EventSource
 import com.ekhonavigator.core.model.EventType
 import com.ekhonavigator.core.model.RecurrenceRule
+import com.ekhonavigator.core.model.UserCourse
 import com.ekhonavigator.core.network.ICalImportSource
 import com.ekhonavigator.core.network.model.StagedImportedEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -20,6 +24,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -46,6 +51,7 @@ class ImportEventsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val customEventRepository: CustomEventRepository,
     private val authRepository: AuthRepository,
+    private val userCourseRepository: UserCourseRepository,
 ) : ViewModel() {
 
     private val contentResolver get() = context.contentResolver
@@ -97,12 +103,45 @@ class ImportEventsViewModel @Inject constructor(
 
         _uiState.value = state.copy(isImporting = true)
         viewModelScope.launch {
+            // Claim user-course rows for every distinct family-key in the
+            // import before writing events — keeps the calendar colors stable
+            // and surfaces the courses in the autocomplete list immediately.
+            ensureUserCoursesFor(toImport)
             val events = toImport.map { it.toCalendarEvent(ownerUid, ownerName) }
             for (event in events) {
                 runCatching { customEventRepository.createEvent(event, sharedWith = emptyMap()) }
             }
             _uiState.value = ImportEventsUiState.Imported(events.size)
         }
+    }
+
+    private suspend fun ensureUserCoursesFor(staged: List<StagedImportedEvent>) {
+        val newFamilyKeys = staged
+            .mapNotNull { staged ->
+                val normalized = normalizeCourseLabel(staged.inferredCourseLabel.orEmpty()) ?: return@mapNotNull null
+                CourseColorAssigner.familyKey(normalized) to normalized
+            }
+            .distinctBy { it.first }
+        if (newFamilyKeys.isEmpty()) return
+
+        val existing = userCourseRepository.observeCourses().first()
+        val existingKeys = existing.map { it.familyKey }.toSet()
+        val baseSlot = existing.count { !it.archived }
+
+        newFamilyKeys
+            .filter { (key, _) -> key !in existingKeys }
+            .take((MAX_ACTIVE_USER_COURSES - baseSlot).coerceAtLeast(0))
+            .forEachIndexed { index, (familyKey, displayName) ->
+                userCourseRepository.upsert(
+                    UserCourse(
+                        familyKey = familyKey,
+                        code = familyKey,
+                        displayName = displayName,
+                        colorChoice = CourseColorChoice.Palette((baseSlot + index) % COURSE_PALETTE_SIZE),
+                        archived = false,
+                    )
+                )
+            }
     }
 
     fun reset() {
