@@ -103,7 +103,15 @@ fun TimelineGrid(
 
     val layoutsByDate = remember(eventsByDate, columnDates) {
         columnDates.associateWith { date ->
-            layoutEventsForDay(eventsByDate[date].orEmpty(), zone)
+            val dayEvents = eventsByDate[date].orEmpty()
+            // Two-layer split: recurring outlines stay full-width as a
+            // background ghost (their transparent fill won't fight other pills
+            // for readability); filled events column-split among themselves
+            // and render on top.
+            val (recurring, regular) = dayEvents.partition { it.recurrence != null }
+            val recurringLayouts = recurring.map { EventLayout(it, 0, 1) }
+            val regularLayouts = layoutEventsForDay(regular, zone)
+            recurringLayouts + regularLayouts
         }
     }
 
@@ -265,6 +273,10 @@ fun TimelineGrid(
                         val blockWidth = columnWidth * (1f / effectiveTotal)
                         val blockXOffset = xOffset + blockWidth * layout.indexInGroup
 
+                        // Recurring blocks sit beneath regular pills so filled
+                        // events overlapping a class outline cover the outline's
+                        // top-left label cleanly.
+                        val blockZIndex = if (event.recurrence != null) 0.5f else 1f
                         TimelineEventBlock(
                             event = event,
                             onClick = { onEventClick(event.id) },
@@ -272,7 +284,7 @@ fun TimelineGrid(
                                 .offset(x = blockXOffset, y = yOffset)
                                 .width(blockWidth - 1.dp)
                                 .height(blockHeight - 1.dp)
-                                .zIndex(1f),
+                                .zIndex(blockZIndex),
                         )
                     }
 
