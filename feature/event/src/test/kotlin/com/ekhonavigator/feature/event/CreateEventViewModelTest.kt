@@ -9,7 +9,7 @@ import com.ekhonavigator.core.model.SharedLocation
 import com.ekhonavigator.core.testing.MainDispatcherRule
 import com.ekhonavigator.core.testing.TestAuthRepository
 import com.ekhonavigator.core.testing.TestCalendarRepository
-import com.ekhonavigator.core.testing.TestCanvasCourseRepository
+import com.ekhonavigator.core.testing.TestUserCourseRepository
 import com.ekhonavigator.core.testing.TestCustomEventRepository
 import com.ekhonavigator.core.testing.TestPlaceRepository
 import com.ekhonavigator.core.testing.TestSocialRepository
@@ -41,7 +41,7 @@ class CreateEventViewModelTest {
     private lateinit var customEventRepository: TestCustomEventRepository
     private lateinit var socialRepository: TestSocialRepository
     private lateinit var placeRepository: TestPlaceRepository
-    private lateinit var canvasCourseRepository: TestCanvasCourseRepository
+    private lateinit var userCourseRepository: TestUserCourseRepository
     private lateinit var viewModel: CreateEventViewModel
 
     @Before
@@ -51,14 +51,14 @@ class CreateEventViewModelTest {
         customEventRepository = TestCustomEventRepository()
         socialRepository = TestSocialRepository()
         placeRepository = TestPlaceRepository()
-        canvasCourseRepository = TestCanvasCourseRepository()
+        userCourseRepository = TestUserCourseRepository()
         viewModel = CreateEventViewModel(
             authRepository,
             calendarRepository,
             customEventRepository,
             socialRepository,
             placeRepository,
-            canvasCourseRepository,
+            userCourseRepository,
         )
     }
 
@@ -203,7 +203,7 @@ class CreateEventViewModelTest {
             customEventRepository,
             socialRepository,
             placeRepository,
-            canvasCourseRepository,
+            userCourseRepository,
         )
         freshViewModel.uiState.first { it.friends.isNotEmpty() }
 

@@ -196,6 +196,7 @@ internal class FakeCalendarEventDao : CalendarEventDao {
     override fun observeAllEvents(): Flow<List<CalendarEventEntity>> = unsupported()
     override fun observeBookmarkedEvents(): Flow<List<CalendarEventEntity>> = unsupported()
     override fun observeEventsByDateRange(rangeStart: Instant, rangeEnd: Instant): Flow<List<CalendarEventEntity>> = unsupported()
+    override fun observeRecurringEventsInRange(rangeStartEpochDay: Long, rangeEnd: Instant): Flow<List<CalendarEventEntity>> = unsupported()
     override fun observeEventById(id: String): Flow<CalendarEventEntity?> = unsupported()
     override suspend fun getEventById(id: String): CalendarEventEntity? = unsupported()
     override suspend fun updateBookmark(id: String, bookmarked: Boolean) = unsupported()
