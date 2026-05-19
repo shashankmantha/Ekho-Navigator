@@ -29,6 +29,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.ekhonavigator.core.designsystem.theme.LocalCanvasConnected
 import com.ekhonavigator.core.designsystem.theme.coursePalette
 import com.ekhonavigator.core.model.CourseColorChoice
 import com.ekhonavigator.core.model.UserCourse
@@ -51,6 +52,7 @@ fun EditCourseDialog(
     var slot by remember(course.familyKey) { mutableStateOf(initialSlot) }
     var showDeleteConfirm by remember(course.familyKey) { mutableStateOf(false) }
     val palette = coursePalette()
+    val canvasConnected = LocalCanvasConnected.current
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -92,6 +94,14 @@ fun EditCourseDialog(
                     }
                 }
                 Spacer(Modifier.height(20.dp))
+                if (canvasConnected) {
+                    Text(
+                        text = "Canvas may re-add this on next sync. Archive to hide permanently.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(
                         onClick = onArchiveToggle,
@@ -124,15 +134,17 @@ fun EditCourseDialog(
     )
 
     if (showDeleteConfirm) {
+        val confirmText = buildString {
+            append("Existing events tagged with this code will lose their color. ")
+            append("Archive instead if you want to keep the history.")
+            if (canvasConnected) {
+                append("\n\nCanvas will also re-add this course on the next sync if you're still enrolled.")
+            }
+        }
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text("Delete ${course.code}?") },
-            text = {
-                Text(
-                    text = "Existing events tagged with this code will lose their color. " +
-                        "Archive instead if you want to keep the history.",
-                )
-            },
+            text = { Text(text = confirmText) },
             confirmButton = {
                 TextButton(
                     onClick = {
