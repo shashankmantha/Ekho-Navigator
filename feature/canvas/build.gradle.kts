@@ -29,6 +29,7 @@ dependencies {
     implementation(projects.core.canvas)
     implementation(projects.core.data)
     implementation(projects.core.designsystem)
+    implementation(projects.core.model)
     implementation(libs.coil.compose)
 
     implementation(platform(libs.androidx.compose.bom))
