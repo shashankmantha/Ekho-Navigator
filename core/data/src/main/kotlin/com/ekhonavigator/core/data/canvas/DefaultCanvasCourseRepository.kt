@@ -91,9 +91,19 @@ internal class DefaultCanvasCourseRepository @Inject constructor(
         val existingKeys = all.map { it.familyKey }.toSet()
         val activeCount = all.count { !it.archived }
 
+        val now = Instant.now()
+        val today = LocalDate.now()
+        // Past-term courses don't get fresh rows — and if they were active,
+        // they get auto-archived so the list stays focused on this semester.
+        val pastTermFamilyKeys = entities
+            .filter { it.isPastTerm(now, today) }
+            .map { familyKeyOf(it.code) }
+            .toSet()
+
         // Sort by family-key first so new rows land in a deterministic order
         // across devices — both devices see the same "next slot" assignments.
         val needsCreation = entities
+            .filterNot { it.isPastTerm(now, today) }
             .map { entity -> familyKeyOf(entity.code) to entity }
             .filter { (familyKey, _) -> familyKey !in existingKeys }
             .distinctBy { (familyKey, _) -> familyKey }
@@ -109,6 +119,27 @@ internal class DefaultCanvasCourseRepository @Inject constructor(
                     archived = false,
                 )
             )
+        }
+
+        // Auto-archive active rows whose Canvas term has ended. User-added
+        // rows (no matching Canvas family-key) are untouched.
+        val toArchive = all.filter { !it.archived && it.familyKey in pastTermFamilyKeys }
+        toArchive.forEach { course ->
+            userCourseRepository.archive(course.familyKey, archived = true)
+        }
+    }
+
+    // Mirrors observeCourses()'s "is current" filter: text-parsed term beats
+    // endAt (CSUCI's endAt is unreliable), endAt falls in as a backup, and
+    // unknown-term courses stay active by default.
+    private fun CanvasCourseEntity.isPastTerm(now: Instant, today: LocalDate): Boolean {
+        val parsed = TermNameParser.parse(termName) ?: TermNameParser.parse(name)
+        // Local val — cross-module property can't smart-cast through the null check.
+        val endAt = termEndAt
+        return when {
+            parsed != null -> !parsed.isCurrent(today)
+            endAt != null -> !endAt.isAfter(now)
+            else -> false
         }
     }
 
