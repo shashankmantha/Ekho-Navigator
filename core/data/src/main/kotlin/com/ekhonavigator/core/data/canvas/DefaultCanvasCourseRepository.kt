@@ -83,25 +83,29 @@ internal class DefaultCanvasCourseRepository @Inject constructor(
      * across semesters dedupes naturally because doc-id = familyKey.
      */
     private suspend fun enrichUserCourses(entities: List<CanvasCourseEntity>) {
-        val existing = userCourseRepository.observeCourses().first()
-            .map { it.familyKey }.toSet()
+        // Two reads of the same list: family-key set drives dedup (so a Canvas
+        // re-sync doesn't resurrect an archived course); active count drives
+        // the slot offset so freshly-added courses start at index 0 when the
+        // user has cleared their active set.
+        val all = userCourseRepository.observeCourses().first()
+        val existingKeys = all.map { it.familyKey }.toSet()
+        val activeCount = all.count { !it.archived }
 
         // Sort by family-key first so new rows land in a deterministic order
         // across devices — both devices see the same "next slot" assignments.
         val needsCreation = entities
             .map { entity -> familyKeyOf(entity.code) to entity }
-            .filter { (familyKey, _) -> familyKey !in existing }
+            .filter { (familyKey, _) -> familyKey !in existingKeys }
             .distinctBy { (familyKey, _) -> familyKey }
             .sortedBy { (familyKey, _) -> familyKey }
 
-        val baseSlot = existing.size
         needsCreation.forEachIndexed { index, (familyKey, entity) ->
             userCourseRepository.upsert(
                 UserCourse(
                     familyKey = familyKey,
                     code = familyKey,
                     displayName = entity.name.ifBlank { familyKey },
-                    colorChoice = CourseColorChoice.Palette((baseSlot + index) % COURSE_PALETTE_SIZE),
+                    colorChoice = CourseColorChoice.Palette((activeCount + index) % COURSE_PALETTE_SIZE),
                     archived = false,
                 )
             )
