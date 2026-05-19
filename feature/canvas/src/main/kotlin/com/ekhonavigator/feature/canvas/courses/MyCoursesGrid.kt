@@ -200,25 +200,42 @@ class MyCoursesGridViewModel @Inject constructor(
     @Suppress("unused") savedStateHandle: SavedStateHandle,
     courseRepository: CanvasCourseRepository,
     plannerRepository: CanvasPlannerRepository,
+    userCourseRepository: com.ekhonavigator.core.data.repository.UserCourseRepository,
 ) : ViewModel() {
 
     val uiState: StateFlow<MyCoursesGridUiState> = combine(
         courseRepository.observeCourses(),
         plannerRepository.observeAllItems(),
-    ) { courses, planners ->
+        userCourseRepository.observeCourses(),
+    ) { courses, planners, userCourses ->
         if (courses.isEmpty()) {
             MyCoursesGridUiState.Loaded(emptyList())
         } else {
-            val slots = CourseColorAssigner.assign(
+            // Sort-position fallback for any Canvas course not yet enrolled in
+            // the user-course store. Once enrichment lands, this is rarely hit.
+            val fallbackSlots = CourseColorAssigner.familySlots(
                 courses.map { CourseColorInput(id = it.id, code = it.code) },
             )
+            // Active user-course wins over the fallback so the grid stays in
+            // sync with what My Courses (Profile) shows.
+            val userSlotByFamilyKey = userCourses
+                .filterNot { it.archived }
+                .mapNotNull { course ->
+                    (course.colorChoice as? com.ekhonavigator.core.model.CourseColorChoice.Palette)
+                        ?.let { course.familyKey to it.slot }
+                }
+                .toMap()
             val today = LocalDate.now()
             val activityByCourse = lastActivityByCourseId(planners, today)
             MyCoursesGridUiState.Loaded(
                 cards = courses.map { course ->
+                    val familyKey = CourseColorAssigner.familyKey(course.code)
+                    val slot = userSlotByFamilyKey[familyKey]
+                        ?: fallbackSlots[familyKey]
+                        ?: 0
                     CourseCardData(
                         course = course,
-                        paletteSlot = slots[course.id] ?: 0,
+                        paletteSlot = slot,
                         lastActivity = activityByCourse[course.id],
                     )
                 },
