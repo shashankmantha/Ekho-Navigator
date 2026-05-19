@@ -33,12 +33,17 @@ internal val CoursePaletteLight: List<Color> = listOf(
 
 internal val CoursePaletteDark: List<Color> = listOf(
     Color(0xFF7AA8C0), // 1 — Islands Blue   200°
-    Color(0xFFC4A8D0), // 2 — Charoite       290°
+    Color(0xFFB496C0), // 2 — Charoite       290° — was C4A8D0; that sat at
+                       //                            ~74% L while the rest of
+                       //                            the palette lives near
+                       //                            62-64%. Nudged to ~67% to
+                       //                            stop it popping in dark mode.
     Color(0xFFB8965A), // 3 — Citrine         46° — kept darker than the rest of
                        //                            the dark palette so white text
                        //                            reads on top; yellow is bright
                        //                            no matter what.
-    Color(0xFF8FA8DD), // 4 — Mariner        220°
+    Color(0xFF8098D0), // 4 — Mariner        220° — was 8FA8DD; same balancing
+                       //                            move as Charoite.
     Color(0xFF7DBFBD), // 5 — Tidepool       178°
     Color(0xFF998BB5), // 6 — Plum           265°
 )

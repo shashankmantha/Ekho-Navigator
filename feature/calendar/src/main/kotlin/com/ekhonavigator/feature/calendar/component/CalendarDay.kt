@@ -151,20 +151,23 @@ fun DayContent(
                     val pendingBorder = MaterialTheme.colorScheme.error
                     val isCompleted = decorator.isCompleted(event.id)
                     val isPastEvent = event.isPast()
-                    // Knock dark-mode pills back so white text reads on top.
-                    val baseAlpha = if (isSystemInDarkTheme()) 0.8f else 1f
+                    // Full alpha on current pills so they cleanly mask any
+                    // recurring outline behind them.
                     val effectivePillBg = when {
                         isRecurring -> Color.Transparent
                         isPendingInvite -> pillBg.copy(alpha = 0.35f)
                         isCompleted -> pillBg.copy(alpha = 0.4f)
                         isPastEvent -> pillBg.copy(alpha = 0.55f)
-                        else -> pillBg.copy(alpha = baseAlpha)
+                        else -> pillBg
                     }
 
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(2.dp))
+                            // Opaque underlay so past/completed alpha fades
+                            // blend with the cell, not the recurring's text.
+                            .background(if (isRecurring) Color.Transparent else cellColor)
                             .background(effectivePillBg)
                             .drawBehind {
                                 if (isRecurring) {

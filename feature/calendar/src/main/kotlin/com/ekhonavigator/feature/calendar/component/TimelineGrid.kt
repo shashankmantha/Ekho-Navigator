@@ -461,18 +461,18 @@ private fun TimelineEventBlock(
     val isPendingInvite = event.myRsvpStatus == RsvpStatus.PENDING
     val pendingBorder = colors.error
     // Alpha priority: pending > completed > past. Past+completed → completed.
+    // Current pills stay fully opaque so they cleanly cover any recurring
+    // outline they overlap — dark-mode brightness was reduced in the palette
+    // itself rather than at render time.
     val isCompletedPill = LocalAssignmentDecorator.current.isCompleted(event.id)
     val isPastEvent = event.isPast()
-    // Dark-mode palette runs bright — knock current pills back so white text
-    // reads on top. Past/completed/pending tier down from there.
-    val baseAlpha = if (isSystemInDarkTheme()) 0.8f else 1f
     val effectiveBg = when {
         // Outline treatment — fill stays transparent regardless of state.
         isRecurring -> androidx.compose.ui.graphics.Color.Transparent
         isPendingInvite -> bgColor.copy(alpha = 0.35f)
         isCompletedPill -> bgColor.copy(alpha = 0.4f)
         isPastEvent -> bgColor.copy(alpha = 0.55f)
-        else -> bgColor.copy(alpha = baseAlpha)
+        else -> bgColor
     }
     val effectiveText = when {
         isPendingInvite -> textColor.copy(alpha = 0.75f)
@@ -484,6 +484,11 @@ private fun TimelineEventBlock(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(4.dp))
+            // Opaque surface underlay on foreground pills so the past/completed
+            // fades blend with the calendar surface instead of the recurring
+            // outline's text behind. Recurring blocks stay fully transparent so
+            // the cell still shows through their outline.
+            .background(if (isRecurring) androidx.compose.ui.graphics.Color.Transparent else colors.surface)
             .background(effectiveBg)
             .drawBehind {
                 if (isRecurring) {
