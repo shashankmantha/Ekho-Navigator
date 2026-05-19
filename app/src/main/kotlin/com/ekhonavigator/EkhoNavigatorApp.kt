@@ -560,7 +560,10 @@ fun EkhoNavigatorApp(
                         is ConnectCanvasNavKey -> {
                             NavEntry(key) {
                                 ConnectCanvasScreen(
-                                    onViewCoursesClick = navigator::navigateToMyCourses,
+                                    // Profile's My Courses is the single source of
+                                    // truth — keeps Canvas confirmation flow tied to
+                                    // the surface where color/archive edits live.
+                                    onViewCoursesClick = navigator::navigateToCourses,
                                 )
                             }
                         }
